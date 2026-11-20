@@ -282,7 +282,7 @@ export class SfxService {
     const versions=await this.projects.listVersions(projectId);
     const runs=[];for(const version of versions)runs.push(await this.readRun(version.runId));
     const git=await this.projectGit.publish(project,runs,includeMedia);
-    return {project,git};
+    return {project:await this.projects.recordGitResult(projectId,git),git};
   }
 
   async importGitProject(projectId:string) {

@@ -4,9 +4,9 @@ import {spawn,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import assert from 'node:assert/strict';
 const exec=promisify(execFile);
-const root=path.resolve('.output/desktop-acceptance',String(Date.now())),workspace=path.join(root,'workspace'),release=path.resolve('.output/desktop-release/win-unpacked');
+const root=path.resolve('.output/desktop-acceptance',String(Date.now())),workspace=path.join(root,'workspace'),release=process.env.SPIELKISTE_TEST_EXE?path.dirname(path.resolve(process.env.SPIELKISTE_TEST_EXE)):path.resolve('.output/desktop-release/win-unpacked');
 await fs.mkdir(workspace,{recursive:true});await fs.rm(path.join(workspace,'desktop-smoke.json'),{force:true});
-const child=spawn(path.join(release,'Spielkiste.exe'),['--spielkiste-smoke'],{windowsHide:true,stdio:'ignore',env:{...process.env,SPIELKISTE_DATA_DIR:workspace,SPIELKISTE_SMOKE_HOLD:'1'}});
+const child=spawn(process.env.SPIELKISTE_TEST_EXE||path.join(release,'Spielkiste.exe'),['--spielkiste-smoke'],{windowsHide:true,stdio:'ignore',env:{...process.env,SPIELKISTE_DATA_DIR:workspace,SPIELKISTE_SMOKE_HOLD:'1'}});
 const report={started:new Date().toISOString(),checks:[]};
 try{
  let boot;for(let i=0;i<90;i++){try{boot=JSON.parse(await fs.readFile(path.join(workspace,'desktop-smoke.json'),'utf8'));break;}catch{await new Promise(resolve=>setTimeout(resolve,500));}}

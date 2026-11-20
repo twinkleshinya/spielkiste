@@ -5,7 +5,7 @@ import {promisify} from 'node:util';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const exec=promisify(execFile);
-export const sourceDirectories=['src','tests','templates','desktop'];
+export const sourceDirectories=['src','tests','templates','desktop','examples'];
 const rootFiles=['package.json','package-lock.json','tsconfig.json','.env.example','.gitignore','.gitattributes','README.md','Spielkiste.bat','start-sfx.bat','start-ui.bat','electron-builder.cjs','tool-git.json'];
 const scriptNames=['start-sfx.mjs','create-sfx-demo.mjs','create-desktop-shortcut.ps1','stamp-sfx-frames.ps1','package-spielkiste.ps1','prepare-desktop.mjs','tool-git.mjs','release-desktop.mjs','verify-desktop.mjs'];
 const skillNames=['video-sfx-workflow','video-sfx-timing','video-sfx-selection','video-sfx-mix-review'];
@@ -37,7 +37,7 @@ export class ToolCodeGit {
   const lock=path.join(this.root,'.output/tool-code-sync.lock');await fs.mkdir(path.dirname(lock),{recursive:true});
   let handle;try{handle=await fs.open(lock,'wx');}catch(error){
    if(error.code!=='EEXIST')throw error;
-   let alive=true;try{const pid=Number(await fs.readFile(lock,'utf8'));if(!pid)throw new Error();process.kill(pid,0);}catch{alive=false;}
+   let alive=true;try{const pid=Number(await fs.readFile(lock,'utf8'));if(!pid){if(Date.now()-(await fs.stat(lock)).mtimeMs>10000)throw new Error();}else process.kill(pid,0);}catch{alive=false;}
    if(alive)throw new Error('Another tool code sync is running; retry shortly');
    await fs.rm(lock,{force:true});handle=await fs.open(lock,'wx');
   }

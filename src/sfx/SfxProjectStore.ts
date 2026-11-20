@@ -238,6 +238,12 @@ export class SfxProjectStore {
     await this.writeIndex(index);
     return { project, git: result };
   }
+  async recordGitResult(projectId:string,result:GitSyncResult){
+    const index=await this.readIndex(),project=index.projects.find(item=>item.projectId===projectId);
+    if(!project)throw new SfxError('未找到项目',404);
+    project.git=result.status;project.gitCommit=result.commit;project.gitError=result.error;
+    await this.writeIndex(index);return project;
+  }
 
   async migrate() {
     if (this.migrationPromise) return this.migrationPromise;
