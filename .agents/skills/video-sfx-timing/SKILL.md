@@ -1,0 +1,26 @@
+---
+name: video-sfx-timing
+description: Use when game-video sound points miss actions, misjudge source distance or action priority, omit charge/UI/environment/music cues, or require Gemini visual analysis in this workbench.
+---
+
+# 画面动作与声音点位
+
+以可见动作和玩家可读性为依据，每个实际动作建立点位，不能仅把镜头切点当成音效时间。
+
+先核对操作目的：保留上一版、预览、保存或纯混音均复用现存点位；仅新视频或明确要求重新分析时执行下列视觉流程。更新skill不构成重新分析的授权。同视频复制到新路径不代表新画面，复用按内容校验；不同视频不能套用旧时间轴。工作台不暴露模型选择。人工编辑、静音、删除点位后先暂存，点击“更新视频预览”才统一另存并渲染，不调用Gemini重新判断；整点位静音用muted标记保留原层启用状态，删除才移除点位及其贴片。
+
+1. 读取运行中的 `/api/sfx/workflow`；执行路径为 `TemporalAnalysis.ts` 与 `CcSwitchVisionProvider.ts`。标准模式只用工具专用 Gemini，读取本机配置，不修改其他会话模型。
+2. 全片概览确定角色、场景、动作链和音乐情绪；重叠窗口识别每次准备、预警、蓄力、挥动/释放、接触、反应、收势。重叠结果合并同一事件，连续重复攻击保留各自接触点。
+3. 查漏窗口检查较小动作、角色发声、玩家操作、UI状态变化、环境连续性；接触局部加密复核。采样频率见运行配置；采样间隔不能声称为模型准确率。
+4. 点位字段包含 start/end、actor、type、phase、category、description、query、confidence、evidence、timingPrecision，另有 `distance:{range,confidence,evidence}` 与 `importance:key/support/detail`。query写实际想听到的声音与材质，description写画面行为。低置信度和不可见声源留待复核，不凭文件名倒推画面。
+5. 单独列音乐进入/增强/高潮/收束/退出（musicStage、intensity）与环境段。没有变化的音乐连续使用同曲，不能每个动作换曲。无配乐意图可不硬造音乐点位；已列点位无素材必须暴露缺口。
+
+distance相对摄像机及玩家听觉视点，只分near/mid/far/unknown，不猜米数。结合地面纵深、遮挡、角色与玩家间距和运动，不单凭Boss占屏大小。对每个声音判断实际发声位置：远处Boss捶胸与吼叫为远处；近玩家落石、地刺命中按落点。局部接触复核可纠正距离，单纯校时不能丢掉已有距离依据；位置明显变化按真实动作阶段分段，不反复复制同一发声。UI/音乐/环境底床记unknown，不继承Boss距离。
+
+importance面向玩家可读性：预警、吼叫、蓄力、主要释放/命中是key，普通主体support，脚步/碎屑/衣物/装饰尾音通常detail；关键落地可为key。不是每个Boss动作或接触都应突出。远近和重要性相互独立：远处预警仍比远处碎屑清晰，但不等于近处大声。没有可靠空间证据保留unknown，不用推测凑字段。
+
+交给选材前检查：预警→蓄力→释放→接触是否形成清晰节奏；吼叫要跟张嘴/发声动作，UI要跟可见反馈；旁支细节不能淹没主线。对Boss连续动作逐次保留真实接触点，但把同一段里的声音主线整理成“吼叫/预警→蓄势→连续接触→重击/投掷→尾音收势”，不要把每个检出的画面变化都升级成独立前景层。
+
+`analysis-review.json` 记录窗口/事件/接触复核依据。标准点位请求失败时任务失败，不能静默切成镜头检测后标为 Gemini。手工添加点位明确来源 `manual`；历史scene点位保留真实来源，不设新的手动分析模式开关。
+
+边界：视频原有音轨可以帮助人理解参考，但新输出标准模式不混入原音轨。先保留视听推断的不确定性，不能以最终事件多为理由宣称每个点位准确。

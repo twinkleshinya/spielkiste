@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频音效标准流程"
+  short_description: "运行并核对视频到本地素材音效预览的标准流程、清单及质量证据"
+  default_prompt: "使用 $video-sfx-workflow 为指定视频和本地素材库生成标准音效预览及可编辑清单。"

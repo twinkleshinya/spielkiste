@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gemini 视频声音点位"
+  short_description: "逐动作识别预警、蓄力、接触、吼叫、UI、环境与音乐点位并保留依据"
+  default_prompt: "使用 $video-sfx-timing 复核这段视频的动作链、接触点、UI和音乐进退点位。"

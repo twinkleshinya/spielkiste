@@ -1,0 +1,43 @@
+{
+  "name": "game-audio-outsourcing-doc-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spielkiste local video sound workstation",
+  "scripts": {
+    "sfx": "node scripts/start-sfx.mjs",
+    "sfx:demo": "tsc -p tsconfig.json && node scripts/create-sfx-demo.mjs",
+    "predev": "tsc -p tsconfig.json",
+    "dev": "node dist/src/cli.js",
+    "build": "tsc -p tsconfig.json",
+    "ui": "tsc -p tsconfig.json && node dist/src/ui/server.js",
+    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
+    "test": "tsc -p tsconfig.json && node dist/tests/run-tests.js",
+    "test:onboarding": "tsc -p tsconfig.json && node --input-type=module -e \"import {testAiConfigCore} from './dist/tests/sfx-workflow.test.js'; await testAiConfigCore(); console.log('Onboarding checks passed');\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "desktop": "npm run build && npm run desktop:prepare && electron .",
+    "desktop:pack": "node scripts/release-desktop.mjs --dir",
+    "desktop:dist": "node scripts/release-desktop.mjs",
+    "tool:sync": "node scripts/tool-git.mjs sync",
+    "tool:watch": "node scripts/tool-git.mjs watch",
+    "tool:history": "node scripts/tool-git.mjs history",
+    "tool:restore": "node scripts/tool-git.mjs restore"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "execa": "^9.3.1",
+    "pino": "^9.4.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
+    "typescript": "^5.6.2"
+  },
+  "main": "desktop/main.cjs",
+  "productName": "Spielkiste",
+  "author": "Spielkiste"
+}

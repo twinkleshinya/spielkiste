@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频音效混音与验收"
+  short_description: "保护吼叫和关键动作，自动避让音乐细节并核对响度、来源与剪辑边缘"
+  default_prompt: "使用 $video-sfx-mix-review 检查这版视频的自动混音、空间尾音、裁剪边缘和交付证据。"

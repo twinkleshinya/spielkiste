@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spielkiste</title>
+  <link rel="icon" type="image/png" href="/assets/spielkiste-icon.png"><link rel="stylesheet" href="/sfx.css"><link rel="stylesheet" href="/sfx-compare.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/sfx"><img class="brand-mark" src="/assets/spielkiste-icon.png" width="40" height="40" alt=""><span class="brand-name">Spiel<span class="brand-name-accent">kiste</span></span><span class="brand-dots" aria-hidden="true"><i></i><i></i></span></a><a href="/sfx">返回工作台 ↗</a><span class="local-badge"><i></i> 本地工作空间</span></header>
+  <main class="compare-main">
+    <section class="intro"><div><span class="eyebrow">SELECTION COMPARISON</span><h1>本地规则 vs Gemini 选材</h1><p>两版使用同一视频动作点位，单独比较本地素材的选取结果。</p></div><span class="version">COMPARE / 01</span></section>
+    <section class="panel compare-controls">
+      <label>本地规则版<select id="local-run"></select></label>
+      <label>Gemini 版<select id="gemini-run"></select></label>
+      <button id="compare">加载对照</button>
+      <span id="compare-status" role="status"></span>
+    </section>
+    <section id="comparison" hidden>
+      <div id="source-note" class="workflow-summary"></div>
+      <div class="version-grid">
+        <article class="panel version-card" id="local-card"></article>
+        <article class="panel version-card" id="gemini-card"></article>
+      </div>
+      <section class="panel stats-panel"><div class="panel-heading"><h2>量化对照</h2></div><div id="stats" class="stats-grid"></div></section>
+      <section class="panel diff-panel"><div class="panel-heading"><h2>素材选择差异</h2><span id="diff-count"></span></div><div class="table-scroll"><table><thead><tr><th>时间 / 动作</th><th>层</th><th>本地规则版</th><th>Gemini 版</th><th>状态</th></tr></thead><tbody id="diff-rows"></tbody></table></div></section>
+      <section class="evaluation-grid">
+        <article class="panel evaluation-card" id="local-evaluation"></article>
+        <article class="panel evaluation-card" id="gemini-evaluation"></article>
+      </section>
+      <section class="panel recommendation"><div class="panel-heading"><h2>建议</h2></div><p id="recommendation"></p></section>
+    </section>
+    <p id="empty" class="empty-state">正在读取已保存项目…</p>
+  </main>
+  <script src="/sfx-compare.js" type="module"></script>
+</body>
+</html>

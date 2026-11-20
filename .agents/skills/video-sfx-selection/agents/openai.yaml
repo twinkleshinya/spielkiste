@@ -1,0 +1,4 @@
+interface:
+  display_name: "本地音效选材与剪辑"
+  short_description: "根据动作和名称检索不同音色，复核源素材发声段落并平滑裁剪边缘"
+  default_prompt: "使用 $video-sfx-selection 检查本地音效匹配、备选差异与吼叫的主体和释放区间。"

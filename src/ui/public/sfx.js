@@ -1,0 +1,688 @@
+import { planSourceEdit, edgeFades } from "/sfx-clip-edit.js";
+import {chooseLocalFolder} from "/sfx-folders.js";
+import {createKeywordPreferences,createLibraryPreferences,createLibraryExclusions,createKeywordExclusions} from "/sfx-library-preferences.js";
+import {assetExclusionReasonResolver} from "/sfx-asset-exclusions.js";
+const $ = id => document.getElementById(id);
+let run = null, project = null, selectedId = null, selectedLayerId = "default", dirty = false, busy = false, showingPreview = false, reaperExporting = false;
+let aiConfig = null;
+const labels = { foley: "拟音", impact: "冲击", whoosh: "运动", ambience: "环境", music: "音乐", other: "其他 / UI" };
+const musicStages = { enter: "进入", build: "增强", climax: "高潮", release: "收束", exit: "退出" };
+const text = (tag, value, className) => { const el = document.createElement(tag); el.textContent = value; if (className) el.className = className; return el; };
+const num = id => Number($(id).value);
+const time = value => { const n = Math.max(0, Number(value) || 0); return `${String(Math.floor(n / 60)).padStart(2, "0")}:${(n % 60).toFixed(3).padStart(6, "0")}`; };
+const api = async (url, body) => {
+  const response = await fetch(url, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const data = await response.json(); if (!response.ok) throw new Error(data.error || `请求失败：${response.status}`); return data;
+};
+function status(message, error = false) { $("status").textContent = message; $("status").classList.toggle("error", error); }
+function persistDraft() {
+  if (!run || !dirty) return true;
+  try {
+    localStorage.setItem(`sfx-draft:${run.id}`, JSON.stringify({ version:1, runId:run.id, baseRevision:run.revision, videoPath:run.videoPath, libraryPath:run.libraryPath, edit:editPayload(), assets:run.assets, selectedId, selectedLayerId }));
+    return true;
+  } catch { return false; }
+}
+function clearDraft(id) { try { localStorage.removeItem(`sfx-draft:${id}`); } catch { /* keep saved server versions available */ } }
+function restoreDraft() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`sfx-draft:${run.id}`) || "null");
+    if (!saved || saved.version !== 1 || saved.runId !== run.id || saved.baseRevision !== run.revision || saved.videoPath !== run.videoPath || saved.libraryPath !== run.libraryPath) return false;
+    if (!Array.isArray(saved.edit?.events) || !Array.isArray(saved.edit?.placements) || !Array.isArray(saved.assets) || saved.edit.revision !== run.revision) return false;
+    const assets = new Map(run.assets.map(asset => [asset.id, asset]));
+    for (const asset of saved.assets) if (!assets.has(asset.id)) assets.set(asset.id, asset);
+    Object.assign(run, saved.edit, { assets:[...assets.values()] });
+    keywordPreferences.load(run.keywordPreferences || []);
+    loadExclusions(run);
+    selectedId = saved.selectedId; selectedLayerId = saved.selectedLayerId || "default";
+    dirty = true;
+    return true;
+  } catch { return false; }
+}
+function resetDiscardConfirmation() { delete $("discard-edits").dataset.confirm; $("discard-edits").textContent = "撤销暂存修改"; }
+function markDirty() { dirty = true; resetDiscardConfirmation(); $("save-state").textContent = persistDraft() ? "修改已暂存在本机 · 预览未更新" : "修改暂存在当前页面 · 预览未更新"; updatePreviewStatus(); }
+function keepDraftBeforeLeaving() {
+  if (dirty && !persistDraft()) throw new Error("当前修改无法暂存在本机，请先点击“更新视频预览”后再切换项目。");
+}
+function requireUpdatedPreview() {
+  if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
+}
+function setBusy(value) { busy = value; for (const id of ["discard-edits", "analyze", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; }
+function renderAiConfig(snapshot) {
+  aiConfig = snapshot;
+  const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
+  if (!button || !label) return;
+  button.dataset.state = snapshot?.ready ? "ready" : "error";
+  label.textContent = snapshot?.ready ? `已连接 · ${snapshot.model} · ${snapshot.reasoningEffort === "xhigh" ? "Extreme High" : "High"}` : snapshot?.source === "disabled" ? "已关闭" : snapshot?.configured ? "待测试" : "需要配置";
+  dot.title = snapshot?.error || snapshot?.baseUrl || "";
+}
+async function loadAiConfig() {
+  try { renderAiConfig(await api("/api/sfx/ai-config")); }
+  catch (error) { renderAiConfig({ ready:false, source:"missing", model:"gemini-4-argon", error:error.message }); }
+}
+function aiConfigInput() {
+  return { mode:"ccswitch", reasoningEffort:$("ai-config-reasoning").value || "high", configPath:$("ai-config-path").value.trim() || undefined, model:$("ai-config-model").value.trim() || undefined, baseUrl:$("ai-config-base-url").value.trim() || undefined, bearer:$("ai-config-bearer").value || undefined, wireApi:$("ai-config-wire-api").value };
+}
+function fillAiConfig(snapshot) {
+  if (!snapshot) return;
+  $("ai-config-reasoning").value = snapshot.reasoningEffort || "high";
+  $("ai-config-path").value = snapshot.configPath || "";
+  $("ai-config-model").value = snapshot.model || "gemini-4-argon";
+  $("ai-config-model-select").value = ["gemini-4-argon", "gemini-4-hydrogen"].includes($("ai-config-model").value) ? $("ai-config-model").value : "custom";
+  $("ai-config-custom-model").hidden = $("ai-config-model-select").value !== "custom";
+  // An auto-discovered CC Switch file already contains its own bearer. Keep
+  // the manual fields blank so saving the dialog stores the file path instead
+  // of silently replacing the discovered credential with an unauthenticated
+  // copy of the gateway URL.
+  $("ai-config-base-url").value = snapshot.configPath ? "" : (snapshot.baseUrl || "");
+  $("ai-config-wire-api").value = snapshot.wireApi || "responses";
+  $("ai-config-bearer").value = "";
+  $("ai-config-manual").open = !snapshot.configPath || !snapshot.configured;
+}
+async function testAiConfigFromDialog(save = false) {
+  const message = $("ai-config-message"); message.className = "ai-config-message"; message.textContent = "正在测试 Gemini 图片与音频输入，最多约 90 秒…";
+  const controls = ["test-ai-config", "save-ai-config", "ai-config-close", "ai-config-path", "ai-config-model-select", "ai-config-reasoning", "ai-config-model", "ai-config-base-url", "ai-config-bearer", "ai-config-wire-api"];
+  controls.forEach(id => { $(id).disabled = true; });
+  try {
+    const input = aiConfigInput();
+    if (save) { const saved = await api("/api/sfx/ai-config", input); renderAiConfig(saved); fillAiConfig(saved); }
+    const result = await api("/api/sfx/ai-config/test", save ? aiConfigInput() : input);
+    if (!result.ok) throw new Error(result.error || "连接测试失败");
+    message.textContent = `${save ? "已保存到本机，" : "当前填写内容"}图片与音频测试通过 · ${result.model || "Gemini"} · ${(result.elapsedMs / 1000).toFixed(1)} 秒${save ? "" : "；请点“保存并测试”后用于生成"}`;
+    status(save ? "AI 配置已保存，图片与音频输入均可用。" : "测试通过，请保存配置后开始生成。");
+  } catch (error) { message.className = "ai-config-message error"; message.textContent = `${save ? "保存或测试" : "连接测试"}失败：${error.message}`; }
+  finally { $("ai-config-bearer").value = ""; await loadAiConfig(); controls.forEach(id => { $(id).disabled = false; }); }
+}
+$("ai-config-model-select").onchange = () => {
+  const model = $("ai-config-model-select").value;
+  $("ai-config-custom-model").hidden = model !== "custom";
+  if (model !== "custom") $("ai-config-model").value = model;
+  $("ai-config-message").className = "ai-config-message";
+  $("ai-config-message").textContent = "点“保存并测试”后，后续新生成将使用所选模型。已有视频保持原样。";
+};
+$("ai-config-reasoning").onchange = () => { $("ai-config-message").textContent = "点“保存并测试”后，点位分析、音频判断及选材统一使用所选档位。"; };
+$("ai-config-open").onclick = async () => { fillAiConfig(aiConfig); $("ai-config-message").textContent = aiConfig?.error || ""; $("ai-config-dialog").showModal(); await loadAiConfig(); fillAiConfig(aiConfig); };
+$("ai-config-close").onclick = () => { $("ai-config-bearer").value = ""; $("ai-config-dialog").close(); };
+$("ai-config-dialog").onclose = () => { $("ai-config-bearer").value = ""; };
+$("ai-config-dialog").oncancel = event => { if ($("test-ai-config").disabled) event.preventDefault(); };
+$("test-ai-config").onclick = event => { event?.preventDefault(); void testAiConfigFromDialog(); };
+$("ai-config-form").onsubmit = async event => { event.preventDefault(); await testAiConfigFromDialog(true); };
+async function renderWorkflowReport() {
+  const id=run.id;
+  try {
+    const report=await api(`/api/sfx/runs/${id}/export/workflow`);if(run?.id!==id)return;
+    const names={complete:"完成",reused:"复用",partial:"部分完成",fallback:"规则回退",skipped:"无需执行",missing:"缺少依据",pending:"待生成"};
+    $("workflow-run-title").textContent=`${report.profile?.name||"历史版本流程复盘"} · ${{"checks-passed":"自动检查通过，待试听","needs-review":"有项目待复核",failed:"发现需要修正的问题"}[report.quality.status]}`;
+    $("workflow-run-note").textContent=report.legacy?"依据历史版本现存报告只读复盘；不代表已重新执行标准流程。":`配置 v${report.profile.version} · ${report.effective.timingModel||"点位模型未完成"}${report.effective.reasoningEffort ? ` / ${report.effective.reasoningEffort === "xhigh" ? "Extreme High" : "High"}` : ""} · ${report.effective.addedReverb?"额外混响开启":"无额外混响"} · ${report.effective.originalMuted?"原视频数字静音":`原视频 ${report.effective.originalGainDb} dB`}`;
+    const stages=$("workflow-run-stages");stages.replaceChildren();
+    for(const s of report.stages){const li=text("li",`${s.name}：${names[s.status]||s.status}`);li.dataset.state=s.status;li.title=s.detail;stages.append(li);}
+    const checks=$("workflow-checks");checks.replaceChildren();
+    for(const c of report.quality.checks){const li=text("li",`${{pass:"✓",review:"待复核",fail:"需修正"}[c.status]} · ${c.detail}`);li.dataset.state=c.status;checks.append(li);}
+    $("workflow-effective").textContent=JSON.stringify({effective:report.effective,options:report.profile?.options,models:report.usage?.models},null,2);
+  }catch(e){if(run?.id===id)$("workflow-run-note").textContent=`报告暂不可用：${e.message}`;}
+}
+function selectedEvent() { return run?.events.find(e => e.id === selectedId); }
+function selectedPlacement() { return run?.placements.find(p => p.eventId === selectedId && (p.layerId || "default") === selectedLayerId); }
+function mediaUrl(kind, suffix = "") { return `/api/sfx/runs/${run.id}/media/${kind}${suffix}`; }
+function updatePreviewStatus() {
+  if (!dirty) resetDiscardConfirmation();
+  const stale = dirty || run?.render && run.render.revision !== run.revision;
+  if (dirty) $("preview-state").textContent = "有修改 · 点击更新视频预览";
+  else if (!run?.render) $("preview-state").textContent = "尚未生成音效预览";
+  else if (run.status === "failed" && run.error?.includes("新预览未生成")) $("preview-state").textContent = "新预览未生成 · 当前播放上一版预览";
+  else $("preview-state").textContent = stale ? "有修改 · 点击更新视频预览" : "预览与已保存贴片一致";
+  $("discard-edits").hidden = !dirty;
+  $("discard-edits").disabled = busy;
+  $("show-preview").disabled = !run?.render;
+}
+function showVideo(preview = false, playback) {
+  if (!run || preview && !run.render) return;
+  const current = playback?.time ?? ($("video").currentTime || 0);
+  const playing=playback?.playing ?? !$("video").paused; showingPreview = preview;
+  $("video").src = mediaUrl(preview ? "preview" : "video", preview ? `?v=${Date.now()}` : "");
+  $("video").addEventListener("loadedmetadata", () => { $("video").currentTime = Math.min(current, Math.max(0,($("video").duration || 0)-.001)); if(playing)$("video").play().catch(()=>{}); }, { once: true });
+  $("show-source").classList.toggle("selected", !preview); $("show-preview").classList.toggle("selected", preview);
+}
+function renderEvents() {
+  const list = $("event-list"), timeline = $("timeline"); list.replaceChildren(); timeline.replaceChildren();
+  $("event-count").textContent = `${run.events.length} 个点位 / ${run.placements.filter(p => p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).length} 个启用贴片`;
+  if (!run.events.length) list.append(text("p", "暂无事件。可以在播放头位置添加事件。", "empty-state"));
+  const filter = $("event-filter").value;
+  run.events.filter(e => filter === "all" || filter === "action" && !["music", "ambience"].includes(e.category) || e.category === filter).forEach((event, i) => {
+    const p = run.placements.find(item => item.eventId === event.id); const chosen = run.assets.find(a => a.id === p?.assetId);
+    const row=text("div","",`event-item${event.muted?" muted":""}`);row.dataset.eventId=event.id;
+    const button = text("button", "", `event-row${selectedId === event.id ? " active" : ""}`); button.type = "button";
+    button.append(text("span", String(i + 1).padStart(2, "0"), "number"));
+    const content = document.createElement("div"); content.append(text("strong", event.description || "未命名事件"));
+    content.append(text("small", `${time(event.start)} → ${time(event.end)} · ${labels[event.category]} · ${(event.layers || []).length} 层 · ${event.requiresHumanReview ? "待复核" : "已复核"}`));
+    if (event.category === "music") content.append(text("small", `${musicStages[event.musicStage] || "配乐"} · 强度 ${(event.intensity ?? .5).toFixed(2)}${!p ? " · 待选音乐" : ""}`, "music-label"));
+    if (chosen) content.append(text("small", `${event.muted?"已静音 · ":""}${p.enabled&&!event.muted ? "●" : "○"} ${chosen.fileName}`));
+    button.append(content); button.onclick = () => selectEvent(event.id, true);row.append(button);
+    const controls=text("div","","event-actions");
+    for(const [action,label] of [[event.muted?"unmute":"mute",event.muted?"恢复":"静音"],["delete","删除"]]) {
+      const control=text("button",label,action==="delete"?"danger-text":"secondary");control.type="button";control.dataset.action=action;control.title=`${label}整个点位及其音效`;
+      control.onclick=guard(()=>quickEdit("event",event.id,action));controls.append(control);
+    }
+    row.append(controls);list.append(row);
+    const bar = text("button", "", `${selectedId === event.id ? "active " : ""}${event.category === "music" ? "music-bar" : ""}`); bar.type = "button"; bar.title = event.description;
+    bar.classList.toggle("muted",event.muted===true);bar.style.left = `${event.start / run.duration * 100}%`; bar.style.width = `${Math.max(.4, (event.end - event.start) / run.duration * 100)}%`;
+    bar.onclick = () => selectEvent(event.id, true); timeline.append(bar);
+  });
+  const musicEvents = run.events.filter(e => e.category === "music");
+  $("music-summary").textContent = `${musicEvents.length} 个音乐区间 · ${run.placements.filter(p => p.category === "music" && p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).length} 个启用音乐贴片 · 音乐也可逐点静音或删除`;
+}
+function renderCandidates() {
+  const box = $("candidates"); box.replaceChildren(); const event = selectedEvent(); if (!event) return;
+  $("candidate-method").textContent = (event.layers || []).some(l => l.candidates.some(c => c.reason.startsWith("Gemini 音频片段"))) ? "Gemini 音频＋画面判断" : "名称参考 / 相似备选合并";
+  const layers = event.layers?.length ? event.layers : [{ id: "default", role: event.category, query: event.query, offset: 0, candidates: event.candidates }];
+  layers.forEach(layer => {
+    const section = text("div", "", "layer-card"); section.append(text("strong", `${layer.role} 层 · ${layer.query || "待填写检索词"}`));
+    const editLayer = text("button", "编辑此层", "text-button"); editLayer.type = "button"; editLayer.onclick = () => { selectedLayerId = layer.id; $("query").value = layer.query || event.query; renderPlacement(); }; section.append(editLayer);
+    const placement = run.placements.find(p => p.eventId === event.id && (p.layerId||"default") === layer.id);
+    if(placement) {
+      section.classList.toggle("muted",!placement.enabled||event.muted===true);
+      section.append(text("p",event.muted?"整个点位已静音":placement.enabled?"此音效正在使用":"此音效已静音","subtle"));
+      const controls=text("div","","quick-actions");
+      for(const [action,label] of [[placement.enabled?"mute":"unmute",placement.enabled?"静音音效":"恢复音效"],["delete","删除音效"]]) {
+        const control=text("button",label,action==="delete"?"danger-text":"secondary");control.type="button";control.dataset.action=action;control.dataset.placementId=placement.id;
+        control.onclick=guard(()=>quickEdit("placement",placement.id,action));controls.append(control);
+      }
+      section.append(controls);
+    }
+    const excluded=assetExclusionReasonResolver(exclusionSettings());
+    let candidates = [...(layer.candidates || [])].filter(candidate=>{const asset=run.assets.find(a=>a.id===candidate.assetId);return asset&&(!excluded(asset)||candidate.assetId===placement?.assetId);});
+    if (placement && !candidates.some(c => c.assetId === placement.assetId)) candidates.unshift({ assetId: placement.assetId, reason: "当前已选择素材", score: 0 });
+    if (!candidates.length) section.append(text("p", "暂无符合当前筛选条件的候选，可调整排除设置或填写声音意图后搜索。", "no-results"));
+    candidates.forEach(candidate => {
+      const asset = run.assets.find(a => a.id === candidate.assetId); if (!asset) return;
+      const card = text("div", "", `candidate${placement?.assetId === asset.id ? " chosen" : ""}`);
+      card.append(text("strong", asset.fileName)); card.append(text("p", `${asset.duration?.toFixed(2) || "?"} 秒 · ${asset.channels || "?"} 声道 · ${asset.relativePath}`)); card.append(text("p", candidate.reason));
+      if (asset.warning) card.append(text("p", asset.warning, "error"));
+      if(excluded(asset))card.append(text("p",`${excluded(asset)}；当前已用声音保留，新选材时跳过。`,"subtle"));
+      const buttons = text("div", "", "buttons"); const audition = text("button", "▷ 试听", "secondary"); audition.type = "button";
+      audition.onclick = () => { $("video").pause(); $("audition").hidden = false; $("audition").src = mediaUrl("asset", `?id=${asset.id}`); $("audition").play().catch(e => status(`浏览器无法试听此格式：${e.message}`, true)); };
+      const choose = text("button", placement?.assetId === asset.id ? "已选用" : "选用"); choose.type = "button"; choose.disabled = !asset.usable || Boolean(excluded(asset)) || placement?.assetId === asset.id; choose.title = excluded(asset)||"暂存素材替换，点击更新视频预览后生效"; choose.onclick = guard(async () => { selectedLayerId = layer.id; await chooseAsset(asset, layer.id); });
+      buttons.append(audition, choose); card.append(buttons); section.append(card);
+    });
+    box.append(section);
+  });
+}
+async function chooseAsset(asset, layerId = "default") {
+  if (!run || busy) return;
+  const exclusion=assetExclusionReasonResolver(exclusionSettings())(asset);
+  if(exclusion)throw new Error(`不能选用该素材。${exclusion}`);
+  if (!asset.usable) { status("该音频无法读取，请选其他候选。", true); return; }
+  const event = selectedEvent(); if (!event) return;
+  if(run.placements.some(p=>p.eventId===event.id&&(p.layerId||"default")===layerId&&p.assetId===asset.id))return;
+  if (!$("event-editor").reportValidity()) throw new Error("请先修正事件或贴片参数");
+  const layer = (event.layers || []).find(item => item.id === layerId) || { id: layerId, role: event.category, offset: 0, candidates: [] };
+  const start = event.start + (layer.offset || 0); const sustained = ["music", "ambience"].includes(event.category);
+  const previous = event.category === "music" ? [...run.placements].filter(p => p.category === "music" && p.assetId === asset.id && Math.abs(p.start + p.duration - start) < .3).sort((a, b) => b.start - a.start)[0] : undefined;
+  const edit = planSourceEdit(event, layer.role, asset, run.duration, start);
+  const sourceOffset = sustained ? previous && asset.duration ? (previous.sourceOffset + start - previous.start) % asset.duration : asset.onset || 0 : edit.sourceOffset;
+  const duration = sustained ? Math.floor(Math.min(event.end-start,run.duration-start)*1000)/1000 : edit.duration;
+  if (!Number.isFinite(duration) || duration <= 0) { status("事件时间无效，请先调整起止时间。", true); return; }
+  layer.candidates = [{ assetId: asset.id, score: 1, reason: "用户选用" }, ...(layer.candidates || []).filter(c => c.assetId !== asset.id)];
+  const existing = run.placements.find(p => p.eventId === event.id && (p.layerId||"default") === layerId);
+  const p = { id: existing?.id || crypto.randomUUID(), eventId: event.id, layerId, role: layer.role === "other" ? "foley" : layer.role, locked: Boolean(event.locked), assetId: asset.id, start, duration, sourceOffset, gainDb: existing?.gainDb ?? (event.category === "music" ? -14 : layer.role === "ambience" ? -18 : -6), fadeIn: Math.min(sustained ? .35 : edit.fadeIn, duration / 3), fadeOut: Math.min(sustained ? .5 : edit.fadeOut, duration / 3), category: event.category, enabled: true, loop: sustained ? Boolean(asset.duration && sourceOffset + duration > asset.duration) : edit.loop, sourceEdit:{assetId:asset.id,sourceOffset,duration,basis:"manual",reason:"用户换用素材，按声音类型保留有界释放"} };
+  if (existing) Object.assign(existing, p); else run.placements.push(p);
+  markDirty(); renderEvents(); renderPlacement(); renderCandidates();
+  $("audition").pause(); $("audition").hidden = true;
+  status("素材替换已暂存，点击“更新视频预览”后应用。");
+}
+function renderPlacement() {
+  const p = selectedPlacement(); $("placement-fields").hidden = !p; $("placement-fields").disabled = !p; $("loop-control").hidden = !p;
+  const summary = $("source-edit-summary"); summary.hidden = !p;
+  if (!p) return;
+  for (const [id, key] of Object.entries({ "placement-start": "start", "placement-duration": "duration", "source-offset": "sourceOffset", gain: "gainDb", "fade-in": "fadeIn", "fade-out": "fadeOut" })) $(id).value = p[key];
+  $("mute-placement").textContent=p.enabled?"静音这个音效":"恢复这个音效";
+  $("loop-control").hidden = false; $("loop").checked = Boolean(p.loop);
+  const basis = {"gemini-audio":"Gemini 音频复核","local-bounded":"本地有界剪辑","manual":"人工截取"}[p.sourceEdit?.basis] || "待复核截取";
+  summary.textContent = `${basis}：使用源素材 ${p.sourceOffset.toFixed(3)}–${(p.sourceOffset+p.duration).toFixed(3)} 秒；淡入 ${(p.fadeIn*1000).toFixed(0)} ms，淡出 ${(p.fadeOut*1000).toFixed(0)} ms。${p.sourceEdit?.reason || "可调整素材截取起点与使用时长。"}`;
+}
+function selectEvent(id, seek = false) {
+  if (selectedId !== id) selectedLayerId = run.events.find(e => e.id === id)?.layers?.[0]?.id || "default";
+  selectedId = id; const event = selectedEvent(); renderEvents();
+  $("empty-inspector").hidden = Boolean(event); $("event-editor").hidden = !event;
+  $("audition").pause(); $("audition").hidden = true;
+  if (!event) return;
+  $("mute-event").textContent=event.muted?"恢复整个点位":"静音整个点位";
+  $("description").value = event.description; $("query").value = event.query; $("event-start").value = event.start; $("event-end").value = event.end; $("category").value = event.category; $("confirmed").checked = !event.requiresHumanReview;
+  $("event-source").textContent = event.source === "vision" ? `视觉模型 · ${Math.round(event.confidence * 100)}%` : event.source === "scene" ? "镜头复核" : "人工事件";
+  $("music-event-fields").hidden = event.category !== "music"; $("music-stage").value = event.musicStage || "enter"; $("music-intensity").value = event.intensity ?? .5;
+  $("event-evidence").hidden = !event.evidence; $("event-evidence").textContent = event.evidence ? `画面依据：${event.evidence}${event.timingPrecision ? ` · 采样间隔 ${event.timingPrecision.toFixed(3)} 秒` : ""}` : "";
+  renderCandidates(); renderPlacement();
+  if (seek) $("video").currentTime = event.start;
+}
+function renderWorkspace(keepVideo = false) {
+  const projectUrl = new URL(location.href); projectUrl.searchParams.delete("new");projectUrl.searchParams.set("run", run.id); history.replaceState(null, "", projectUrl);
+  $("workspace").hidden = false; $("project-title").textContent = project?.name || run.name; $("run-id").textContent = run.id;
+  $("duration-label").textContent = time(run.duration);void renderWorkflowReport();
+  void loadVersionHistory();
+  $("parent-version").hidden=!run.parentRunId;$("parent-version").href=run.parentRunId?`/sfx?run=${run.parentRunId}`:"#";
+  $("warnings").textContent = run.warnings.join("\n"); $("warnings").hidden = !run.warnings.length;
+  $("empty-placement-help").hidden = run.placements.some(p => p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted);
+  $("save-state").textContent = dirty ? "修改已暂存 · 预览未更新" : "已保存到本机";
+  $("analysis-summary").hidden = !run.analysisReport; $("analysis-summary").textContent = run.analysisReport ? `${run.analysisReport.model} · ${run.analysisReport.windows} 个重叠窗口 · ${run.analysisReport.refinedContacts} 个接触点完成模型复核。${run.analysisReport.timingNote}` : "";
+  const selection = run.selectionReport;
+  const actionEvents = run.events.filter(e => !e.muted&&!["ambience", "music"].includes(e.category));
+  const coveredActions = new Set(run.placements.filter(p => p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).map(p => p.eventId));
+  const actionCoverage = actionEvents.filter(e => coveredActions.has(e.id)).length;
+  $("selection-summary").hidden = !selection;
+  $("selection-summary").textContent = selection ? `${selection.model} · 音频选材${({ complete: "完成", partial: "部分完成", fallback: "使用规则回退", skipped: "无可分析候选" })[selection.status]}：分析 ${selection.analyzedAssets} 份候选片段（${selection.cachedAssets} 份缓存），选用 ${selection.selectedLayers} 层，拒选 ${selection.rejectedLayers} 层，规则回退 ${selection.fallbackLayers} 层。动作覆盖 ${actionCoverage}/${actionEvents.length} 个，尚缺 ${actionEvents.length - actionCoverage} 个动作素材。只分析候选片段，风格与混音仍需试听。` : "";
+  if (selection?.scope === "selective") $("selection-summary").textContent += ` 本次为关键与疑难候选复核，其余 ${selection.ruleRetainedLayers || 0} 层沿用名称规则选材。`;
+  updatePreviewStatus(); if (!keepVideo) showVideo(false);
+  const mix = run.mixReport;
+  $("mix-summary").hidden = !mix;
+  $("mix-summary").textContent = mix ? `自动混音：${run.workflow?.operation==="automix"&&run.workflow.source==="reused"?"保留原素材、截取与淡入淡出，仅调整电平和避让":"使用已保存的声音主体与释放、边缘淡入淡出"}；${mix.workflow.includes("vocal") ? "角色吼叫与" : ""}关键动作优先，音乐与次要细节动态避让。${mix.measuredLufs != null ? `实测 ${mix.measuredLufs} LUFS，真峰值 ${mix.measuredTruePeakDb} dBTP。` : "生成预览后测量整体响度。"}锁定贴片保留人工设置。` : "";
+  if(mix?.perspective) $("mix-summary").textContent += ` 距离混音：${mix.perspective.knownClips}条有远近依据，${mix.perspective.attenuatedClips}条已降低，${mix.perspective.unknownClips}条待复核；远景较轻，细节靠后。`;
+  const usageRunId = run.id;
+  $("usage-summary").hidden = true;
+  fetch(`/api/sfx/runs/${usageRunId}/export/usage`).then(r => r.ok ? r.json() : null).then(report => {
+    if (!report || run?.id !== usageRunId) return;
+    const t = report.totals;
+    $("usage-summary").hidden = false;
+    $("usage-summary").textContent = `本次处理 ${(report.elapsedMs / 1000).toFixed(1)} 秒 · ${t.requests} 次模型请求 · 输入 ${t.inputTokens.toLocaleString()} / 输出 ${t.outputTokens.toLocaleString()} token${t.requestsMissingUsage ? `（${t.requestsMissingUsage} 次请求未返回用量，以上为已知部分）` : ""}。${run.parentRunId ? "复用的上一版点位与选材不重复计入本次。" : ""}`;
+  }).catch(() => {});
+  selectEvent(run.events.some(e => e.id === selectedId) ? selectedId : run.events[0]?.id);
+  const exports = $("exports"); exports.replaceChildren();
+  const workflowLink=text("a","工作流与质量报告 ↓");workflowLink.href=`/api/sfx/runs/${run.id}/export/workflow`;workflowLink.download="";exports.append(workflowLink);
+  for (const [format, label] of [["json", "贴片 JSON ↓"], ["csv", "清单 CSV ↓"], ["events", "事件 JSON ↓"], ["music", "音乐点位 ↓"], ...(run.analysisReport ? [["review", "分析依据 ↓"]] : []), ...(run.selectionReport ? [["selection", "Gemini 选材依据 ↓"]] : []), ...(run.sourceReview ? [["edits", "发声段落复核 ↓"]] : []), ...(run.workflow?.operation === "augment" ? [["described", "描述补声依据 ↓"]] : []), ...(run.mixReport ? [["mix", "混音报告 ↓"], ["usage", "耗时与 token ↓"]] : []), ...(run.render ? [["video", "预览 MP4 ↓"], ["audio", "混音 WAV ↓"]] : [])]) {
+    const a = text("a", label); a.href = `/api/sfx/runs/${run.id}/export/${format}`; a.download = ""; exports.append(a);
+  }
+}
+async function poll(id, afterRender = false, playback, {recoverDraft = true} = {}) {
+  setBusy(true);
+  try {
+    const started = Date.now();
+    for (;;) {
+      const next = await api(`/api/sfx/runs/${id}/status`); status(next.progress);
+      if (!["analyzing", "rendering"].includes(next.status)) {
+        run = await api(`/api/sfx/runs/${id}`); project = run.projectId ? await api(`/api/sfx/projects/${run.projectId}`).catch(() => null) : null; dirty = false;
+        loadExclusions(run);
+        if (recoverDraft && restoreDraft()) status("已恢复暂存修改；当前视频仍为上次预览，点击“更新视频预览”后应用。");
+        renderWorkspace(true);
+        showVideo(afterRender&&Boolean(run.render),playback);
+        const historySelect=$("history"); if (run.projectId) historySelect.value=run.projectId;
+        try {await api("/api/sfx/workspace",{runId:run.id,projectId:run.projectId});}
+        catch {$("save-state").textContent="项目已保存 · 下次恢复记录未更新";}
+        if (run.error) throw new Error(run.error);
+        break;
+      }
+      if (Date.now() - started > 31 * 60 * 1000) throw new Error("任务超过 30 分钟仍未完成。请刷新页面查看具体处理阶段。");
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
+  } finally { setBusy(false); }
+}
+async function refreshHistory() {
+  $("project-storage").textContent="正在读取本机已保存项目…";
+  try { const records = await api("/api/sfx/projects"); const select = $("history"); select.replaceChildren(new Option("选择已保存的项目…", "")); records.forEach(p => select.add(new Option(`${p.name} · ${p.versionCount} 个版本 · ${p.git === "synced" ? "Git已同步" : p.git === "committed" ? "已提交到本机 Git" : p.git === "pending-sync" ? "本机已保存，待同步" : p.git === "unavailable" ? "Git不可用" : "仅保存在本机"}`, p.projectId))); if (run?.projectId) select.value = run.projectId;$("project-storage").textContent=`${records.length} 个项目 · 默认仅保存在本机；点击“手动同步到 Git”后才提交/推送轻量项目元数据。`; }
+  catch (e) { $("project-storage").textContent=`项目列表暂未加载：${e.message}。可点击刷新重试。`; }
+}
+async function loadVersionHistory() {
+  const picker=$("version-history"); if(!picker||!run?.projectId)return;
+  try { const versions=await api(`/api/sfx/projects/${run.projectId}/versions`); picker.replaceChildren(new Option(`当前版本（${run.revision}）`, run.id)); versions.forEach(v=>{if(v.runId!==run.id)picker.add(new Option(`版本 ${v.revision} · ${v.operation||"保存"} · ${new Date(v.createdAt).toLocaleString()}${v.hasPreview?" · 有预览":""}`,v.runId));}); picker.value=run.id; } catch(e) { status(`版本历史暂不可用：${e.message}`,true); }
+}
+async function projectAction(action, body) {
+  if(!run||busy)return;
+  setBusy(true); try { const result=await api(`/api/sfx/projects/${run.projectId}/${action}`,body); if(result.project) project=result.project; if(result.runId){await poll(result.runId,true,{time:$('video').currentTime||0,playing:false});} else {await refreshHistory();renderWorkspace(true);} return result; } finally {setBusy(false);} }
+function loadProjectInputs() {
+  $("name").value=project?.name || run.name;$("video-path").value=run.videoPath;$("library-path").value=run.libraryPath;$("music-library-path").value=run.musicLibraryPath||"";libraryPreferences.load(run.libraryPreferences||[]);keywordPreferences.load(run.keywordPreferences||[]);
+  loadExclusions(run);
+}
+function editPayload() {return {revision:run.revision,events:run.events,placements:run.placements,originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,keywordPreferences:keywordPreferences.read(),...exclusionSettings()};}
+async function updateEditedPreview() {
+  if(!run||busy)return;
+  if (!$("event-editor").reportValidity()) throw new Error("请检查事件与贴片参数");
+  const previous = { run:structuredClone(run), project, selectedId, selectedLayerId, dirty, preview:showingPreview, exclusions:exclusionSettings() };
+  persistDraft();
+  const playback={time:$("video").currentTime||0,playing:!$("video").paused};$("video").pause();setBusy(true);status("正在保存并生成新预览…");$("preview-state").textContent="正在生成新视频…";
+  try {
+    const result=await api(`/api/sfx/runs/${run.id}/edit-preview`,editPayload());
+    await poll(result.runId,true,playback,{recoverDraft:false});
+    clearDraft(previous.run.id);
+    status("视频预览已更新，所有暂存修改已保存为一个新版本。");
+  } catch (error) {
+    run=previous.run;project=previous.project;selectedId=previous.selectedId;selectedLayerId=previous.selectedLayerId;dirty=previous.dirty;
+    loadExclusions(previous.exclusions);
+    renderWorkspace(true);persistDraft();showVideo(previous.preview, {time:playback.time,playing:false});
+    throw new Error(`预览更新失败，修改已保留，可再次点击“更新视频预览”重试：${error.message}`);
+  }
+  finally {setBusy(false);updatePreviewStatus();}
+}
+async function applyManualTiming() {
+  const event = selectedEvent();
+  if (!run || !event || busy) return;
+  if (!$('event-editor').reportValidity()) throw new Error('请检查事件与贴片参数');
+  const start = num('event-start'), end = num('event-end');
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) throw new Error('事件终点必须大于起点');
+  const oldStart = event.start;
+  event.start = Math.round(start * 1000) / 1000;
+  event.end = Math.round(end * 1000) / 1000;
+  for (const p of run.placements.filter(item => item.eventId === event.id)) {
+    p.start = Math.max(0, Math.round((p.start + event.start - oldStart) * 1000) / 1000);
+    if (['music', 'ambience'].includes(event.category)) {
+      const asset = run.assets.find(a => a.id === p.assetId);
+      p.duration = Math.max(.001, Math.min(event.end - p.start, run.duration - p.start));
+      p.loop = Boolean(asset?.duration && p.sourceOffset + p.duration > asset.duration);
+      p.fadeIn = Math.min(p.fadeIn, p.duration / 3);
+      p.fadeOut = Math.min(p.fadeOut, p.duration / 3);
+      if (p.sourceEdit) p.sourceEdit.duration = p.duration;
+    }
+  }
+  markDirty(); renderEvents(); renderPlacement();
+  status('手动时间已暂存，点击“更新视频预览”后应用。');
+}
+async function aiReidentifyEvent() {
+  const event = selectedEvent();
+  if (!run || !event || busy) return;
+  requireUpdatedPreview();
+  if (!event.description.trim()) throw new Error('请先填写事件描述');
+  const playback={time:$('video').currentTime||0,playing:!$('video').paused}; $('video').pause(); setBusy(true);
+  status('Gemini 正在重新定位当前事件…'); $('preview-state').textContent='正在重新识别点位…';
+  let submitted = false;
+  try {
+    const result = await api(`/api/sfx/runs/${run.id}/locate-event`, { revision:run.revision, eventId:event.id, description:event.description });
+    submitted = true; await poll(result.runId, true, playback);
+    status(run.events.find(item=>item.id===event.id)?.requiresHumanReview ? '点位已更新，但置信度较低，请人工复核。' : 'Gemini 已重新定位点位并生成新预览。');
+  } catch (error) { if (!submitted) updatePreviewStatus(); throw error; }
+  finally { setBusy(false); }
+}
+async function addDescribedEvent() {
+  if (!run || busy) return;
+  requireUpdatedPreview();
+  const input = $("described-event-description").value.trim();
+  if (!input) throw new Error("请先描述需要补充的声音，例如“猩猩啃咬角色”");
+  const previousIds = new Set(run.events.map(event => event.id));
+  const playback={time:$("video").currentTime||0,playing:!$("video").paused}; $("video").pause(); setBusy(true);
+  status("Gemini 正在全片查找描述的动作…"); $("preview-state").textContent="正在查找缺失动作并生成新预览…";
+  let submitted = false;
+  try {
+    const result = await api(`/api/sfx/runs/${run.id}/add-described-event`, { revision: run.revision, description: input });
+    submitted = true;
+    await poll(result.runId, true, playback);
+    const addedEvents = run.events.filter(event => !previousIds.has(event.id)).sort((a, b) => a.start - b.start);
+    if (addedEvents.length) {
+      $("event-filter").value = "all";
+      selectEvent(addedEvents[0].id, false);
+      const seekToAddedEvent = () => { if (run?.id === result.runId) $("video").currentTime = Math.max(0, addedEvents[0].start); };
+      if ($("video").readyState >= 1) seekToAddedEvent();
+      else $("video").addEventListener("loadedmetadata", seekToAddedEvent, { once: true });
+      document.querySelector(`[data-event-id="${CSS.escape(addedEvents[0].id)}"]`)?.scrollIntoView({ block: "nearest" });
+    }
+    $("described-event-description").value = "";
+    status(addedEvents.length ? `已根据“${input}”找到 ${addedEvents.length} 个动作点位，已选中第一个并生成新预览。` : `已根据“${input}”生成新预览，请试听确认。`);
+  } catch (error) { if (!submitted) updatePreviewStatus(); throw error; }
+  finally { setBusy(false); }
+}
+async function quickEdit(target,targetId,action) {
+  if(!run||busy)return;
+  const item = (target === "event" ? run.events : run.placements).find(item => item.id === targetId);
+  if (!item) return;
+  if(target==="event") {
+    if(action==="delete") {run.events=run.events.filter(e=>e.id!==targetId);run.placements=run.placements.filter(p=>p.eventId!==targetId);}
+    else item.muted=action==="mute";
+  } else if(action==="delete")run.placements=run.placements.filter(p=>p.id!==targetId);
+  else item.enabled=action==="unmute";
+  markDirty();
+  selectEvent(run.events.some(e=>e.id===selectedId)?selectedId:run.events[0]?.id);
+  status(`${{mute:"静音",unmute:"恢复",delete:"删除"}[action]}已暂存，点击“更新视频预览”后应用。`);
+}
+function guard(action) { return async event => { event?.preventDefault(); try { await action(event); } catch (e) { status(e.message, true); } }; }
+const libraryPreferences=createLibraryPreferences($("library-preferences"),{chooseFolder:browseLocalFolder,isBusy:()=>busy,onChange:error=>{if(error)status(error.message,true);else rememberLibrarySettings();}});
+const keywordPreferences=createKeywordPreferences($("keyword-preferences"),{isBusy:()=>busy,onChange:()=>{rememberLibrarySettings();if(run)markDirty();}});
+const libraryExclusions=createLibraryExclusions($("excluded-library-paths"),{chooseFolder:browseLocalFolder,isBusy:()=>busy,onChange:exclusionsChanged});
+const keywordExclusions=createKeywordExclusions($("excluded-keywords"),{isBusy:()=>busy,onChange:exclusionsChanged});
+function exclusionSettings() {return {excludedLibraryPaths:libraryExclusions.read(),excludedKeywords:keywordExclusions.read()};}
+function loadExclusions(value={}) {libraryExclusions.load(value.excludedLibraryPaths||[]);keywordExclusions.load(value.excludedKeywords||[]);}
+function exclusionsChanged(error) {
+  if(error){status(error.message,true);return;}
+  rememberLibrarySettings();if(run){markDirty();renderCandidates();}
+}
+function rememberLibrarySettings() {
+  try {const previous=JSON.parse(localStorage.getItem("sfx-last-input")||"{}");localStorage.setItem("sfx-last-input",JSON.stringify({...previous,libraryPath:$("library-path").value,musicLibraryPath:$("music-library-path").value,libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings()}));}catch { /* optional preference storage */ }
+}
+function resetToNewProject({ preserveLibraryInputs = false } = {}) {
+  let previous = null;
+  if (preserveLibraryInputs) {
+    try { previous = JSON.parse(localStorage.getItem("sfx-last-input") || "null"); } catch { /* optional preference storage */ }
+  }
+  $("video").pause();
+  $("video").removeAttribute("src");
+  $("video").load();
+  $("audition").pause();
+  $("audition").removeAttribute("src");
+  $("audition").hidden = true;
+  run = null;
+  project = null;
+  selectedId = null;
+  selectedLayerId = "default";
+  dirty = false;
+  importSession = null;
+  $("workspace").hidden = true;
+  $("history").value = "";
+  $("name").value = "我的视频音效";
+  $("video-path").value = "";
+  $("library-path").value = preserveLibraryInputs ? (previous?.libraryPath || "") : "";
+  $("music-library-path").value = preserveLibraryInputs ? (previous?.musicLibraryPath || "") : "";
+  libraryPreferences.load(preserveLibraryInputs ? previous?.libraryPreferences : []);
+  keywordPreferences.load(preserveLibraryInputs ? previous?.keywordPreferences : []);
+  loadExclusions(preserveLibraryInputs ? previous||{} : {});
+  $("status").textContent = "可以选择视频和本机音效文件夹。已有项目仍在“已保存项目”中。";
+  history.replaceState(null, "", "/sfx?new=1");
+}
+$("create-form").onsubmit = guard(async () => {
+  if(busy)return;
+  keepDraftBeforeLeaving();
+  const input = { name: $("name").value, workflowPreset:"reference-v6",reusePreserved:true,videoPath: $("video-path").value.trim().replace(/^"|"$/g, ""), libraryPath: $("library-path").value.trim().replace(/^"|"$/g, ""),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings(), musicLibraryPath: $("music-library-path").value.trim().replace(/^"|"$/g, "") };
+  setBusy(true);
+  try {
+    const result = await api("/api/sfx/runs", input); localStorage.setItem("sfx-last-input", JSON.stringify(input));
+    selectedId = null; await poll(result.runId, true);
+    if(result.reused)status("已打开保留版本；点位、素材、剪辑和混音保持原样。");
+  }catch(error) {
+    if (/Gemini AI 连接未就绪/.test(error.message)) { await loadAiConfig(); fillAiConfig(aiConfig); $("ai-config-message").className="ai-config-message error"; $("ai-config-message").textContent=error.message; $("ai-config-dialog").showModal(); }
+    throw error;
+  }finally {setBusy(false);}
+});
+$("history").onchange = guard(async () => {
+  const projectId = $("history").value; if (!projectId) return;
+  keepDraftBeforeLeaving();
+  const project=await api(`/api/sfx/projects/${projectId}`); selectedId = null; await poll(project.currentRunId, true);
+  loadProjectInputs();
+});
+$("refresh-history").onclick = refreshHistory;
+$("rename-project").onclick = guard(async()=>{const name=window.prompt("项目名称",run?.name||"");if(name&&name.trim()){await projectAction("rename",{name:name.trim()});status("项目已重命名，不会创建新音效版本。");}});
+$("save-as-project").onclick = guard(async()=>{requireUpdatedPreview();const name=window.prompt("新项目名称",`${run?.name||"项目"} 副本`);if(name&&name.trim()){const result=await projectAction("save-as",{name:name.trim()});if(result?.projectId){await refreshHistory();status("已另存为新项目，并切换到新项目。");}}});
+$("sync-project").onclick = guard(async()=>{if(!run?.projectId||busy)return;requireUpdatedPreview();const config=await api('/api/sfx/git-config');if(!config.configured){$("git-settings-open").click();return;}const includeMedia=$("git-include-media").checked;if(!window.confirm(`上传当前项目的历史清单${includeMedia?'、视频、预览及已用音频':''}到 ${config.repository}？`))return;setBusy(true);status("正在上传项目到 Git…");try{const result=await api(`/api/sfx/projects/${run.projectId}/sync`,{includeMedia});status(result.git.status==='synced'?`项目已上传 · ${result.git.commit?.slice(0,8)} · ${result.git.mediaCount} 个媒体文件`:`本机项目已保留，上传未完成：${result.git.error||'请重试'}`,result.git.status!=='synced');}finally{setBusy(false);}});
+$("open-version").onclick = guard(async()=>{const id=$("version-history").value;if(id&&id!==run?.id){keepDraftBeforeLeaving();selectedId=null;await poll(id,true,{time:$('video').currentTime||0,playing:false});status("已打开历史版本；当前项目指针未改变。");}});
+$("restore-version").onclick = guard(async()=>{const id=$("version-history").value;if(!id||id===run?.id)return;keepDraftBeforeLeaving();if(!window.confirm("回退会创建一个新的当前版本，旧版本仍保留。继续吗？"))return;await projectAction("restore",{runId:id});status("已回退并生成新的项目版本。");});
+$("preserve").onclick=guard(async()=>{
+  if(!run||busy)return;
+  requireUpdatedPreview();
+  setBusy(true);
+  try {await api(`/api/sfx/runs/${run.id}/preserve`,{revision:run.revision});status("已保留本版音效。同一视频和素材库将自动打开此版本。");}
+  finally{setBusy(false);}
+});
+$("render").onclick = guard(async () => {
+  if (!run || busy) return;
+  if (!$("event-editor").reportValidity())throw new Error("请检查事件与贴片参数");
+  if(dirty){await updateEditedPreview();return;}
+  const playback={time:$("video").currentTime||0,playing:!$("video").paused};
+  setBusy(true);
+  try{const result=await api(`/api/sfx/runs/${run.id}/render`,{});await poll(result.runId,true,playback);}
+  finally{setBusy(false);}
+});
+$("discard-edits").onclick = guard(async () => {
+  if (!run || busy || !dirty) return;
+  if ($("discard-edits").dataset.confirm !== run.id) {
+    $("discard-edits").dataset.confirm = run.id;
+    $("discard-edits").textContent = "确认撤销暂存修改";
+    status("再点一次即可撤销本次暂存修改，恢复已保存的点位和音效。");
+    return;
+  }
+  const id = run.id;
+  const playback = {time:$("video").currentTime || 0, playing:false};
+  await poll(id, showingPreview, playback, {recoverDraft:false});
+  clearDraft(id);
+  delete $("discard-edits").dataset.confirm;
+  $("discard-edits").textContent = "撤销暂存修改";
+  status("已撤销暂存修改，继续使用已保存的预览。");
+});
+$("show-source").onclick = () => showVideo(false); $("show-preview").onclick = () => showVideo(true);
+$("export-reaper").onclick = guard(async () => {
+  if (!run || busy) return;
+  $("reaper-export-progress").textContent = dirty ? "有待更新的修改，请先点击“更新视频预览”，完成后再导出。" : "";
+  $("reaper-export-result").hidden = true;
+  $("reaper-export-dialog").showModal();
+});
+for (const id of ["close-reaper-export", "cancel-reaper-export"]) $(id).onclick = () => { if (!reaperExporting) $("reaper-export-dialog").close(); };
+$("reaper-export-dialog").addEventListener("cancel", event => { if (reaperExporting) event.preventDefault(); });
+$("reaper-export-form").onsubmit = async event => {
+  event.preventDefault();
+  if (!run || busy || reaperExporting) return;
+  const channelMode = document.querySelector('input[name="reaper-channel-mode"]:checked').value;
+  const audioFormat=$("reaper-audio-format").value,sampleRate=Number($("reaper-sample-rate").value);
+  const dither=$("reaper-dither").value, noiseShaping=$("reaper-noise-shaping").checked;
+  if (dirty || run.render && run.render.revision !== run.revision) { $("reaper-export-progress").textContent = "有待更新的修改，请先点击“更新视频预览”，完成后再导出。"; return; }
+  const requestedOutput = $("reaper-output-path").value.trim().replace(/^"|"$/g, "").trim();
+  const outputPath = requestedOutput && !/\.rpp$/i.test(requestedOutput) ? `${requestedOutput}.rpp` : requestedOutput;
+  $("reaper-output-path").value = outputPath;
+  reaperExporting = true;
+  for (const control of $("reaper-export-form").elements) control.disabled = true;
+  $("reaper-export-result").hidden = true;
+  try {
+    setBusy(true);
+    $("reaper-export-progress").textContent = channelMode === "preserve" && audioFormat === "preserve" && !sampleRate ? "正在复制完整素材并生成工程…" : "正在载入原素材，由 REAPER 转换并保存成品工程，大型素材需要一些时间…";
+    const result = await api(`/api/sfx/runs/${run.id}/export/reaper`, { channelMode,audioFormat,sampleRate,dither,noiseShaping, ...(outputPath ? { outputPath } : {}) });
+    $("reaper-export-progress").textContent = `已导出 ${result.placementTrackCount} 条音效轨道、${result.folderTrackCount} 条分类轨道。`;
+    const output = $("reaper-export-result");
+    const audioFiles = result.manifest.media.filter(file => file.kind === "audio");
+    const formats = { preserve: "保留原文件", wav16: "WAV · 16 位 PCM", wav24: "WAV · 24 位 PCM", wav32f: "WAV · 32 位浮点", wav64f: "WAV · 64 位浮点" };
+    const effectiveFormat = result.manifest.conversion && result.settings.audioFormat === "preserve" ? "wav64f" : result.settings.audioFormat;
+    const channels = [...new Set(audioFiles.map(file => file.channels).filter(Number.isFinite))].sort((a, b) => a - b);
+    const rates = [...new Set(audioFiles.map(file => file.sampleRate).filter(Number.isFinite))].sort((a, b) => a - b);
+    const actual = result.manifest.conversion
+      ? `REAPER 已核验 ${audioFiles.length} 份音频：${channels.map(value => `${value} 声道`).join(" / ")} · ${rates.map(value => `${value / 1000} kHz`).join(" / ")}`
+      : `${audioFiles.length} 份完整原文件，保留各自的声道、格式和采样率。`;
+    output.replaceChildren(text("p", `本次导出：${formats[effectiveFormat]}`), text("p", actual), text("p", `最终渲染：Dither ${result.settings.dither === "on" ? "开启" : result.settings.dither === "auto" ? "自动（16 位开启）" : "关闭"} · Noise Shaping ${result.settings.noiseShaping ? "开启" : "关闭"}`), text("p", "工程文件"), text("code", result.outputPath), text("p", "移动或分享时，请复制整个文件夹："), text("code", result.projectDirectory));
+    output.hidden = false;
+    status(`Reaper 工程已生成：${result.outputPath}`);
+  } catch (error) {
+    $("reaper-export-progress").textContent = `导出失败：${error.message}`;
+    status(`Reaper 导出失败：${error.message}`, true);
+  } finally {
+    setBusy(false);
+    reaperExporting = false;
+    for (const control of $("reaper-export-form").elements) control.disabled = false;
+  }
+};
+$("video").ontimeupdate = () => { $("timecode").textContent = time($("video").currentTime); };
+$("video").onerror = () => status("浏览器无法播放该视频编码。可先编辑事件，再生成 H.264 预览。", true);
+$("event-filter").onchange = renderEvents;
+$("music-stage").onchange = () => { const e = selectedEvent(); if (e) { e.musicStage = $("music-stage").value; markDirty(); renderEvents(); } };
+$("music-intensity").oninput = () => { const e = selectedEvent(); if (!e) return; const delta = (num("music-intensity") - (e.intensity ?? .5)) * 7; e.intensity = num("music-intensity"); for (const p of run.placements.filter(p => p.eventId === e.id)) p.gainDb = Math.max(-60, Math.min(12, Math.round((p.gainDb + delta) * 100) / 100)); markDirty(); renderEvents(); renderPlacement(); };
+for (const [id, key] of Object.entries({ description: "description", query: "query", "event-start": "start", "event-end": "end", category: "category" })) {
+  $(id).oninput = () => { const e = selectedEvent(); if (!e) return; const oldStart = e.start; e[key] = ["start", "end"].includes(key) ? num(id) : $(id).value;
+    if (key === "category") { for (const p of run.placements.filter(p => p.eventId === e.id)) { p.category = e.category; if (e.category === "music") p.role = "music"; } $("music-event-fields").hidden = e.category !== "music"; }
+    if (["start", "end"].includes(key)) for (const p of run.placements.filter(p => p.eventId === e.id)) { if (key === "start") p.start = Math.max(0, p.start + e.start - oldStart); if (["music", "ambience"].includes(e.category)) { const a = run.assets.find(a => a.id === p.assetId); p.duration = Math.max(.001, Math.min(e.end - p.start, run.duration - p.start)); p.loop = Boolean(a?.duration && p.sourceOffset + p.duration > a.duration); p.fadeIn = Math.min(p.fadeIn, p.duration / 3); p.fadeOut = Math.min(p.fadeOut, p.duration / 3); } }
+    if (key === "query") { const layer = (e.layers || []).find(l => l.id === selectedLayerId) || e.layers?.[0]; if (layer) layer.query = e.query; }
+    markDirty(); renderEvents(); renderPlacement(); };
+}
+for (const [id, key] of Object.entries({ "placement-start": "start", "placement-duration": "duration", "source-offset": "sourceOffset", gain: "gainDb", "fade-in": "fadeIn", "fade-out": "fadeOut" })) $(id).oninput = () => { const p = selectedPlacement(); if (p) { p[key] = num(id); if(["duration","sourceOffset"].includes(key)){Object.assign(p,edgeFades(p.duration,true,p.fadeIn,p.fadeOut));p.sourceEdit={assetId:p.assetId,sourceOffset:p.sourceOffset,duration:p.duration,basis:"manual",reason:"用户裁剪，边缘使用短淡入淡出"};$("fade-in").value=p.fadeIn;$("fade-out").value=p.fadeOut;} markDirty(); } };
+$("mute-placement").onclick=guard(()=>{const p=selectedPlacement();if(p)return quickEdit("placement",p.id,p.enabled?"mute":"unmute");});
+$("remove-placement").onclick=guard(()=>{const p=selectedPlacement();if(p)return quickEdit("placement",p.id,"delete");});
+$("mute-event").onclick=guard(()=>{const e=selectedEvent();if(e)return quickEdit("event",e.id,e.muted?"unmute":"mute");});
+$("apply-timing").onclick=guard(applyManualTiming);
+$("ai-reidentify").onclick=guard(aiReidentifyEvent);
+$("add-described-event").onclick=guard(addDescribedEvent);
+$("loop").onchange = () => { const p = selectedPlacement(); if (p) { p.loop = $("loop").checked; markDirty(); } };
+$("confirmed").onchange = () => { selectedEvent().requiresHumanReview = !$("confirmed").checked; markDirty(); renderEvents(); };
+$("event-editor").onsubmit = event => event.preventDefault();
+$("search").onclick = guard(async () => {
+  const event = selectedEvent(); if (!event || busy) return;
+  setBusy(true); status("查找候选并读取音频信息…");
+  try {
+    const allLayers = event.layers?.length ? event.layers : [{ id: "default", role: event.category === "other" ? "texture" : event.category, offset: 0, query: event.query, candidates: [] }];
+    if (!event.layers?.length) event.layers = allLayers;
+    const layers = [allLayers.find(l => l.id === selectedLayerId) || allLayers[0]];
+    layers[0].query = $("query").value;
+    for (const layer of layers) {
+      const results = await api(`/api/sfx/runs/${run.id}/search`, { query: layer.query || event.query, category: event.category,eventId:event.id,keywordPreferences:keywordPreferences.read(),...exclusionSettings() });
+      for (const result of results) if (result.asset) {
+        const asset = run.assets.find(a => a.id === result.assetId);
+        if (asset) Object.assign(asset, result.asset);
+        else run.assets.push(result.asset);
+      }
+      layer.candidates = results.map(({ assetId, score, reason }) => ({ assetId, score, reason }));
+    }
+    event.candidates = layers.flatMap(layer => layer.candidates || []).slice(0, 3);
+    markDirty(); renderCandidates(); status(`已为 ${(event.layers || []).length || 1} 个 layer 找到候选音效。`);
+  } finally { setBusy(false); }
+});
+function addEvent(music = false) {
+  const start = Math.min(Math.max(0, $("video").currentTime || 0), Math.max(0, run.duration - .1));
+  const event = { id: crypto.randomUUID(), start: Math.round(start * 1000) / 1000, end: Math.min(run.duration, Math.round((start + 1) * 1000) / 1000), type: "manual", description: "新声音事件", query: "", category: "foley", confidence: 1, source: "manual", candidates: [], requiresHumanReview: true };
+  if (music) Object.assign(event, { type: "music_cue", category: "music", description: "背景音乐进入", query: "music battle tension", musicStage: "enter", intensity: .5, end: Math.min(run.duration, start + 5) });
+  $("event-filter").value = music ? "music" : "all";
+  run.events.push(event); run.events.sort((a, b) => a.start - b.start); markDirty(); selectEvent(event.id);
+}
+function openAddEventMode() {
+  const box = $("described-event-box");
+  box.hidden = false;
+  $("add-event").setAttribute("aria-expanded", "true");
+  $("add-event").textContent = "描述补声已展开";
+  $("described-event-description").focus();
+  box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+$("add-event").onclick = openAddEventMode;
+$("add-manual-event").onclick = guard(() => { $("described-event-box").hidden = true; $("add-event").setAttribute("aria-expanded", "false"); $("add-event").textContent = "＋ 添加事件"; addEvent(false); });
+$("add-music").onclick = () => addEvent(true);
+$("remove-event").onclick = guard(()=>quickEdit("event",selectedId,"delete"));
+let importSession = null;
+async function ensureImportSession() {
+  if (importSession) return importSession;
+  importSession = await api("/api/upload-session", { targetRoot: ".output/sfx/imports/" + crypto.randomUUID() });
+  return importSession;
+}
+async function uploadImportedFile(file, kind, relativePath = file.name) {
+  const session = await ensureImportSession();
+  const response = await fetch("/api/upload?sessionId=" + encodeURIComponent(session.sessionId) + "&kind=" + encodeURIComponent(kind) + "&targetRoot=" + encodeURIComponent(session.folders.root), { method: "POST", headers: { "content-type": "application/octet-stream", "x-file-name": encodeURIComponent(file.name), "x-relative-path": encodeURIComponent(relativePath) }, body: file });
+  const data = await response.json(); if (!response.ok) throw new Error(data.error || ("上传失败：" + file.name)); return data;
+}
+$("pick-video").onclick = () => $("video-file").click();
+$("video-file").onchange = guard(async () => {
+  const file = $("video-file").files[0]; if (!file) return; setBusy(true); status("正在导入视频…");
+  try { const data = await uploadImportedFile(file, "videos"); $("video-path").value = data.path; status("已上传视频副本：" + file.name + "；也可以直接粘贴本机路径。"); }
+  finally { setBusy(false); $("video-file").value = ""; }
+});
+async function browseLocalFolder(target,description) {
+  if(busy)return;setBusy(true);
+  try {
+    const directory=await chooseLocalFolder($(target).value.trim()||(target!=="library-path"?$("library-path").value.trim():""),description);
+    if(directory){$(target).value=directory;rememberLibrarySettings();status("已选择本机目录，直接读取音频，无需上传素材库。");}
+    else status("已取消选择，原路径保持不变。");
+  }finally {setBusy(false);}
+}
+$("browse-library").onclick=guard(()=>browseLocalFolder("library-path","选择音效素材库文件夹（直接读取）"));
+$("browse-music").onclick=guard(()=>browseLocalFolder("music-library-path","选择背景音乐素材库文件夹（可选）"));
+$("library-path").addEventListener("change",rememberLibrarySettings);$("music-library-path").addEventListener("change",rememberLibrarySettings);
+$("new-project").onclick = guard(() => {
+  keepDraftBeforeLeaving();
+  resetToNewProject();
+});
+window.addEventListener("beforeunload", event => { if (dirty && !persistDraft()) { event.preventDefault(); event.returnValue = ""; } });
+const initialParams=new URLSearchParams(location.search),initialId = initialParams.get("run");
+const historyLoad=refreshHistory();
+if(initialId) {
+  setBusy(true);status(initialId?"正在打开已保存项目…":"正在恢复上次打开的本机项目…");
+  try {
+    await poll(initialId,true);loadProjectInputs();status("已打开本机保存的项目，可以直接播放或继续编辑。");
+  }catch(e){status(`项目暂未打开：${e.message}。可以从“已保存项目”重新选择。`,true);}
+  finally{setBusy(false);}
+}else resetToNewProject({preserveLibraryInputs:true});
+await historyLoad;
+await loadAiConfig();
+
+
+
+

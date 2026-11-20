@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>游戏音频外包文档生成器</title>
+    <link rel="stylesheet" href="/styles.css?v=skill-template-20260520-3" />
+  </head>
+  <body data-template-mode="skill">
+    <a href="/sfx" style="display:block;padding:12px 24px;background:#176956;color:white;text-decoration:none">打开 Spielkiste →</a>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1>游戏音频外包文档生成器</h1>
+          <p>视频扫描、风格画像、设计清单、排期与飞书文档输出</p>
+        </div>
+        <button id="toggleAdvanced" class="secondary" type="button">高级设置</button>
+      </header>
+
+      <section id="advancedPanel" class="advanced-panel" hidden>
+        <div class="panel-title">
+          <h2>高级设置</h2>
+          <span class="muted">通常不用改，默认使用外包文档文件夹里的子目录。</span>
+        </div>
+        <div class="path-settings">
+          <label>
+            手动指定视频文件夹
+            <input id="input" placeholder="默认使用外包文档文件夹/videos" />
+          </label>
+          <label>
+            手动指定素材归档目录
+            <input id="uploadRoot" placeholder="默认就是外包文档文件夹" />
+          </label>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form id="runForm" class="panel">
+          <div class="panel-title">
+            <h2>新建外包文档</h2>
+            <label class="switch">
+              <input id="dryRun" type="checkbox" />
+              <span>只生成本地，不写入飞书</span>
+            </label>
+          </div>
+          <p class="hint">取消勾选后会通过 lark-cli 新建/更新飞书文档；如需写入指定位置，请填写飞书文件夹 token。</p>
+
+          <label>
+            项目名称
+            <select id="projectName" required>
+              <option value="M71">M71</option>
+              <option value="M72">M72</option>
+              <option value="P36">P36</option>
+              <option value="M88">M88</option>
+            </select>
+          </label>
+
+          <div class="folder-box">
+            <div class="field">
+              <span>外包文档文件夹路径</span>
+              <div class="input-action">
+                <input id="parentRoot" placeholder="请选择文件夹，或粘贴完整路径，例如 F:\jiangxy2\外包文档输出" />
+                <button id="pickParentRoot" class="secondary" type="button">选择路径</button>
+              </div>
+              <small class="field-help">请选择或填写一个普通文件夹，生成时会在里面创建“外包文件夹命名”对应的子文件夹。</small>
+              <small id="selectedPathPreview" class="path-preview">尚未选择外包文档文件夹路径。</small>
+            </div>
+            <label>
+              外包供应商
+              <select id="vendorName">
+                <option value="声影创境">声影创境</option>
+                <option value="8082">8082</option>
+              </select>
+            </label>
+            <label>
+              需求类型
+              <select id="demandType">
+                <option value="技能音效">技能音效</option>
+                <option value="界面音效">界面音效</option>
+                <option value="PV音效">PV音效</option>
+              </select>
+            </label>
+            <label>
+              需求名称
+              <input id="demandName" placeholder="例如 角色技能第一批" />
+            </label>
+            <label class="wide-field">
+              外包文件夹命名
+              <input id="folderName" value="雷霆数娱《M71》声影创境_技能音效（需求名称）" />
+            </label>
+          </div>
+
+          <label>
+            文档模板
+            <select id="template">
+              <option value="技能音效">技能音效</option>
+              <option value="界面音效">界面音效</option>
+              <option value="PV音效">PV音效</option>
+              <option value="default">默认模板</option>
+            </select>
+          </label>
+          <p class="hint">模板会通过 lark-cli 读取飞书原文；如果当前没有权限，会按对应业务模板生成。</p>
+
+          <section class="template-fields">
+            <div class="panel-title compact-title">
+              <h2>模板填写信息</h2>
+              <span id="templateFieldHint" class="muted">根据需求类型自动切换</span>
+            </div>
+            <div class="grid three">
+              <label>
+                发包时间
+                <input id="field_packageDate" data-template-field="packageDate" type="date" />
+              </label>
+              <label>
+                初版 Demo 时间
+                <input id="field_demoDate" data-template-field="demoDate" type="date" />
+              </label>
+              <label>
+                期望验收完成时间
+                <input id="field_acceptanceDate" data-template-field="acceptanceDate" type="date" />
+              </label>
+            </div>
+            <div class="grid two" data-template-group="skill" data-hide-when-skill>
+              <label>
+                角色/职业/技能组
+                <input data-template-field="characterOrClass" placeholder="例如 血修 / 角色大招 / 技能第一批" />
+              </label>
+              <label>
+                技能设计重点
+                <input data-template-field="skillDesignFocus" placeholder="例如 邪性、血雾、武器强化、命中反馈" />
+              </label>
+            </div>
+            <div class="grid two" data-template-group="ui">
+              <label>
+                系统/界面名称
+                <input data-template-field="systemName" placeholder="例如 血修养成界面" />
+              </label>
+              <label>
+                界面音效设计要点
+                <input data-template-field="uiDesignFocus" placeholder="例如 干净、反馈明确、血修职业点缀" />
+              </label>
+              <label class="wide-field">
+                系统说明
+                <input data-template-field="systemDescription" placeholder="说明界面功能、职业设定、玩家操作流程" />
+              </label>
+              <label class="wide-field">
+                功能/动效清单
+                <input data-template-field="uiFunctionList" placeholder="例如 注入动效；注入成功；注入失败；血池洗练" />
+              </label>
+            </div>
+            <div class="grid two" data-template-group="pv">
+              <label>
+                PV名称
+                <input data-template-field="pvName" placeholder="例如 血修PV2" />
+              </label>
+              <label>
+                是否有对白/语音
+                <input data-template-field="voiceOrDialogue" placeholder="例如 有对白，需要避让人声" />
+              </label>
+              <label class="wide-field">
+                PV剧情/画面说明
+                <input data-template-field="pvSummary" placeholder="简述剧情、画面段落和情绪走向" />
+              </label>
+              <label class="wide-field">
+                关键点位
+                <input data-template-field="pvKeyPoints" placeholder="例如 血修遁光；玉佩发光；血雾翻涌；少女现身" />
+              </label>
+              <label class="wide-field">
+                音乐/氛围关系
+                <input data-template-field="musicRequirement" placeholder="例如 音效服务剧情，不盖对白，低频克制" />
+              </label>
+            </div>
+            <div class="grid two" data-hide-when-skill>
+              <label>
+                音效数量
+                <input data-template-field="assetCount" placeholder="可留空，默认按清单统计" />
+              </label>
+              <label>
+                命名前缀
+                <input data-template-field="namingPrefix" placeholder="例如 sfx_xxyc" />
+              </label>
+            </div>
+          </section>
+          <label class="switch inline-switch" data-hide-when-skill>
+            <input id="enableMossAudio" type="checkbox" />
+            <span>启用 MOSS-Audio 声音参考分析</span>
+          </label>
+          <p class="hint" data-hide-when-skill>可先上传已有音效/音频参考；未配置 MOSS 时仍会生成可人工补充的“保留/避让”分析框架。</p>
+
+          <div class="upload-grid">
+            <div class="dropzone" data-kind="videos" data-hide-when-skill>
+              <strong>视频素材</strong>
+              <span>拖入或选择 mp4 / mov / mkv / webm</span>
+              <input class="file-input" id="videoFiles" type="file" multiple accept=".mp4,.mov,.mkv,.webm,video/*" />
+              <button type="button" data-pick="videoFiles">选择视频</button>
+              <div class="zone-files" data-files-for="videos"></div>
+            </div>
+
+            <div class="dropzone" data-kind="images" data-hide-when-skill>
+              <strong>图片素材</strong>
+              <span>拖入或选择 png / jpg / webp</span>
+              <input class="file-input" id="imageFiles" type="file" multiple accept=".png,.jpg,.jpeg,.webp,.gif,image/*" />
+              <button type="button" data-pick="imageFiles">选择图片</button>
+              <div class="zone-files" data-files-for="images"></div>
+            </div>
+
+            <div class="dropzone" data-kind="requirements" data-hide-when-skill>
+              <strong>需求说明</strong>
+              <span>拖入/选择文件，或粘贴飞书文档 token</span>
+              <input class="file-input" id="requirementFiles" type="file" multiple accept=".md,.txt,.json" />
+              <button type="button" data-pick="requirementFiles">选择需求</button>
+              <input class="token-input" id="requirementFeishuDocs" placeholder="飞书文档 token，多个用逗号分隔" />
+              <div class="zone-files" data-files-for="requirements"></div>
+            </div>
+
+            <div class="dropzone" data-kind="skillDocuments" data-skill-only>
+              <strong>技能文档</strong>
+              <span>技能音效专用：上传表格/文本，或粘贴飞书技能表格链接。默认读取第 1 列技能编号、第 2 列技能名称。</span>
+              <input class="file-input" id="skillDocumentFiles" type="file" multiple accept=".md,.txt,.json,.csv,.tsv" />
+              <button type="button" data-pick="skillDocumentFiles">选择技能文档</button>
+              <input class="token-input" id="skillDocumentFeishuDocs" placeholder="飞书技能文档/表格链接或 token，多个用逗号分隔" />
+              <div class="zone-files" data-files-for="skillDocuments"></div>
+            </div>
+
+            <div class="dropzone" data-kind="references" data-hide-when-skill>
+              <strong>参考资料</strong>
+              <span>拖入/选择文档或图片，或粘贴飞书文档 token</span>
+              <input class="file-input" id="referenceFiles" type="file" multiple accept=".md,.txt,.json,.png,.jpg,.jpeg,.webp,.gif" />
+              <button type="button" data-pick="referenceFiles">选择参考</button>
+              <input class="token-input" id="referenceFeishuDocs" placeholder="飞书文档 token，多个用逗号分隔" />
+              <div class="zone-files" data-files-for="references"></div>
+            </div>
+
+            <div class="dropzone" data-kind="styles" data-hide-when-skill>
+              <strong>风格说明</strong>
+              <span>拖入/选择文件，或粘贴飞书文档 token</span>
+              <input class="file-input" id="styleFiles" type="file" multiple accept=".md,.txt,.json" />
+              <button type="button" data-pick="styleFiles">选择风格</button>
+              <input class="token-input" id="styleFeishuDocs" placeholder="飞书文档 token，多个用逗号分隔" />
+              <div class="zone-files" data-files-for="styles"></div>
+            </div>
+
+            <div class="dropzone" data-kind="audioReferences" data-hide-when-skill>
+              <strong>声音参考</strong>
+              <span>拖入/选择 wav / mp3 / ogg / mp4，用于分析已有声音风格</span>
+              <input class="file-input" id="audioReferenceFiles" type="file" multiple accept=".wav,.mp3,.ogg,.flac,.m4a,.aac,.mp4,.mov,audio/*,video/*" />
+              <button type="button" data-pick="audioReferenceFiles">选择声音参考</button>
+              <div class="zone-files" data-files-for="audioReferences"></div>
+            </div>
+          </div>
+
+          <label data-hide-when-skill>
+            需求说明路径
+            <input id="requirement" placeholder="可留空；上传文件后自动使用上传文件" />
+          </label>
+
+          <label data-hide-when-skill>
+            参考资料路径
+            <input id="references" placeholder="可留空；上传文件后自动使用参考资料文件夹" />
+          </label>
+
+          <label data-hide-when-skill>
+            风格说明路径
+            <input id="style" placeholder="可留空；上传文件后自动使用上传文件" />
+          </label>
+
+          <div class="grid two">
+            <label>
+              飞书文件夹 token
+              <input id="folderToken" placeholder="dry-run 可留空" />
+            </label>
+            <label>
+              更新已有飞书文档 token
+              <input id="docToken" placeholder="可留空" />
+            </label>
+          </div>
+
+          <div class="grid three" data-hide-when-skill>
+            <label>
+              开始日期
+              <input id="startDate" type="date" />
+            </label>
+            <label>
+              截止日期
+              <input id="dueDate" type="date" />
+            </label>
+            <label>
+              外包人数
+              <input id="people" type="number" min="1" value="1" />
+            </label>
+          </div>
+
+          <button id="runButton" class="primary" type="submit">运行生成</button>
+          <pre id="status" class="status">等待运行</pre>
+        </form>
+      </section>
+
+      <section class="panel preview">
+        <div class="panel-title">
+          <h2>文档预览</h2>
+          <span id="selectedRun" class="muted">未选择</span>
+        </div>
+        <pre id="markdownPreview"></pre>
+      </section>
+    </main>
+    <script src="/app.js?v=skill-template-20260520-3" type="module"></script>
+  </body>
+</html>

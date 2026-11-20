@@ -1,0 +1,58 @@
+node_modules/
+dist/
+.output/
+.env
+.env.*
+!.env.example
+ai-config.json
+ai-test-state.json
+*.log
+coverage/
+project_assets/
+project_assets_*/
+outsourcing_projects/
+
+# Runtime project metadata is committed only through Spielkiste's controlled
+# Git adapter; do not sweep personal projects into a normal `git add .`.
+projects/*
+!projects/.gitkeep
+projects/index.json
+
+# Local media and generated artifacts
+videos/
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.tmp
+*.bak
+
+# Local indexes, imports and test dumps
+projects/*/media/
+projects/*/previews/
+projects/*/runs/
+.output/
+chat-*.json
+meeting-*.json
+m71-*.json
+m98-*.json
+query*.wav
+ranked*.json
+metal_*.json
+comparison.png
+
+# One-off local audio search/plot experiments
+plot_*.py
+query_bands.py
+search_*.py
+validate.py
