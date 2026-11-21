@@ -15,7 +15,7 @@ export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
     'not-a-path',
     ''
   ]);
-  assert.deepEqual(roots, ['C:\\', 'Z:\\', '\\\\server\\Audio', '\\\\as01\\shared\\SFX']);
+  assert.deepEqual(roots, ['C:\\', 'Z:\\', '\\\\server\\Audio', '\\\\as01\\shared']);
 }
 
 export async function testNativeFolderSelection() {
