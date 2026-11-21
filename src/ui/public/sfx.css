@@ -29,6 +29,7 @@
 .directory-exclusion h3{font-size:12px;font-weight:500;color:var(--muted)}
 .directory-exclusion>button{font-size:12px;padding:7px 11px;color:var(--muted)}
 
+.sound-group-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;background:#f1f3ed;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}.sound-group-heading h4{font-size:13px;margin:0 0 4px}.sound-group-heading span{font-size:10px;color:var(--muted)}.sound-group-heading button{font-size:11px;padding:7px 9px}.sound-group-heading button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}.music-group .sound-group-heading{background:#e8eedf}.music-group h4{color:#657446}.sound-group+.sound-group{border-top:2px solid var(--line)}.sound-group .empty-state{padding:20px}.sound-group[hidden]{display:none}
 /* Approved B palette with the C wordmark colors. */
 .brand-name{white-space:nowrap}.brand-name-accent{color:#ad5028}.brand-dots{display:flex;gap:4px;margin-left:1px;flex-shrink:0}.brand-dots i{width:6px;height:6px;border-radius:50%;background:#b26b37}.brand-dots i+i{background:#839662}
 
