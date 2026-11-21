@@ -239,3 +239,16 @@ export async function testSfxDraftCanBeDiscardedWithoutRendering() {
   assert.equal(ui.calls.some(call => call.body && /\/(edit-preview|quick-edit|render)$/.test(call.url)), false);
   assert.equal([...ui.storage.keys()].some(key => key.startsWith("sfx-draft:")), false);
 }
+
+export async function testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis() {
+  const html = await fs.readFile(path.resolve("src/ui/public/sfx.html"), "utf8");
+  const source = await fs.readFile(path.resolve("src/ui/public/sfx.js"), "utf8");
+  assert.match(html, /视频内容辅助说明（可选）/);
+  assert.match(html, /留空时，完全根据视频画面自动分析/);
+  assert.match(html, /Gemini重新分析生成/);
+  assert.match(html, /根据新说明重新分析/);
+  assert.match(source, /\/api\/sfx\/runs\/\$\{run\.id\}\/reanalyze/);
+  assert.match(source, /mode:\s*["']visual["']/);
+  assert.match(source, /mode:\s*["']brief["']/);
+  assert.doesNotMatch(source, /video-description[^\n]*onkeydown[^\n]*analyze/);
+}

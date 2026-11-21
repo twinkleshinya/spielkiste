@@ -30,7 +30,7 @@ import {testDescribedEventUiIsAnAddEventMode} from "./sfx-described-event-ui.tes
 import {testSfxHealthCompatibilityMarker,testSfxHealthRouteAdvertisesCompatibility} from "./sfx-server-startup.test.js";
 import {testSfxProjectVersioning} from "./sfx-project-versioning.test.js";
 import {testReaperExporter,testReaperExportApi,testReaperExportUi,testReaperPortableProject,testReaperActionCategoryUsesEventIntent,testReaperNamesWithoutExtension} from "./sfx-reaper-export.test.js";
-import {testSfxEditsWaitForExplicitPreviewUpdate,testSfxDraftRecoveryAndPreviewFailures,testReaperUiAcceptsNamesAndNeverRendersEdits,testSfxDraftCanBeDiscardedWithoutRendering} from "./sfx-edit-preview-ui.test.js";
+import {testSfxEditsWaitForExplicitPreviewUpdate,testSfxDraftRecoveryAndPreviewFailures,testReaperUiAcceptsNamesAndNeverRendersEdits,testSfxDraftCanBeDiscardedWithoutRendering,testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis} from "./sfx-edit-preview-ui.test.js";
 import {testReaperOriginalPackaging,testReaperPackagingFailure} from "./reaper-media.test.js";
 import {testReaperNativePipeline} from "./reaper-native.test.js";
 
@@ -288,6 +288,7 @@ await testSfxSeparatedGroupsAndBulkMute();
 await testSfxDraftRecoveryAndPreviewFailures();
 await testReaperUiAcceptsNamesAndNeverRendersEdits();
 await testSfxDraftCanBeDiscardedWithoutRendering();
+await testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis();
 await testReaperPortableProject();
 await testReaperActionCategoryUsesEventIntent();
 await testReaperOriginalPackaging();
