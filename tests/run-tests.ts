@@ -1,6 +1,6 @@
 import {testKeywordRanking,testKeywordPlannerScope,testKeywordPersistence,testGeminiReceivesKeywordPreference} from "./sfx-keyword-preferences.test.js";
 import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBoundaries,testExclusionsPersistenceAndManualSelection,testExclusionsHttpRoutes} from "./sfx-library-exclusions.test.js";
-import {testSfxExclusionsStageRestoreAndGuard} from "./sfx-edit-preview-ui.test.js";
+import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute} from "./sfx-edit-preview-ui.test.js";
 import assert from "node:assert/strict";
 import { testDirectorMusicSchema, testDirectorSemanticSafety, testDirectorContinuousPlacements, testDirectorTemporalMerging, testDirectorWorkflow } from "./sfx-director.test.js";
 import { testSfxLibrary, testSfxLazyLibrary, testSfxAnalysis, testSfxRendering, testSfxApi } from "./sfx-tests.js";
@@ -284,6 +284,7 @@ await testReaperExportApi();
 await testReaperExportUi();
 await testReaperNamesWithoutExtension();
 await testSfxEditsWaitForExplicitPreviewUpdate();
+await testSfxSeparatedGroupsAndBulkMute();
 await testSfxDraftRecoveryAndPreviewFailures();
 await testReaperUiAcceptsNamesAndNeverRendersEdits();
 await testSfxDraftCanBeDiscardedWithoutRendering();

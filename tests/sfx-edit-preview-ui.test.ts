@@ -91,6 +91,35 @@ export async function testSfxExclusionsStageRestoreAndGuard() {
   const failedDraft=JSON.parse(failed.storage.get(`sfx-draft:${failed.getRun().id}`)!);assert.deepEqual(failedDraft.edit.excludedKeywords,["blocked-word"]);
 }
 
+export async function testSfxSeparatedGroupsAndBulkMute() {
+  const ui=await editorHarness(),before=ui.getRun();
+  const ids=(id:string)=>ui.$(id).children.filter((n:any)=>n.dataset.eventId).map((n:any)=>n.dataset.eventId);
+  assert.deepEqual(ids('music-event-list'),['music-event']);
+  assert.deepEqual(ids('sfx-event-list'),['boss-event','player-event','ui-event','muted-event']);
+  await ui.$('mute-sfx-group').onclick({preventDefault(){}});
+  assert.ok(ui.getRun().events.filter((e:any)=>e.category!=='music').every((e:any)=>e.muted));
+  assert.equal(ui.getRun().events.find((e:any)=>e.id==='music-event').muted,undefined);
+  assert.deepEqual(ui.getRun().placements,before.placements,'bulk mute must preserve disabled layers and source edits');
+  assert.equal(ui.calls.length,0,'bulk mute waits for explicit preview update');
+  const refreshed=await editorHarness(ui.storage);await refreshed.exec('poll(run.id,true)');
+  await refreshed.$('render').onclick({preventDefault(){}});
+  const submitted=refreshed.calls.find(c=>c.url.endsWith('/edit-preview'))!;
+  assert.ok(submitted.body.events.filter((e:any)=>e.category!=='music').every((e:any)=>e.muted));
+  const {EventSchema}=await import('../src/sfx/models.js');
+  refreshed.context.persisted=JSON.parse(JSON.stringify(refreshed.getRun().events.map((e:any)=>EventSchema.parse(e))));
+  refreshed.exec('run.events=persisted; renderEvents()');
+  await refreshed.$('mute-sfx-group').onclick({preventDefault(){}});
+  assert.equal(refreshed.getRun().events.find((e:any)=>e.id==='boss-event').muted,false);
+  assert.equal(refreshed.getRun().events.find((e:any)=>e.id==='muted-event').muted,true,'restore group keeps previously muted events muted');
+  assert.equal(refreshed.getRun().placements.find((p:any)=>p.id==='p-off').enabled,false);
+  await refreshed.$('mute-music-group').onclick({preventDefault(){}});
+  assert.equal(refreshed.getRun().events.find((e:any)=>e.id==='music-event').muted,true);
+  assert.equal(refreshed.getRun().events.find((e:any)=>e.id==='boss-event').muted,false);
+  refreshed.$('event-filter').value='music';refreshed.$('event-filter').onchange();
+  assert.equal(refreshed.$('sfx-event-group').hidden,true);
+  assert.equal(refreshed.$('music-event-group').hidden,false);
+}
+
 export async function testSfxEditsWaitForExplicitPreviewUpdate() {
   const ui = await editorHarness();
   const originalVideo = ui.$("video").src;
