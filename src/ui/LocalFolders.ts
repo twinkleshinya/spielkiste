@@ -40,23 +40,23 @@ async function discoverWindowsNetworkRoots() {
   if (process.platform !== "win32") return [] as string[];
   let connected: string[] = [];
   try {
-    connected=await execFile("net",["use"],{windowsHide:true,maxBuffer:1024*1024}).then(result=>parseNetworkShareRoots(`${result.stdout}\n${result.stderr}`));
+    connected=await withTimeout(
+      execFile("net",["use"],{windowsHide:true,maxBuffer:1024*1024}).then(result=>parseNetworkShareRoots(`${result.stdout}\n${result.stderr}`)),
+      2500,
+      [] as string[]
+    );
   } catch { connected=[]; }
   const servers = await withTimeout(
     fs.readdir("\\\\", { withFileTypes: true }).then(entries => entries.filter(entry => entry.isDirectory()).map(entry => entry.name).slice(0, 32)).catch(() => [] as string[]),
     3000,
     [] as string[]
   );
-  const shares: string[] = [];
-  for (const server of servers) {
-    const entries = await withTimeout(
-      fs.readdir(`\\\\${server}`, { withFileTypes: true }).then(items => items.filter(item => item.isDirectory()).map(item => `\\\\${server}\\${item.name}`)).catch(() => [] as string[]),
-      1200,
-      [] as string[]
-    );
-    shares.push(...entries);
-    if (shares.length >= 100) break;
-  }
+  const networkShares=await Promise.all(servers.slice(0,16).map(server=>withTimeout(
+    fs.readdir(`\\\\${server}`, { withFileTypes: true }).then(items => items.filter(item => item.isDirectory()).map(item => `\\\\${server}\\${item.name}`)).catch(() => [] as string[]),
+    1200,
+    [] as string[]
+  )));
+  const shares=networkShares.flat();
   return parseWindowsRoots([...connected,...shares]).slice(0, 100);
 }
 

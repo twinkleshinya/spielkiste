@@ -6,7 +6,7 @@ export function chooseLocalFolder(initialPath="",description="选择文件夹") 
     dialog.innerHTML=`<div class="folder-heading"><h3></h3><button type="button" class="text-button" data-action="close" aria-label="关闭目录选择">关闭</button></div>
       <p class="subtle">可选择本地磁盘、映射网盘，或粘贴共享路径（如 \\\\服务器\\共享目录），直接读取，无需上传素材库。网络目录需先在 Windows 中登录并有读取权限。</p>
       <form class="folder-address"><label>当前路径<input aria-label="当前目录路径" placeholder="例如 D:\\SoundLibrary 或 \\\\服务器\\共享目录"></label><button type="submit" class="secondary">转到</button></form>
-      <div class="folder-navigation"><button type="button" class="secondary" data-action="roots">磁盘与映射盘</button><button type="button" class="secondary" data-action="parent">上一级</button><span role="status" aria-live="polite"></span></div>
+      <div class="folder-navigation"><button type="button" class="secondary" data-action="roots">所有磁盘 / 网盘</button><button type="button" class="secondary" data-action="parent">上一级</button><span role="status" aria-live="polite"></span></div>
       <div class="folder-list"></div><p class="folder-error" role="alert" hidden></p>
       <div class="folder-footer"><span></span><button type="button" class="secondary" data-action="cancel">取消</button><button type="button" data-action="choose" disabled>选择此文件夹</button></div>`;
     const $=s=>dialog.querySelector(s),input=$("input"),list=$(".folder-list"),note=$("[role=status]"),error=$(".folder-error"),choose=$("[data-action=choose]");
