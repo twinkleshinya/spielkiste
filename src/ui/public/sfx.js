@@ -1,5 +1,5 @@
 import { planSourceEdit, edgeFades } from "/sfx-clip-edit.js";
-import {chooseLocalFolder} from "/sfx-folders.js";
+import {chooseLocalFolder,searchFolderPaths} from "/sfx-folders.js";
 import {createKeywordPreferences,createLibraryPreferences,createLibraryExclusions,createKeywordExclusions} from "/sfx-library-preferences.js";
 import {assetExclusionReasonResolver} from "/sfx-asset-exclusions.js";
 const $ = id => document.getElementById(id);
@@ -46,7 +46,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["discard-edits", "analyze", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
+function setBusy(value) { busy = value; for (const id of ["video-description","sound-requirements","sound-style","custom-style","research-style","refresh-style","search-library-path","discard-edits", "analyze", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -291,6 +291,7 @@ function renderWorkspace(keepVideo = false) {
   const coveredActions = new Set(run.placements.filter(p => p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).map(p => p.eventId));
   const actionCoverage = actionEvents.filter(e => coveredActions.has(e.id)).length;
   $("selection-summary").hidden = !selection;
+  $("style-summary").hidden=!run.styleProfile;$("style-summary").textContent=run.styleProfile?`风格：${run.styleProfile.style} · ${run.styleProfile.model} · ${run.styleProfile.references.length} 份参考资料 · ${run.styleProfile.researchedAt}。${run.styleProfile.summary}（文献研究与声音设计推导，未试听参考原声）`:"";
   $("selection-summary").textContent = selection ? `${selection.model} · 音频选材${({ complete: "完成", partial: "部分完成", fallback: "使用规则回退", skipped: "无可分析候选" })[selection.status]}：分析 ${selection.analyzedAssets} 份候选片段（${selection.cachedAssets} 份缓存），选用 ${selection.selectedLayers} 层，拒选 ${selection.rejectedLayers} 层，规则回退 ${selection.fallbackLayers} 层。动作覆盖 ${actionCoverage}/${actionEvents.length} 个，尚缺 ${actionEvents.length - actionCoverage} 个动作素材。只分析候选片段，风格与混音仍需试听。` : "";
   if (selection?.scope === "selective") $("selection-summary").textContent += ` 本次为关键与疑难候选复核，其余 ${selection.ruleRetainedLayers || 0} 层沿用名称规则选材。`;
   updatePreviewStatus(); if (!keepVideo) showVideo(false);
@@ -351,6 +352,8 @@ async function projectAction(action, body) {
 function loadProjectInputs() {
   $("name").value=project?.name || run.name;$("video-path").value=run.videoPath;$("library-path").value=run.libraryPath;$("music-library-path").value=run.musicLibraryPath||"";libraryPreferences.load(run.libraryPreferences||[]);keywordPreferences.load(run.keywordPreferences||[]);
   loadExclusions(run);
+  $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";
+  const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);
 }
 function editPayload() {return {revision:run.revision,events:run.events,placements:run.placements,originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,keywordPreferences:keywordPreferences.read(),...exclusionSettings()};}
 async function updateEditedPreview() {
@@ -484,6 +487,7 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   $("workspace").hidden = true;
   $("history").value = "";
   $("name").value = "我的视频音效";
+  for(const id of ["video-description","sound-requirements","sound-style","custom-style"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;
   $("video-path").value = "";
   $("library-path").value = preserveLibraryInputs ? (previous?.libraryPath || "") : "";
   $("music-library-path").value = preserveLibraryInputs ? (previous?.musicLibraryPath || "") : "";
@@ -493,10 +497,23 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   $("status").textContent = "可以选择视频和本机音效文件夹。已有项目仍在“已保存项目”中。";
   history.replaceState(null, "", "/sfx?new=1");
 }
-$("create-form").onsubmit = guard(async () => {
+function selectedStyle(){return $("sound-style").value==="custom"?$("custom-style").value.trim():$("sound-style").value;}
+function showStyleProfile(profile){
+  $("style-profile-panel").hidden=false;$("style-profile-title").textContent=`${profile.style} · 风格档案 · ${profile.researchedAt.slice(0,10)}`;
+  const content=$("style-profile-content");content.replaceChildren();
+  for(const text of [profile.summary,"音色："+profile.palette.join("；"),"避免："+profile.avoid.join("；"),...profile.actionGuidance,"依据限制："+profile.limitations]){const p=document.createElement("p");p.textContent=text;content.append(p);}
+  for(const reference of profile.references){const p=document.createElement("p"),a=document.createElement("a");a.textContent=reference.title;try{const url=new URL(reference.url);if(url.protocol!=="https:")continue;a.href=url.href;}catch{continue;}a.target="_blank";a.rel="noopener noreferrer";p.append(a);content.append(p);}
+}
+$("sound-style").onchange=()=>{$("custom-style-label").hidden=$("sound-style").value!=="custom";$("style-profile-panel").hidden=true;};
+async function researchSelectedStyle(refresh=false){const style=selectedStyle();if(!style)throw new Error("请先选择或输入风格");if(busy)return;setBusy(true);status(refresh?"正在重新研究风格与参考资料…":"正在读取或分析风格…");try{const result=await api("/api/sfx/styles/research",{style,refresh});showStyleProfile(result);status("风格档案已保存，生成时将用于画面分析和声音选材。");}finally{setBusy(false);}}
+$("research-style").onclick=guard(()=>researchSelectedStyle());$("refresh-style").onclick=guard(()=>researchSelectedStyle(true));
+$("search-library-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("library-path").value.trim());if(value){$("library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
+$("create-form").onsubmit = event => { event.preventDefault(); };
+$("analyze").onclick = guard(async () => {
   if(busy)return;
+  if(!$("create-form").reportValidity())return;
   keepDraftBeforeLeaving();
-  const input = { name: $("name").value, workflowPreset:"reference-v6",reusePreserved:true,videoPath: $("video-path").value.trim().replace(/^"|"$/g, ""), libraryPath: $("library-path").value.trim().replace(/^"|"$/g, ""),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings(), musicLibraryPath: $("music-library-path").value.trim().replace(/^"|"$/g, "") };
+  const input = { videoDescription:$("video-description").value.trim(),soundRequirements:$("sound-requirements").value.trim(),style:selectedStyle(),name: $("name").value, workflowPreset:"reference-v6",reusePreserved:true,videoPath: $("video-path").value.trim().replace(/^"|"$/g, ""), libraryPath: $("library-path").value.trim().replace(/^"|"$/g, ""),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings(), musicLibraryPath: $("music-library-path").value.trim().replace(/^"|"$/g, "") };
   setBusy(true);
   try {
     const result = await api("/api/sfx/runs", input); localStorage.setItem("sfx-last-input", JSON.stringify(input));
