@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "style": "史诗冒险",
+  "researchedAt": "2026-11-21T15:09:14.552Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "史诗冒险风格以宏大世界观、漫长旅途叙事与厚重仪式感为核心，听觉上追求写实物理质感与神话/奇幻氛围的平衡，避免将单一代表作等同于全部风格。参考作品对比与差异（基于既有行业认知与设计推导，非资料实听）：共同点在于均强调用自然环境底噪、器物厚重反馈与交响/民族乐器共同塑造空间规模感与宿命张力。差异在于：《战神(2018)》（资料显示其背景转向北欧米德加德与父子旅程，配乐由Bear McCreary创作）在设计推演上倾向粗粝、低温、近距离沉重打击与低频铜管/人声合唱的压迫感；《塞尔达传说》（既有认知）偏向清澈通透的物理交互反馈、自然风物留白及钢琴/木管点缀的灵动探索感；《指环王》（既有认知）则以古典交响主题群、古旧冷兵器金属摩擦与宏大战场/奇幻生物声景见长。本地试听选材须坚持保留源素材原调原速、无新增混响，直接评估干声与原始声学特征是否匹配，不强行为每个动作添加装饰层。",
+  "references": [
+    {
+      "title": "God of War (2018 video game)",
+      "url": "https://en.wikipedia.org/?curid=50810460",
+      "excerpt": "God of War is a 2018 action-adventure game developed by Santa Monica Studio and published by Sony Interactive Entertainment. It was released worldwide for the PlayStation 4 in April 2018, with a Windows port released in January 2022. It is the eighth game in the God of War series, tenth chronologically, and the sequel to 2010's God of War III.\nWhile previous games were based on Greek mythology, God of War transitioned to Norse mythology, and takes places in mythical ancient Scandinavia in the realm of Midgard. Players control Kratos, who embarks on a journey with his son, Atreus, to scatter the ashes of Atreus's mother from the highest peak o\nGod of War received acclaim for its story, world design, art direction, music, graphics, combat system, and characters, in particular the dynamic between Kratos and Atreus. Many reviewers felt it had successfully revitalized the series without losing its core identity. It was named Game of the Year by numerous media outlets and award shows, and has been cited as among the greatest video games. It sold more than five million copies within a month of release and had sold 23 million by November 2022, making it one of the best-selling PlayStation 4 games and the best-selling game in the series. A novelization was released in August 2018, followed by a prequel comic series published from November 2018 to June 2021, while a live-action television series is in development for Amazon Prime Video. A sequel, God of War Ragnarök, was released for the PlayStation 4 and PlayStation 5 in 2022, and for Windows in 2024.\n=== Soundtrack ===\nGod of War (PlayStation Soundtrack) was released on April 20, 2018, by Sony Classical Records. It was composed by Bear McCreary, who is best known for his work on television shows like Battlestar Galactica and Th"
+    }
+  ],
+  "palette": [
+    "重型近战与金属材质：中低频（80-250Hz）具备扎实躯干共振与冲击厚度的斧锤钝击，叠加2-5kHz清晰金属咬合或粗糙铁器摩擦声，包络起振利落。",
+    "木石盾牌与甲胄拟音：带有明显木材内部空腔共鸣或厚皮革挤压摩擦（300Hz-1.2kHz质感扎实），瞬态偏钝但密度高，无塑料空壳感。",
+    "弓弦与轻型投射物：弦线紧绷时的细微木质嘎吱应力声、干脆的放弦弹射瞬态，以及随速度变化的中高频空气切割风切声。",
+    "古朴法术与元素质感：以自然物理声源为基底（如深沉冰晶挤压碎裂、厚重火焰气流轰鸣、低频岩石/共振腔嗡鸣），谐波温润厚重而非刺耳合成锯齿波。",
+    "巨型与奇幻怪物嗓音：包含强胸腔/腹腔亚低频支撑（40-120Hz）与粗糙声带颗粒感、动物喉音及呼吸气流，起音与衰减自然连贯，避免纯人工变调电音感。",
+    "自然环境与建筑声景：高动态范围的宽广山谷风声、远距离低频雷鸣或空气流动底噪，以及沉重石门滑动、古木开合的缓慢低频摩擦。",
+    "克制的古风UI与交互：木石轻敲、羊皮纸翻折摩擦、温润铜铃或低音弦乐拨奏等有机材质短音，衰减干净且无现代电子蜂鸣。",
+    "交响与民族器乐纹理：低音铜管长音、大鼓沉重敲击、民族弓弦/号角及深沉人声合唱，音色暖厚且具备长距离空气传播的呼吸感。"
+  ],
+  "avoid": [
+    "现代电子合成与科幻音色：高频激光扫频、强LFO调制的电子脉冲、赛博感合成器垫底音，会瞬间破坏史诗冒险的历史与神话可信度。",
+    "廉价高湿人工长混响素材：自带过长、浑浊金属感录音室尾音的候选文件，在要求原调原速且不新增混响的原则下会严重模糊近景瞬态。",
+    "单薄干瘪的塑料/玩具敲击声：缺乏中低频支撑、仅有4kHz以上单薄脆响的击打素材，无法撑起冷兵器或巨物的重量感。",
+    "套路化EDM冲击波（Sub Drop+刺耳白噪）：将现代预告片式夸张低频下潜与白噪上扫硬塞进普通攻击或常规UI中，导致听觉疲劳且失真。",
+    "卡通化夸张声效：带有明显滑稽音高滑落（Pitch Drop）、弹簧颤音或高音哨声的素材，破坏严肃冒险叙事基调。",
+    "削波失真与刺耳高频毛刺：缺乏低频铺底、在3-8kHz存在强烈刺耳共振或数字削波失真的金属刮擦与怪物尖啸。"
+  ],
+  "actionGuidance": [
+    "准备与蓄力阶段：选用带有材质紧绷感的自然素材（如弓弦拉紧摩擦、重武器拖拽地面、低频气流或符文微弱共鸣缓缓起振），严禁强行叠加现代电子上扫音作为装饰层；试听时确认原始起振速率贴合动作节奏，不依赖变速拉伸。",
+    "释放阶段：挑选起音瞬态（Transient）极度干脆且中频能量集中的破风声（Whoosh）与发力呼吸声，保证爆发力与动作起步严丝合缝，避免拖泥带水的前摇噪声。",
+    "飞行阶段：依据飞行物体体量选材，小体量选用干净的中高频空气切裂声，大体量选用带有低频空气扰动与稳定气流呼啸的连续素材，保持音色连贯即可，无需额外挂靠法术闪烁装饰。",
+    "命中阶段：优先选择分层清晰的干声素材——近距离物理打击聚焦清晰瞬态咬合与实木/肉体/甲胄中低频钝响，特殊重击再配合深沉亚低频冲击；试听时核对原调原速下低频不浑浊、高频不刺耳。",
+    "收势阶段：保持极度克制，仅在需要交代武器材质归位时选用简短干脆的入鞘金属摩擦、护盾回落或衣甲轻摆声；常规攻击收势不得强行添加多余法术余韵或装饰层。",
+    "音乐进退与动态主次：探索阶段由自然环境底噪与脚步/装备拟音主导，音乐退居稀疏点缀或留白；战斗爆发时铜管/打击乐推前烘托情绪，但须确保2-4kHz关键受击反馈与怪物预警信号不被音乐完全掩盖。",
+    "空间远近与源素材处理：试听候选音频时保持原调原速且不额外加载混响，直接依据素材本身自带的干湿比与高频滚降程度判定空间位置——近景动作与UI选用高清晰干声，远景巨兽吼叫或环境雷鸣选用自带自然空气衰减的宽广素材。"
+  ],
+  "searchTerms": [
+    "Heavy Axe Impact",
+    "Sword Metal Scrape",
+    "Wooden Shield Block",
+    "Bow String Draw",
+    "Deep Monster Roar",
+    "Giant Footstep Thud",
+    "Nordic Wind Ambience",
+    "Stone Door Slide",
+    "Ancient Rune Hum",
+    "Frost Ice Crack",
+    "Fire Torch Whoosh",
+    "Leather Armor Foley",
+    "Orchestral Brass Swell",
+    "War Horn Deep",
+    "Parchment UI Click",
+    "重型斧锤撞击",
+    "冷兵器金属摩擦",
+    "木盾格挡闷响",
+    "弓弦拉紧",
+    "巨兽低频咆哮",
+    "沉重石门滑动",
+    "山谷狂风环境",
+    "火焰呼啸破风",
+    "寒冰碎裂",
+    "皮革甲胄摩擦",
+    "古老符文低鸣",
+    "战争号角",
+    "史诗铜管铺底",
+    "羊皮纸翻页",
+    "肉体钝击受击"
+  ],
+  "limitations": "本次实际读取的公开资料仅包含《战神(2018)》的英文维基百科条目摘要（提供了北欧神话米德加德设定、奎托斯与阿特柔斯旅程及作曲家Bear McCreary等背景事实），未包含任何音频文件、混音参数或具体音效设计实证，亦未包含《塞尔达传说》与《指环王》的文本资料。本档案未实际听取任何原声带或游戏实机音频，未穷尽所有史诗冒险作品，也未核实作品实时热度。因此，关于《战神》《塞尔达传说》《指环王》的声音特征对比，以及档案中涉及武器材质听感、法术元素音色、怪物嗓音结构、动作六阶段处理、空间远近、动态主次与不合适音色的具体指标，均属于基于既有音频专业知识与行业认知的声音设计推导（设计推导），在实际本地选材时须以候选音频的实际试听效果为准。"
+}
