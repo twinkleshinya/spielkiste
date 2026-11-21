@@ -28,6 +28,6 @@ export const WORKFLOW_STAGES = [
 
 export function workflowSnapshot(presetId:"reference-v6"|"custom",options:{analysisMode:string;selectionScope:string;musicEnabled:boolean;aiSelection:boolean;autoMix:boolean;originalGainDb:number}) {
   return {presetId,version:SFX_WORKFLOW.version,name:presetId==="reference-v6"?SFX_WORKFLOW.name:"自定义流程",requestedModel:presetId==="reference-v6"?SFX_WORKFLOW.model:(process.env.SFX_CCSWITCH_MODEL?.trim()||SFX_WORKFLOW.model),
-    operation:"create" as "create"|"reselect"|"automix"|"edit"|"reidentify"|"augment",timing:"fresh" as "fresh"|"reused",selection:"fresh" as "fresh"|"reused",source:"fresh" as "fresh"|"reused",referenceRunId:SFX_WORKFLOW.referenceRunId,
+    operation:"create" as "create"|"reselect"|"automix"|"edit"|"reidentify"|"augment"|"reanalyze",timing:"fresh" as "fresh"|"reused",selection:"fresh" as "fresh"|"reused",source:"fresh" as "fresh"|"reused",referenceRunId:SFX_WORKFLOW.referenceRunId,
     config:structuredClone(SFX_WORKFLOW),options};
 }

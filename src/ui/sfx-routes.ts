@@ -152,6 +152,7 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
     else if (id && action === "quick-edit" && req.method === "POST") json(res, await service.quickEdit(id, await readJson(req)),202);
     else if (id && action === "edit-preview" && req.method === "POST") json(res, await service.editPreview(id, await readJson(req)),202);
     else if (id && action === "locate-event" && req.method === "POST") json(res, await service.locateEvent(id, await readJson(req)), 202);
+    else if (id && action === "reanalyze" && req.method === "POST") json(res, await service.reanalyze(id, await readJson(req)), 202);
     else if (id && action === "add-described-event" && req.method === "POST") json(res, await service.addDescribedEvent(id, await readJson(req)), 202);
     else if (id && action === "search" && req.method === "POST") { const b = z.object({ query: z.string().max(2000), category: z.string().optional(),eventId:z.string().min(1).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields }).parse(await readJson(req)); json(res, await service.search(id, b.query, b.category,b)); }
     else if (id && action === "render" && req.method === "POST") json(res, await service.render(id), 202);

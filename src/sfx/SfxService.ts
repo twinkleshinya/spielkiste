@@ -179,6 +179,17 @@ export class SfxService {
     // accepted version above remains usable without a live model connection.
     const requestedModel = await assertAutomaticAiReady(parsed);
     const run = await this.store.createRun({ ...parsed, videoPath: video, libraryPath: library });
+    if (parsed.parentRunId) {
+      run.parentRunId = parsed.parentRunId;
+      if (run.workflow) {
+        run.workflow.operation = "reanalyze";
+        run.workflow.timing = "fresh";
+        run.workflow.selection = "fresh";
+        run.workflow.source = "fresh";
+        run.workflow.options = { ...run.workflow.options, reanalysisMode: parsed.reanalysisMode || "brief", parentRunId: parsed.parentRunId };
+      }
+      await this.store.save(run);
+    }
     if (requestedModel && run.workflow) {
       run.workflow.requestedModel = requestedModel.model;
       run.workflow.reasoningEffort = requestedModel.reasoningEffort || "high";
@@ -272,6 +283,43 @@ export class SfxService {
       run.status = "ready"; run.progress = "分析完成，请复核事件与贴片"; await exportTimeline(run, this.store.directory(run.id)); await this.saveProjectVersion(run, "create");
     })(), ANALYSIS_TIMEOUT_MS, "视频分析超过 30 分钟，已停止。请检查当前处理阶段。"); } finally { controller.abort(); clearTimeout(taskTimer); } });
     return { runId: run.id };
+  }
+
+  async reanalyze(id: string, body: unknown) {
+    if (this.pending.has(id) || this.locks.has(id)) throw new SfxError("任务处理中，请稍后重新分析", 409);
+    const source = await this.readRun(id);
+    if (source.status !== "ready") throw new SfxError("请等待当前项目完成后再重新分析", 409);
+    const input = z.object({
+      mode: z.enum(["visual", "brief"]),
+      videoDescription: z.string().trim().max(4000).optional(),
+      soundRequirements: z.string().trim().max(4000).optional(),
+      style: z.string().trim().max(120).optional()
+    }).parse(body);
+    const cleanName = source.name.replace(/ · (?:重新分析|编辑|定位|补声|自动混音|Gemini选材)(?:副本|\d+)?$/, "").slice(0, 100);
+    const result = await this.create({
+      projectId: source.projectId,
+      parentRunId: source.id,
+      reanalysisMode: input.mode,
+      name: `${cleanName} · 重新分析`,
+      videoPath: source.videoPath,
+      libraryPath: source.libraryPath,
+      musicLibraryPath: source.musicLibraryPath,
+      musicEnabled: source.musicEnabled !== false,
+      aiSelection: true,
+      autoMix: source.autoMix !== false,
+      originalGainDb: source.originalGainDb,
+      workflowPreset: source.workflow?.presetId || "reference-v6",
+      selectionScope: source.selectionScope || "selective",
+      libraryPreferences: source.libraryPreferences,
+      keywordPreferences: source.keywordPreferences,
+      excludedLibraryPaths: source.excludedLibraryPaths,
+      excludedKeywords: source.excludedKeywords,
+      videoDescription: input.mode === "visual" ? undefined : input.videoDescription,
+      soundRequirements: input.soundRequirements,
+      style: input.style,
+      reusePreserved: false
+    });
+    return result;
   }
   async preserve(id:string,body:unknown) {
     if(this.pending.has(id)||this.locks.has(id))throw new SfxError("任务处理中",409);
