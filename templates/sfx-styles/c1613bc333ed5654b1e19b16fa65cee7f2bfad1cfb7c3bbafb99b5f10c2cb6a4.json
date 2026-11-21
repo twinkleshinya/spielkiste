@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "style": "科幻",
+  "researchedAt": "2026-11-21T15:00:08.179Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "科幻（Sci-Fi）风格声音设计涵盖赛博朋克、太空军事歌剧与粗野工业未来主义等分支，不可将单一代表作（如《赛博朋克2077》）等同于全部科幻风格。根据已读取的公开资料，《赛博朋克2077》设定于加州反乌托邦都市夜之城，聚焦义体强化佣兵与生物芯片冲突，其音乐层面引入了大量授权电子、说唱与朋克摇滚艺术家（如Run the Jewels、Grimes、Refused等）构建电台与原声带；结合既有行业认知与声音设计推导，三部参考作品的共性在于均依赖非自然声学基底（合成器调制、精密机械伺服、能量场与强次低频压迫感）来区分现实与未来科技，差异则体现在材质重心与美学取向：《赛博朋克2077》倾向高密度电子失真、街头噪声与义体机械摩擦的混杂粗粝感；《光环》偏向军工动能武器的干脆金属质感与外星等离子/空灵合唱谐波的宏大反差；《沙丘》则弱化传统电子激光套路，强调模拟合成、风沙/机械物理振动与沉重次声波带来的原始压迫与荒漠粗野感。本档案所有结论仅用于指导本地干声素材的试听筛查，试听全程须保持素材原调原速且不添加额外混响。",
+  "references": [
+    {
+      "title": "Cyberpunk 2077",
+      "url": "https://en.wikipedia.org/?curid=36691288",
+      "excerpt": "Cyberpunk 2077 is a 2020 action role-playing game developed by CD Projekt Red and published by CD Projekt. Based on and set in the fictional universe of Mike Pondsmith's Cyberpunk tabletop game series, Cyberpunk 2077 takes place in the dystopian metropolis of Night City in California. The player assumes the role of V (voiced by Gavin Drea or Cherami Leigh depending on the player character's gender), a cybernetically-enhanced mercenary who is reluctantly imbued with an experimental \"biochip\" containing the engram of legendary rocker-turned-terrorist Johnny Silverhand (voiced by Keanu Reeves). As Johnny's consciousness begins overwriting V's ow\n== Music ==\nMultiple licensed musical artists contributed to Cyberpunk 2077's fictional radio stations and soundtrack albums, including Run the Jewels, Rosa Walton, Grimes, Refused, ASAP Rocky, Gazelle Twin, Yugen Blakrok, and Ilan Rubin. Run the Jewels wrote \"No Save Point\" for the game's soundtrack—a track that vividly critiques the socioeconomic state of Night City. The song is featured in the game and performed by El-P and Killer Mike as \"Yankee and the Brave\", a reference to a song on the duo's fourth studio album, RTJ4. Walton's \"I Really Want to Stay at Your House\" would later go viral in 2022 after being prominently utilised in the anime series Cyberpunk: Edgerunners, and topped Billboard's Top TV Songs in the United States.\nA \"Collector's Edition\" consisting of a custom box, steelbook case, figurine depicting a male V, hardcover artbook, metal pin set and keychain, A Visitor's Guide to Night City, embroidered patches, world compendium, Night City postcards and map, and stickers was released along with the game. The standard edition also contains the compendium, postcards, map, and stickers. Digital items that come with eve"
+    }
+  ],
+  "palette": [
+    "武器材质（原调原速干声判别）：动能/磁轨武器需寻找瞬态起音极快（<5ms）、中高频（2kHz–6kHz）带有钛合金或高强度聚合物冷硬敲击质感、且尾音干净不拖泥带水的撞击声；能量/等离子武器需关注FM调制产生的金属撕裂泛音、静电拉弧噼啪声与稳定的高频电流嘶嘶声；义体冷兵器应具备机械弹出卡榫清脆声与高频震荡刀刃的细微啸叫。",
+    "能量与科技脉冲（对应法术/异能元素）：试听电弧、电磁脉冲（EMP）、引力波或灵能干预素材时，优先挑选带有明确频率包络（Pitch Envelope）滑移、粒子颗粒化（Granular）切碎感或环形调制（Ring Mod）非自然泛音的干声，避免单纯的静态白噪声。",
+    "怪物/异形/机械嗓音：生物异形声音应选取低频喉音共振结合非人类口腔湿黏摩擦或高频昆虫节肢喀哒声的素材；机械体与义体改造人声需筛选基频平直、带有轻微比特率降质（Bitcrush）、相位偏移或声码器（Vocoder）金属共振峰的质感，试听时注意人声可懂度与噪音层的分离度。",
+    "环境底噪（Ambience）：赛博都市类需选取低频变压器嗡鸣、脉冲霓虹电流声与远景密集交通风噪的平稳循环；太空船舱/军事基地需选取低频通风气流、柔和的陀螺仪稳态震动与极轻微的金属热胀冷缩声；荒漠/废土科幻则以宽频干燥风沙摩擦与沉重次低频机械震动为主。",
+    "UI与交互（HUD/Telemetry）：挑选高瞬态、短衰减（10ms–80ms）、无混响尾巴的正弦波脉冲、微弱高频滤波点击声或干净的继电器开关声；全息界面切换可使用极轻薄的扫频（Sweep）与细腻数字抖动声（Glitch），保持频谱集中在1.5kHz以上且不刺耳。"
+  ],
+  "avoid": [
+    "带有明显长混响尾巴或房间回声（Baked-in Reverb）的战斗打击或UI素材，此类素材会破坏干声原调原速试听判断，且无法适配不同空间距离的实时混音。",
+    "未经处理的纯冷兵器或自然原声素材，如纯粹的木弓崩弦、厚重铁质阔剑互砍声、纯自然森林鸟鸣或传统奇幻风铃清脆魔法声，缺乏科技调制或工业材质冷峻感。",
+    "廉价复古街机式的单正弦波快速下滑“哔哔”激光声（除非项目明确指定复古8-bit或B级片风格），其谐波过于单一、缺乏物理能量冲击力。",
+    "过度削波失真导致40Hz以下次低频浑浊糊成一团的爆炸/重击素材，会在试听阶段掩盖中高频武器材质细节与机械咬合瞬态。",
+    "带有明显卡通滑稽感的弹簧音、橡胶弹性音或高频尖锐刺耳（8kHz以上持续共振峰）且无动态起伏的合成器刺音。"
+  ],
+  "actionGuidance": [
+    "试听基准原则：所有本地候选素材必须以原始采样率、原调、原速进行试听，严禁在选材阶段挂载混响、延迟或激进变调插件；不强行给每一个动作都叠加科技或能量装饰层，基础脚步、普通换弹与轻型物理交互应保留扎实的物理材质干声。",
+    "动作准备与蓄力（Prep / Charge）：选取音高平稳上行（Pitch Rise）、频谱由暗变亮或机械伺服转速逐步加快的素材；充能能量类需注意包络线平滑且末段有轻微失真预兆，避免起音过猛抢占后续释放瞬态。",
+    "动作释放（Release）：聚焦前20ms的极高瞬态冲击与瞬时气压爆破感（如磁轨击发爆音、等离子泄压喷射），确保核心能量集中在中低频（80Hz–250Hz）与高频击发脆响（3kHz–7kHz）的清晰分层，剔除拖沓的无效前摇。",
+    "动作飞行（Flight）：投射物或飞行器需挑选基频稳定、具备平滑循环潜力的空气撕裂声、离子推进器呼啸或高频电磁嗡鸣；试听时重点检查音色在持续播放时是否具有平滑的质地，而非刺耳的周期性机械割裂感。",
+    "动作命中（Impact）：依据目标材质匹配——命中装甲/机械挑选冷硬金属凹陷撞击加电流火花飞溅声；命中能量护盾挑选带有高频结晶碎裂或弹性电磁反弹感的干声；命中生物肉体则以钝重低频闷响为主，非必要不强加冗余电子尾音。",
+    "动作收势（Recovery）：选用紧凑的机械复位咔哒声、过热蒸汽泄压喷气声（200ms–500ms干净衰减）或能量场快速下潜闭合音，确保收势干净利落以腾出动态空间。",
+    "空间远近控制：近景选材要求丰富的细节瞬态、高频毛刺感（如枪机摩擦、义体微电机电流声）与干脆的近距离声压感；远景选材则筛选高频天然滚降、能量集中在低中频闷响（如远距离轨道炮轰鸣、大型舰船低频引擎震动）的干声，不依赖人工混响来制造距离感。",
+    "动态主次分配：UI提示音与核心武器击发瞬态处于最高动态优先级，选材时需保证其频段清晰、包络紧凑；环境底噪与次要机械运转声必须具备较低的峰值因数（Crest Factor）和克制的中高频能量，避免在多轨叠加时遮蔽主动作与怪物/角色语音。",
+    "音乐进退逻辑：战斗/高张力片段的脉冲合成器与工业打击乐需具备明确节奏骨架；在剧情对话、潜行侦听或精密UI操作介入时，应选用能快速淡出（Fade Out）或仅保留低频持续氛围铺底（Drone/Pad）的音乐素材，为关键机电提示音与语音让出中高频通道。"
+  ],
+  "searchTerms": [
+    "科幻武器 / Sci-Fi Weapon / Railgun / Plasma / Laser / Blaster / Pulse Rifle",
+    "赛博机械 / Cybernetic / Servo / Hydraulic / Mech / Robotics / Actuator",
+    "能量蓄力 / Energy Charge / Power Up / Capacitor / EMP / Electromagnetic / Arc",
+    "未来界面 / Sci-Fi UI / HUD / Telemetry / Hologram / Glitch / Data Stream",
+    "科幻环境 / Sci-Fi Ambience / Spaceship Hum / Dystopian City / Reactor / Room Tone",
+    "异形与AI语音 / Alien Vocal / Vocoder / Synthetic Voice / Creature Growl / Cyborg",
+    "护盾与撞击 / Energy Shield / Metal Impact / Heavy Thud / Hull Breach / Vent Hiss"
+  ],
+  "limitations": "1. 资料边界声明：本档案仅读取了一篇关于《赛博朋克2077》的维基百科摘录（内容仅涉及世界观设定、叙事角色及部分授权电台/原声音乐艺术家名单，未包含任何具体音效设计与混音参数）。《光环》与《沙丘》在本次输入中无任何实际读取的公开资料。2. 声音事实缺失与推导标注：研究者未听取上述任何作品的原声音乐或游戏内实际音效包，亦未穷尽所有科幻子流派或核实作品实时热度。因此，档案中关于《赛博朋克2077》《光环》《沙丘》的具体音色对比、武器与材质听感分类、动作各阶段包络处理、空间远近判别标准、怪物嗓音特征、音乐进退策略及不合适音色清单，均属于基于既有游戏声音设计经验与作品题材背景所作的【声音设计推导】，不可视为对原版游戏工程文件或官方音频资产的实测结论。"
+}

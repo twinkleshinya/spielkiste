@@ -35,8 +35,15 @@ export async function collectStyleReferences(style:string,signal?:AbortSignal):P
     pages=result.query?.search?.map((p:any)=>String(p.title))||[];
   }
   const language=preset?'en':'zh';
-  const results=await Promise.allSettled(pages!.slice(0,5).map(title=>readJson(`https://${language}.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}&format=json`,signal)));
-  const references:Reference[]=results.flatMap(result=>result.status==='fulfilled'?Object.values(result.value.query?.pages||{}):[]).filter((p:any)=>typeof p.extract==='string'&&p.extract.length>150).map((p:any)=>{
+  const documents:unknown[]=[];
+  for(const title of pages!.slice(0,5)){
+    signal?.throwIfAborted();
+    for(let attempt=0;attempt<2;attempt++)try{
+      const result=await readJson(`https://${language}.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}&format=json`,signal);
+      if(result.error)throw new Error('资料服务暂时不可用');documents.push(...Object.values(result.query?.pages||{}));break;
+    }catch(error){signal?.throwIfAborted();if(attempt===0)await new Promise(resolve=>setTimeout(resolve,1200));}
+  }
+  const references:Reference[]=documents.filter((p:any)=>typeof p.extract==='string'&&p.extract.length>150).map((p:any)=>{
     const extract=String(p.extract);const paragraphs=extract.split('\n').filter(t=>/sound|music|audio|音效|音乐|声音|作曲|配乐/i.test(t));
     return {title:p.title,url:`https://${language}.wikipedia.org/?curid=${p.pageid}`,excerpt:(extract.slice(0,650)+'\n'+paragraphs.join('\n')).slice(0,1800)};
   });

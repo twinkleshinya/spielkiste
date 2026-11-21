@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "style": "暗黑奇幻",
+  "researchedAt": "2026-11-21T15:00:14.894Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "暗黑奇幻风格核心在于厚重、陈旧、压抑却兼具史诗与神秘感的听觉质地，强调物理重量感与不祥共鸣，而非现代电子化或清亮商业化的光泽感。结合公开资料与声音设计推导，三部参考作存在明确共性与差异：共性上，均构建了创伤化、衰败或面临宏观危机的奇幻世界，基调庄严且具压迫感（如《指环王》的护戒灭魔史诗、《暗黑破坏神4》被评价为“令人毛骨悚然且生畏（haunting and daunting）”的创伤世界原声、《艾尔登法环》的废墟化地牢开放世界）。差异上，基于资料与类型特征推导：《艾尔登法环》侧重空旷废墟与宏大环境尺度，声音设计倾向克制留白、粗粝冷冽的古旧铁石质感，动态反差大；《暗黑破坏神4》围绕高重复度的随机地牢刷宝与多职业近战/黑魔法战斗，更偏重高辨识度的粘稠血肉反馈、沉重低频冲击与持续压迫的邪典氛围；《指环王》依托新西兰实景与微缩模型拍摄，配合Howard Shore多达85至110个主导动机（leitmotifs）的交响配乐，听感更强调写实电影化的有机物理拟音（Foley）与古典管弦合唱的庄重推进。需注意不可将其中任一代表作等同于整个暗黑奇幻风格（例如暗黑地牢刷宝的密集高频打击不能直接照搬至慢节奏探索向作品）。本档案在试听选材时严格遵循：保留源素材原调原速、不新增外部混响，直接依据候选音频本身的瞬态形态、频谱密度、失真毛刺与自然衰减尾音做判断，不轻信文件名标签。",
+  "references": [
+    {
+      "title": "Elden Ring",
+      "url": "https://en.wikipedia.org/?curid=61002621",
+      "excerpt": "Elden Ring is a 2022 action role-playing game developed by FromSoftware and published by Bandai Namco Entertainment. It was directed by Hidetaka Miyazaki and Yui Tanimura, with worldbuilding by the fantasy writer George R. R. Martin. It was released for PlayStation 4, PlayStation 5, Windows, Xbox One, and Xbox Series X/S on February 25, 2022, and for Nintendo Switch 2 on August 28, 2026. Players control a customizable character on a quest across the Lands Between to repair the Elden Ring and become the new Elden Lord.\nPlayers explore the open world and its dungeons from a third-person perspective, traveling on foot or on the steed Torrent. Co\nProduction of the game began in early 2017 following the release of The Ringed City, a piece of downloadable content (DLC) for Dark Souls III. Elden Ring was developed alongside Sekiro: Shadows Die Twice, which Miyazaki also directed. He said although the combat in Elden Ring has similarities to that in Sekiro, neither game directly inspired the mechanics of the other. FromSoftware simultaneously developed both games using a \"co-director\" structure in which each of the games had a staff member acting as director through its first stages of development. Miyazaki would then provide direction on the game's mechanics, art, and music. Yui Tanimura, who previously directed Dark Souls II and co-directed Dark Souls III, served as co-director for the game. The design team of Elden Ring concentrated on environmental scale, role-playing, and storytelling as the main elements. FromSoftware chose not to populate the open world with large towns. Miyazaki said that the team instead concentrated on the types of environments it was most experienced in creating, representing former settlements as ruined, dungeon-like locations. Developers credited t"
+    },
+    {
+      "title": "Diablo IV",
+      "url": "https://en.wikipedia.org/?curid=62124844",
+      "excerpt": "Diablo IV is a 2023 action role-playing game developed and published by Blizzard Entertainment. It is the fourth main installment in the Diablo series. Announced at BlizzCon 2019, the game was released on June 5, 2023 for the PlayStation 4 and PlayStation 5, Xbox One and Xbox Series X and S, and Microsoft Windows. Players create a character from one of eight playable classes—Barbarian, Sorcerer, Druid, Rogue, Necromancer, Spiritborn, Paladin, or Warlock—and use their skills to complete quests through combat.\nStaple features returned from previous installments in the franchise, such as a focus on replayable, procedurally generated dungeons and\nBlizzard Entertainment announced on June 1, 2023 the \"Lilith (Diablo IV Anthem)\" music video by Halsey and Suga from BTS. It was released on June 5.\nPolygon disliked the dungeon-crawling aspect of the game, feeling that it became repetitive fairly quickly, saying \"The procedurally generated dungeons don't vary much in layout and feel like missed opportunities to have fun with randomized architecture\". VG247 praised the game's soundtrack as \"exceptional; equal parts haunting and daunting, just like its traumatised world\"."
+    },
+    {
+      "title": "The Lord of the Rings (film series)",
+      "url": "https://en.wikipedia.org/?curid=414113",
+      "excerpt": "The Lord of the Rings is a trilogy of epic fantasy films directed by Peter Jackson. The films are based on the novel by J. R. R. Tolkien, drawing their titles and most of their plots from its three volumes: The Fellowship of the Ring (2001), The Two Towers (2002), and The Return of the King (2003). Produced and distributed by New Line Cinema with the co-production of Jackson's WingNut Films, the films feature an ensemble cast.\nSet in the fictional world of Middle-earth, the films follow the hobbit Frodo Baggins as he and the Company of the Ring set out to destroy the One Ring, an artifact of great magical power, and defeat its maker, the Dark\nPrincipal photography for all three films was conducted concurrently in many locations within New Zealand's conservation areas and national parks. Filming took place between 11 October 1999 and 22 December 2000. Pick-up shoots were conducted annually from 2001 to 2003. The series was shot at many different locations, with seven different units shooting, and soundstages around Wellington and Queenstown. Along with Jackson directing the whole production, other unit directors included John Mahaffie, Geoff Murphy, Barrie M. Osborne, Rick Porras, George Marshall Ruge, and any other assistant director, producer, or writer available. Miniature Photography took place throughout the entire period, amounting to over 1,000 shooting days.\n== Music ==\nHoward Shore composed, orchestrated, conducted and produced the trilogy's music. Shore visited the set in 1999, and composed a version of the Shire theme and Frodo's Theme before Jackson began shooting. In August 2000, he visited the set again and watched the assembly cuts of The Fellowship of the Ring and The Return of the King. In the music, Shore included many (85 to 110) leitmotifs to represen"
+    }
+  ],
+  "palette": [
+    "武器材质（设计推导）：优先选用200-500Hz中低频扎实、4-8kHz带有粗糙磨砂感的冷兵器素材，如生锈钝铁、厚重板甲碰撞、干裂硬木与粗鞣皮革摩擦；试听时确认其瞬态不过分尖锐刺耳（避免10kHz以上现代不锈钢般的亮脆高频），具备金属阻尼与内部闷响。",
+    "法术元素（设计推导）：偏向腐化、灰烬、暗影、古石、凝血与寒霜质感；有效候选音频通常包含低频次声铺底（60-120Hz暗涌）、非周期性颗粒摩擦（碎石/骨渣/余烬爆裂）或幽暗晦涩的共鸣谐波，避免谐波过于纯净明亮的合成器音色。",
+    "怪物嗓音（设计推导）：强调胸腔低频共鸣、喉音撕裂感、湿润粘液或干枯气息声（如大型猛兽喘息、沉重鼻息、腐朽喉结摩擦的原始录音），听感上需保持生物器官的非线性振动与不规则气噪，而非机械调制感。",
+    "环境与UI（设计推导）：环境素材选用荒原低风、石室/洞穴自然空气感、远处木梁或铁链的微弱吱呀声，要求底噪自然、无明显旋律化风笛声；UI音效优先选择石板微磨、羊皮纸翻折、沉闷黄铜或骨片轻叩，听感干脆且中低频稳重，衰减迅速。",
+    "音乐进退（部分据资料推导）：参考《指环王》主导动机叙事与《暗黑破坏神4》“凄厉且生畏”的配乐评价，音乐进入常绑定危机升级、Boss现身或宏大场景揭示（低音弦乐、铜管、阴郁合唱渐入），退场则迅速让位于荒凉风声与写实环境底噪，留出呼吸空间。",
+    "空间远近（设计推导）：因试听需保持源素材无新增混响，近景交互必须挑选干声（Dry）占比高、近讲效应与细微擦碰清晰、几乎无自带大厅尾音的素材；远景事件则直接挑选录制距离远、高频自然滚降、起音（Attack）偏钝的实录素材。",
+    "动态主次（设计推导）：保持高动态范围（Crest Factor充足），前景主角动作与关键受击素材需具备清晰无压缩感的前沿瞬态；背景环境与法术铺底音频在试听时应呈平滑连续包络，避免抢占前景2-5kHz的人耳敏感区。"
+  ],
+  "avoid": [
+    "现代电子与科幻合成音色（设计推导）：高频过亮且带明显数字共振峰的激光扫频（Laser Zaps）、FM金属合成器嗡鸣、EDM式超压缩Sub Drop低频炸响、明显的声码器（Vocoder）或颗粒合成机械怪物音。",
+    "轻快商业化与二次元亮脆音色（设计推导）：清脆如玻璃/风铃的现代手游UI提示音、明亮大调和弦式任务完成音效、高尖高频（10kHz+）过于突出且缺乏中低频肉感的“日系轻刀剑破空咻声”。",
+    "过度预混响与过度压缩素材（设计推导）：自带巨型教堂或人工板式混响长尾的近战打击素材（原调原速无新增混响试听下，此类素材会导致贴身动作空间错位、混音浑浊）；波形呈砖墙式削波（Brickwall Limited）、失去瞬态起伏的扁平响度素材。",
+    "塑料感与廉价模拟音色（设计推导）：缺乏200-400Hz共鸣体的薄脆拍击声、单薄的合成火焰白噪扫频、滑稽夸张的卡通弹性音效或与血肉/铁石质感不符的纯净电子正弦波提示音。"
+  ],
+  "actionGuidance": [
+    "全局选材原则（设计推导）：试听候选音频时保持源素材原调原速、不加混响；严禁强行给每个动作都叠加装饰层（Sweeteners），轻型动作、常规移动或快速连击应允许纯物理单层/双层朴素表达，以维持真实重量感与动态留白。",
+    "准备（Prepare）（设计推导）：挑选起音平缓、声压级偏低的微观织物、皮革拉伸、金属微颤、重甲关节咬合或沉重吸气声；判断音频是否含有杂乱高噪底或多余高频点击音，此阶段不强加魔法闪烁装饰层。",
+    "蓄力（Charge）（设计推导）：物理蓄力优先选弓弦紧绷吱呀声、重物拖拽摩擦或低沉气旋汇聚；法术蓄力选用低频暗涌、灰烬/砂石倒吸或低音共鸣渐强（Crescendo），但避免音高呈线性电子扫频上升的现代科幻升调音（Risers）。",
+    "释放（Release）（设计推导）：依据武器/法术体量匹配空气推力，重武器选重心在150-600Hz的沉闷低沉挥砍风声（Heavy Whoosh），轻武器选干脆短促的破风声；非附魔物理挥砍不强行叠加法术亮晶晶尾音。",
+    "飞行（Flight）（设计推导）：投射物或远程法术飞行期应选用中频平稳、无刺耳周期性振荡的持续气流、低频燃烧滚鸣或隐约尖啸；听辨其循环纹理是否平滑无明显接缝跳变，高频不过度喧宾夺主。",
+    "命中（Impact）（设计推导）：核心讲究瞬态准确与材质可信。试听时检查起音前5-20ms是否有足够冲击力，紧随其后的材质共鸣（破甲金属脆裂、肉体钝击闷响、石块崩碎）必须干声清晰、衰减果断；重击可按需选带自然低频下潜的素材，轻击则保持克制不强加爆炸装饰层。",
+    "收势（Recovery）（设计推导）：挑选极短促且轻柔的卸力呼吸、衣袍摆动、武器归鞘擦碰或重心落地的闷实脚步声；此阶段高频应自然收敛，在高频次战斗中常可完全留白或仅留微弱底噪，以确保动态主次分明并突出下一拍动作。"
+  ],
+  "searchTerms": [
+    "重剑 挥砍 沉重破空 / heavy sword whoosh low",
+    "生锈铁器 碰撞 干声 / rusty metal clank impact dry",
+    "板甲 移动 摩擦 / plate armor foley movement",
+    "钝器 砸击 血肉 / blunt impact gore flesh",
+    "碎骨 石块 崩裂 / bone crack stone shatter",
+    "暗影 法术 低频暗涌 / dark magic sub drone rumble",
+    "余烬 腐化 火焰 噼啪 / dark fire embers crackle",
+    "怪物 喉音 咆哮 胸腔 / monster guttural growl chest",
+    "废墟 阴风 石室 环境 / ruin wind stone cavern ambience",
+    "羊皮纸 古书 翻页 / parchment paper page turn",
+    "弓弦 蓄力 木头 紧绷 / bow creak wood tension",
+    "沉重脚步 石板 泥地 / heavy footsteps stone mud"
+  ],
+  "limitations": "1. 本研究未实际听取《艾尔登法环》《暗黑破坏神4》《指环王》的任何原声带或游戏内/电影内真实音频文件，亦未穷尽所有暗黑奇幻题材作品，更未核实各作品的实时市场热度。2. 提供资料中的可验证事实仅限于：三部作品的发行时间、主创团队与世界观设定（如《艾尔登法环》的废墟化地牢开放世界与宫崎英高对音乐/美术的指导，《暗黑破坏神4》的多职业设定、程序化地牢与VG247对其原声“haunting and daunting”的评价，《指环王》的新西兰实景与微缩拍摄及Howard Shore的85-110个主导动机配乐）。3. 公开资料中缺乏具体音效设计参数与频谱实证，因此本文档中关于武器材质频段特征、法术元素听感、怪物嗓音结构、环境与UI细节、动作六阶段（准备/蓄力/释放/飞行/命中/收势）处理、空间远近与动态主次判断标准、不合适音色排除项以及中英检索词，均明确属于基于游戏声音设计领域常识与作品题材特征所做的“设计推导”，在实际入库前需结合项目实机听感进行验证。"
+}

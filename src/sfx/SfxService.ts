@@ -587,7 +587,7 @@ export class SfxService {
             "不要因为镜头切换、静止或推测画外动作添加事件。每个可见动作单独返回，时间使用视频开头起算的绝对秒数。query必须是适合本地音效文件名检索的中英文关键词，包含动作、主体和材质；description写实际画面行为。",
             "category只能是foley/impact/whoosh/ambience/music/other；phase可用preparation/motion/contact/aftermath；返回JSON：{\"events\":[{\"start\":0,\"end\":1,\"type\":\"monster_bite\",\"description\":\"猩猩张嘴咬住角色\",\"query\":\"gorilla bite jaw attack\",\"category\":\"impact\",\"confidence\":0.9,\"evidence\":\"中文画面证据\",\"actor\":\"boss\",\"phase\":\"contact\"}]}。没有看到动作时返回空数组。"
           ].join("\n");
-          const coarse = DescribedEventsResultSchema.parse(await provider.locateEvents(overviewFrames, prompt, controller.signal));
+          const coarse = DescribedEventsResultSchema.parse(await provider.locateEvents(overviewFrames, prompt+creativeContext(child), controller.signal));
           if (!coarse.events.length) throw new SfxError(`Gemini 未找到“${input.description}”对应的可见动作`);
           const addedEvents: SfxRun["events"] = [];
           const locationReport: unknown[] = [];

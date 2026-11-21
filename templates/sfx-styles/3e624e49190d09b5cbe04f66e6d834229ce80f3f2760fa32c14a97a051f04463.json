@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "style": "写实战争",
+  "researchedAt": "2026-11-21T15:00:40.078Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "“写实战争”风格档案以物理真实感、高动态冲击力与战场信息可读性为核心，指导本地干声与自然环境素材的试听选材。基于所提供的公开资料与声音设计推导：三部参考作品共同聚焦步兵与协同作战（combined arms）的残酷物理威胁，但听觉重心存在差异——《拯救大兵瑞恩》（资料明确记载）刻意削减宏大或歌剧式配乐，以凸显88毫米炮弹震荡引发的耳鸣、地面震动与死亡战斗声；《使命召唤》偏重紧凑的步兵近距离交火节奏与直观爽快的打击反馈（设计推导）；《战地》强调大规模多人地图与载具协同，要求极强的远近空间衰减与开阔地声场层次（设计推导）。切忌将单一作品（如《使命召唤》的近景电影化听感）等同于整个写实战争风格（其还包含硬核拟真与宏观战场分支）。选材试听时必须保留源素材原调原速且不新增混响，不强行在每个动作上叠加装饰层，通过频段、瞬态与包络特征而非仅凭文件名筛选素材。",
+  "references": [
+    {
+      "title": "Call of Duty",
+      "url": "https://en.wikipedia.org/?curid=8229010",
+      "excerpt": "Call of Duty (CoD) is a first-person shooter video game series and media franchise published by Activision, starting in 2003. The games were first developed by Infinity Ward, then by Treyarch, Sledgehammer Games and Raven Software. Several spin-off and handheld games were made by other developers. The latest game, Call of Duty: Modern Warfare 4, was released on October 23, 2026.\nThe series originally focused on a World War II setting, with Infinity Ward developing Call of Duty (2003) and Call of Duty 2 (2005) and Treyarch developing Call of Duty 3 (2006). Infinity Ward's Call of Duty 4: Modern Warfare (2007) introduced a modern setting and pr\nCall of Duty is a first-person shooter video game based on id Tech 3, and was released on October 29, 2003. The game was developed by Infinity Ward and published by Activision. The game simulates the infantry and combined arms warfare of World War II. An expansion pack, Call of Duty: United Offensive, was developed by Gray Matter Studios with contributions from Pi Studios and produced by Activision. The game follows American and British paratroopers and the Red Army. The Mac OS X version of the game was ported by Aspyr Media. In late 2004, the N-Gage version was developed by Nokia and published by Activision. Other versions were released for PC, including Collector's Edition (with soundtrack and strategy guide), Game of the Year Edition (includes game updates), and the Deluxe Edition (which contains the United Offensive expansion and soundtrack; in Europe the soundtrack was not included). On September 22, 2006, Call of Duty, United Offensive, and Call of Duty 2 were released together as Call of Duty: War Chest for PC. Since November 12, 2007, Call of Duty games have been available for purchase via Valve's content delivery platform "
+    },
+    {
+      "title": "Battlefield (video game series)",
+      "url": "https://en.wikipedia.org/?curid=840342",
+      "excerpt": "Battlefield is a military first-person shooter video game franchise developed by Battlefield Studios, primarily led by Swedish company DICE, and published by American company Electronic Arts. The series mainly focuses on online multiplayer, with gameplay taking place across large maps, and emphasizes teamwork and combined arms warfare.\nThe first installment of the franchise, Battlefield 1942, was released for Microsoft Windows and OS X computers in 2002. Since then, the series' installments have sold 88.7 million copies worldwide as of November 2022.\n\n\n== Gameplay ==\nThe Battlefield games usually focus on large-scale, online multiplayer battl\n"
+    },
+    {
+      "title": "Saving Private Ryan",
+      "url": "https://en.wikipedia.org/?curid=28269",
+      "excerpt": "Saving Private Ryan is a 1998 American war film directed by Steven Spielberg and written by Robert Rodat. Set in 1944 in Normandy, France, during World War II, it follows a group of soldiers, led by Captain John Miller (Tom Hanks), on a mission to locate Private James Francis Ryan (Matt Damon) and bring him home safely after his three brothers have been killed in action. The film also stars Edward Burns and Tom Sizemore.\nInspired by the books of Stephen E. Ambrose and accounts of multiple soldiers in a single family, such as the Sullivan brothers and the Niland brothers, being killed in action, Rodat drafted the script, and Paramount Pictures\nI remember one of the [veterans] telling me the entire charge up the beach was a blur—not a blur to his memory because he still remembered every single grain of sand when he had his face buried in it from that fusillade raining down on them from above. But he described how everything was not in focus for him. He described the sounds, and he described the vibrations of every concussion of every 88 shell that hit the beach, which gave some of them bloody noses, rattled their ears. The ground would come up and slam into their faces from the concussions.\"\n=== Music ===\nJohn Williams, Spielberg's longtime collaborator, produced, composed and conducted the score. Spielberg chose little music accompaniment, wanting the sounds of battle and death to be prominent. Using a spotting process, he and Williams watched a rough cut of the film to agree on which scenes would feature music. Williams deliberately avoided \"anything grandiose or operatic\". Williams recorded the 55-minute score over three days at Symphony Hall in Boston, with the Boston Symphony Orchestra and vocals by the Tanglewood Festival Chorus. The recording cost about $100,000 pe"
+    }
+  ],
+  "palette": [
+    "武器材质音色：关注枪机金属撞击、弹匣聚合物/木质枪托摩擦、黄铜弹壳落地的清脆窄带谐波（2–6kHz），要求瞬态干净无拖泥带水的电子修饰。",
+    "高能元素（对应战场爆炸与战术物）：以物理震荡取代奇幻法术音色——重炮与手雷聚焦30–80Hz高能量次低频冲击波与气压抽吸感，燃烧/烟雾弹侧重宽带白噪嘶鸣与低频空气扰动。",
+    "人声与嗓音（敌我战斗员）：取代怪物嘶吼，选用近距离干声录制的沙哑呼喊、负重喘息、咳嗽与中弹闷哼，保留喉部紧绷感与不规整气息，避免棚内过度压缩的戏剧化配音。",
+    "环境音色：开阔战场远景需包含低频空气传导的沉闷炮火隆隆声（200Hz以下为主）、风穿过残垣的窄带呼啸，以及碎石木屑自然滑落的稀疏颗粒感。",
+    "UI与战术交互音色：局限于物理战术设备质感，如无线电静噪开关（squelch）、老式按键机械咔哒声、金属弹药箱扣合声，频响集中在1–4kHz且包络极短。",
+    "空间远近特征：近景素材须具备极高干湿比与尖锐高频瞬态（>5kHz完整）；中远景素材须呈现自然的高频空气吸收滚降与宽大户外早反射，而非人工大厅混响。"
+  ],
+  "avoid": [
+    "带有明显合成器扫频、激光电音（zap）、次低频电子下潜（sub-drop）或奇幻能量感的武器与爆炸音色。",
+    "在普通装填、举枪、切枪或轻武器连发中强行加入多余的电影化“Whoosh（呼啸）”装饰层或上升铺垫音（riser）。",
+    "经过明显变调（pitch-shift）或变速处理产生颗粒感、金属振铃伪影（metallic artifacts）的素材；不合拍或音高不符时应直接更换原调原速源素材。",
+    "近距离枪械或脚步干声中自带浓重棚内板式混响、大厅混响或过长人工尾音的素材（会破坏开阔战场定位与后期空间真实感）。",
+    "过度干净精致的棚内拟音（如毫无泥泞与杂质的脆爽脚步声）或带有怪物咆哮、夸张史诗感的人声嗓音。",
+    "在交火期持续铺满宏大管弦乐或高频密集的旋律配乐（与资料中《拯救大兵瑞恩》刻意避免宏大配乐、让位战斗声的思路相悖）。"
+  ],
+  "actionGuidance": [
+    "准备/蓄力阶段（拉栓、拔插销、架枪、迫击炮装填）：挑选瞬态极短、机械咬合清晰的干声（如金属弹簧微响、布料粗糙摩擦），不加任何蓄力合成上升音，保持低响度以衬托后续爆发。",
+    "释放阶段（击发、投掷、引爆）：选择波峰因数（crest factor）高、前5ms具备极强冲击瞬态（1–4kHz裂响叠加60–120Hz胸腔撞击感）的干声，保持原调原速且单发清晰，不强制叠加装饰层。",
+    "飞行阶段（弹道、炮弹来袭）：近距离掠过挑选具真实多普勒频移（高频向中低频自然滑落）的超声速弹道鞭响（ballistic crack）；炮弹来袭挑选气动撕裂啸叫声，避免哨音合成器感。",
+    "命中阶段（材质反馈）：严格区分物理受击材质——人体命中用低频闷响与湿润布料拍击；金属装甲用高Q值跳弹啸叫（ricochet ping）；混凝土与泥土用先瞬态碎裂、后宽频散落的颗粒群音。",
+    "收势阶段（抛壳、硝烟碎屑、听觉恢复）：选用随机性强的弹壳落地碰撞声、爆炸后1–3秒内延迟落下的泥沙碎石雨，以及模拟震荡冲击后的短暂安静留白，不额外添加混响拉长尾音。",
+    "音乐进退原则：参考《拯救大兵瑞恩》资料方向，交火与高强度冲击段落音乐退场或彻底静默，仅在战前压抑、战后废墟或情感转折处介入克制、非歌剧化的低密度器乐。",
+    "空间远近与动态主次：动态优先顺序为“致命来袭/近身枪声与爆炸震荡 > 队友语音与脚步 > 远景炮火与环境风声”；通过高频衰减程度（空气吸收）和直达声/反射声比例判断候选音频的距离层级。"
+  ],
+  "searchTerms": [
+    "枪械干声 / Gunshot Dry Close",
+    "枪栓机械音 / Weapon Bolt Foley",
+    "弹壳落地 / Brass Shell Casing",
+    "子弹呼啸 / Bullet Whiz By Crack",
+    "炮弹震荡冲击 / Artillery Explosion Concussion",
+    "爆炸碎屑落石 / Explosion Debris Dirt Fall",
+    "混凝土碎裂命中 / Concrete Impact Debris",
+    "金属跳弹 / Metal Bullet Ricochet",
+    "战斗喘息呼喊 / Soldier Combat Breathing Shout",
+    "无线电静噪按键 / Tactical Radio Squelch Click",
+    "远景战场炮火环境 / Distant Warfare Battle Ambience",
+    "沙袋布料摩擦 / Heavy Gear Cloth Foley"
+  ],
+  "limitations": "1. 资料来源界限：公开资料仅提供了《使命召唤》（2003年起步兵与协同作战FPS）、《战地》（2002年起大规模多人协同作战FPS）的题材与玩法框架，以及《拯救大兵瑞恩》（诺曼底登陆、老兵口述88毫米炮弹震荡引发耳鸣与地面震动、斯皮尔伯格与约翰·威廉姆斯减少宏大配乐以突出战斗和死亡声音）的宏观声音与配乐取向；资料中不包含具体枪械频段、瞬态波形或局部混音参数。\n2. 已有声音知识与设计推导：本档案中关于具体频段划分（如30–80Hz次低频、1–4kHz裂响）、《使命召唤》与《战地》之间的声场尺度对比、六阶段动作处理细则、各类材质命中音色、人声/UI选材标准以及原调原速无混响的试听原则，均属于已有声音知识与针对“写实战争”风格的声音设计推导。\n3. 核查声明：未实际听取任何参考作品的原声带或游戏内音频，未穷尽所有战争题材作品，亦未核实相关作品或素材的实时热度。"
+}

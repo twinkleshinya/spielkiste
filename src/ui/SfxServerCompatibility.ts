@@ -1,4 +1,4 @@
-export const SFX_API_VERSION = "2026-11-20";
+export const SFX_API_VERSION = "2026-11-21";
 
 export const SFX_REQUIRED_CAPABILITIES = [
   "add-described-event",
@@ -13,6 +13,9 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "reaper-name-extension",
   "library-exclusions",
   "ai-reasoning-effort",
+  "style-research",
+  "folder-keyword-search",
+  "creative-brief",
   "project-git-export"
 ] as const;
 
