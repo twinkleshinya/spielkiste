@@ -94,7 +94,8 @@ export const CreateRunSchema = z.object({...CreativeFields,
   projectId: z.string().uuid().optional(),
   name: z.string().trim().max(120).default("视频音效贴片"), analysisMode: z.enum(["auto", "scene", "ollama"]).default("auto"), autoRender: z.boolean().default(true),
   musicEnabled: z.boolean().default(true), musicLibraryPath: z.string().trim().optional(), aiSelection: z.boolean().default(true), autoMix: z.boolean().default(true), selectionScope: z.enum(["selective", "full"]).default("selective"),
-  workflowPreset:z.enum(["reference-v6","custom"]).optional(),originalGainDb:z.number().min(-60).max(6).default(0),reusePreserved:z.boolean().default(true)
+  workflowPreset:z.enum(["reference-v6","custom"]).optional(),originalGainDb:z.number().min(-60).max(6).default(0),reusePreserved:z.boolean().default(true),
+  parentRunId:z.string().optional(), reanalysisMode:z.enum(["visual","brief"]).optional()
 }).transform(input=>{
   const workflowPreset=input.workflowPreset||(input.analysisMode==="auto"?"reference-v6":"custom");
   return workflowPreset==="reference-v6"?{...input,workflowPreset,analysisMode:"auto" as const,autoRender:true,aiSelection:true,autoMix:true,musicEnabled:true,selectionScope:"selective" as const,originalGainDb:SFX_WORKFLOW.mix.originalGainDb}:{...input,workflowPreset};
