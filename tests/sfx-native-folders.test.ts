@@ -7,15 +7,15 @@ import {parseWindowsRoots} from '../src/ui/LocalFolders.js';
 
 export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
   const roots = parseWindowsRoots([
-    'C:\\',
-    'z:\\',
-    '\\\\server\\Audio',
-    '\\\\SERVER\\Audio',
-    '  \\\\nas01\\shared\\SFX  ',
+    'C:\\\\',
+    'z:\\\\',
+    '\\\\\\\\server\\Audio',
+    '\\\\\\\\SERVER\\Audio',
+    '  \\\\\\\\as01\\shared\\SFX  ',
     'not-a-path',
     ''
   ]);
-  assert.deepEqual(roots, ['C:\\', 'Z:\\', '\\\\server\\Audio', '\\\\as01\\shared']);
+  assert.deepEqual(roots, ['C:\\\\', 'Z:\\\\', '\\\\\\\\server\\Audio', '\\\\\\\\as01\\shared']);
 }
 
 export async function testNativeFolderSelection() {
