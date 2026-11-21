@@ -248,7 +248,7 @@ export async function testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis(
   assert.match(html, /Gemini重新分析生成/);
   assert.match(html, /根据新说明重新分析/);
   assert.match(source, /\/api\/sfx\/runs\/\$\{run\.id\}\/reanalyze/);
-  assert.match(source, /mode:\s*["']visual["']/);
-  assert.match(source, /mode:\s*["']brief["']/);
+  assert.match(source, /reanalyzeProject\("visual"\)/);
+  assert.match(source, /reanalyzeProject\("brief"\)/);
   assert.doesNotMatch(source, /video-description[^\n]*onkeydown[^\n]*analyze/);
 }
