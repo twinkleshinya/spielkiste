@@ -17,7 +17,11 @@ export const STYLE_PRESETS=[
   {style:'写实战争',works:['使命召唤','战地','拯救大兵瑞恩'],pages:['Call of Duty','Battlefield (video game series)','Saving Private Ryan']},
   {style:'恐怖悬疑',works:['寂静岭','生化危机','异形'],pages:['Silent Hill','Resident Evil','Alien (film)']},
   {style:'卡通喜剧',works:['超级马力欧','猫和老鼠','功夫熊猫'],pages:['Super Mario','Tom and Jerry','Kung Fu Panda']},
-  {style:'史诗冒险',works:['战神','塞尔达传说','指环王'],pages:['God of War (2018 video game)','The Legend of Zelda: Breath of the Wild','The Lord of the Rings (film series)']}
+  {style:'史诗冒险',works:['战神','塞尔达传说','指环王'],pages:['God of War (2018 video game)','The Legend of Zelda: Breath of the Wild','The Lord of the Rings (film series)']},
+  {style:'魔法',works:['哈利·波特','博德之门3','上古卷轴5：天际'],pages:['Harry Potter (film series)',"Baldur's Gate 3",'The Elder Scrolls V: Skyrim']},
+  {style:'现代动作',works:['疾速追杀','碟中谍','使命召唤：现代战争'],pages:['John Wick (franchise)','Mission: Impossible','Call of Duty: Modern Warfare']},
+  {style:'赛博朋克',works:['赛博朋克2077','银翼杀手2049','攻壳机动队'],pages:['Cyberpunk 2077','Blade Runner 2049','Ghost in the Shell']},
+  {style:'像素复古',works:['Undertale','铲子骑士','蔚蓝'],pages:['Undertale','Shovel Knight','Celeste (video game)']}
 ];
 type Reference=StyleProfile['references'][number];
 const key=(style:string)=>createHash('sha256').update(style.normalize('NFKC').trim().toLocaleLowerCase()).digest('hex');
@@ -89,3 +93,4 @@ export class StyleResearcher {
     this.pending.set(id,task);try{return await task;}finally{this.pending.delete(id);}
   }
 }
+
