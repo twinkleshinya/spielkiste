@@ -79,6 +79,16 @@ export function testDirectorSemanticSafety() {
   assert.equal(raise.candidates[0]?.assetId, "good", "preparing a weapon cannot select a collision just because its name also says foley");
 }
 
+export function testMusicCandidatesRequireIndependentLibrary() {
+  const assets = [asset("main-music", "main/bgm_battle_loop.wav", 30), asset("music-library", "selected/track.wav", 30)];
+  const musicEvent = event({ id: "music-independent", category: "music" as never, query: "music battle", description: "背景音乐" });
+  planEventCandidates(musicEvent, { version: 1, root: ".", generatedAt: "now", assets: assets.map(a => a.id === "music-library" ? ({ ...a, musicOnly: true }) : a), warnings: [] } as any);
+  assert.deepEqual(musicEvent.candidates.map(candidate => candidate.assetId), ["music-library"], "music candidates must come only from the selected music library");
+  const noLibrary = event({ id: "music-none", category: "music" as never, query: "music battle", description: "背景音乐" });
+  planEventCandidates(noLibrary, { version: 1, root: ".", generatedAt: "now", assets, warnings: [] } as any);
+  assert.equal(noLibrary.candidates.length, 0, "music must stay empty when no independent music library is selected");
+}
+
 export function testDirectorContinuousPlacements() {
   const assets = [asset("wind", "amb_wind.wav", 2), asset("music", "music/boss_battle_loop.wav", 30)];
   const amb = event({ id: "amb", end: 8, category: "ambience", candidates: [{ assetId: "wind", score: 1, reason: "name" }] });
