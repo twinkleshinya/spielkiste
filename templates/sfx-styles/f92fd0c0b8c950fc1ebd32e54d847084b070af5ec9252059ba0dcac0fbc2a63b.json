@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "style": "魔法",
+  "researchedAt": "2026-11-21T15:59:04.971Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "「魔法」风格在本地试听选材上强调超自然能量与现实声学材质（木、石、火、冰、气息、管弦与人声）的有机融合，避免纯电子合成感。基于公开资料的题材背景与已有声音知识及设计推导，三部重点参考作品呈现清晰的共性与差异：共性方面，三者均依托宏大奇幻世界观构建神秘且具秩序感的施法体系，并高度依赖管弦乐或合唱塑造史诗情绪锚点（如《哈利·波特》的电影配乐体系与《上古卷轴5：天际》由Jeremy Soule打造的多层叠加合唱）。差异方面（含声音设计推导）：《哈利·波特》源自巫师校园电影传统，声音推导上更偏向轻灵敏捷、魔杖导向的木质与空气感点缀及戏剧情绪起伏；《博德之门3》脱胎于D&D第五版《被遗忘的国度》并强化电影化近远景镜头切换，音频团队因应镜头尺度扩张，在推导上强调多学派元素辨识度、夺心魔等异质生物肌理与近景材质微动；《上古卷轴5：天际》扎根粗犷亚北极风貌，拥有虚构龙语合唱团（30人叠录至90人规模）与卢恩字母体系，声音推导上更具原始野蛮、石木粗粝质感与厚重中低频声压。选材时应严格保持源素材原调原速且不新增混响，直接依据瞬态轮廓、频段洁净度与调制纹理判断素材，绝不将单一作品的音色倾向等同于全部魔法风格。",
+  "references": [
+    {
+      "title": "Harry Potter (film series)",
+      "url": "https://en.wikipedia.org/?curid=7629286",
+      "excerpt": "Harry Potter is a film series based on the Harry Potter series of novels by J. K. Rowling. The series was produced and distributed by Warner Bros. Pictures and consists of eight fantasy films, beginning with Harry Potter and the Philosopher's Stone (2001) and culminating with Harry Potter and the Deathly Hallows – Part 2 (2011). A spin-off prequel series started with Fantastic Beasts and Where to Find Them (2016), marking the beginning of the Wizarding World shared media franchise.\nAn American and British co-production, the series was mainly produced by David Heyman, and stars Daniel Radcliffe, Rupert Grint, and Emma Watson as the three leadi\nHe said, \"In the early days, every time you saw the exterior of Hogwarts, it was a physical miniature\", which was made by craftsmen and occupied a large sound stage. \"We ended up with a profile of how Hogwarts looked, a skyline that actually I didn't design, and it wasn't always satisfactory, and as all the novels got written and movies got made there were new requirements [for buildings]. The [Astronomy Tower] definitely wasn't there originally, and so we were able to add that substantial piece. And in the last film, we needed an arena for the battle for Hogwarts – the big courtyard outside doubled in size, and if you look at the first movie it wasn't there at all. There were quite some liberties taken with the continuity of Hogwarts.\" In the last film, Craig used a digital model instead of a miniature to \"embrace the latest technology\".\n=== Music ===\nAfter Williams left the series to pursue other projects, Patrick Doyle scored the fourth entry, Goblet of Fire, which was directed by Mike Newell, with whom Doyle had worked previously. In 2006, Nicholas Hooper started work on the score to Order of the Phoenix, reuniting with directo"
+    },
+    {
+      "title": "Baldur's Gate 3",
+      "url": "https://en.wikipedia.org/?curid=60979422",
+      "excerpt": "Baldur's Gate 3 (also known as BG3 and Baldur's Gate III) is a role-playing video game by Larian Studios. It is the third installment in the Baldur's Gate series. The game's full release for Windows happened on August 3, 2023, with PlayStation 5, macOS, and Xbox Series X/S later in the same year. In the game's narrative, the party seeks to cure themselves of the Illithid parasites infecting their brains. It can be played alone or in a group.\nAdapted from the fifth edition of tabletop role-playing game Dungeons & Dragons, Baldur's Gate 3 takes its mechanics and setting, the Forgotten Realms, from the tabletop game. Players create a customizabl\nLarian wanted to produce a game with triple-A production values, budget, and marketing;  they viewed Baldur's Gate, alongside Fallout and Ultima, as an intellectual property capable of enabling that. Larian built new cinematic functionality into their game engine, viewing these capabilities as key to accessibility. The studio's cinematic ambitions came with challenges, requiring the studio grow considerably. Close-up dialogue scenes required new teams responsible for cinematics quality assurance and lighting. The size of the art and audio teams increased because the technical requirements differed from those of Original Sin II. Clothing designs and textures, for example, had to work from close and far perspectives because of the cinematic camera. Baldur's Gate 3 uses technology from the eighth generation of video game consoles, like screen-spaced reflections and shadow maps for lighting and shadow.\nThe developer was widely criticised for not providing full credits for localisation teams involved in the game. Vincke blamed the error on Larian's localisation provider, Altagram, and promised a fix. Altagram published an apology. Laria"
+    },
+    {
+      "title": "The Elder Scrolls V: Skyrim",
+      "url": "https://en.wikipedia.org/?curid=30014712",
+      "excerpt": "The Elder Scrolls V: Skyrim is a 2011 action role-playing game developed by Bethesda Game Studios and published by Bethesda Softworks. It is the fifth main installment in The Elder Scrolls series, following The Elder Scrolls IV: Oblivion (2006), and was released worldwide for Windows, PlayStation 3, and Xbox 360 on November 11, 2011. Skyrim was developed using the Creation Engine. The team opted for a rugged, largely sub-arctic world, after Oblivion's Imperial Province of Cyrodiil, which game director and executive producer Todd Howard considered more unique by comparison.\nThe game is set 201 years after the events of Oblivion and takes place\n=== Audio ===\nThe team employed Jeremy Soule to compose the music for Skyrim, who previously worked on Morrowind and Oblivion. The game's main theme \"Dragonborn\" was recorded with a choir of over 30 people singing in the fictional dragon language. Creative director Todd Howard envisioned the theme for Skyrim as The Elder Scrolls theme sung by a choir of barbarians. This became a reality when the idea was passed by Soule, who recorded the 30-man choir and layered three separate recordings to create the effect of 90 voices. Bethesda's concept artist Adam Adamowicz created the Draconic language, and also developed a 34-character runic alphabet for the game. He expanded the lexicon of Draconic as needed; Bruce Nesmith explained that words were introduced to the lexicon every time that the studio \"wanted to say something\".\nBethesda released four audio CDs along with the game on November 11, 2011. The soundtrack to Skyrim is sold via Jeremy Soule's distributor DirectSong, and Soule autographed all physical copies ordered via DirectSong. \"Day One\" pre-orders from Amazon.de also included a five-track promotional Skyrim soundtrack sampler. "
+    }
+  ],
+  "palette": [
+    "武器材质：魔杖与木质法杖优先挑选干爽木料轻擦、细微纤维吱嘎与中频空腔共鸣；附魔冷兵器与金属法器需具清晰高频金属泛音但无4kHz附近尖锐啸叫；水晶或宝石法球应呈现短促紧致的高Q值清脆泛音而非廉价玻璃碎响。",
+    "法术元素-奥术与以太：选用经窄带滤波修饰的气流扫频、具备共振峰移动的细腻颗粒沙沙声与克制的和谐泛音，中频稳定、能量聚焦而不散漫。",
+    "法术元素-火与冰：火焰需兼具干脆的中高频噼啪瞬态与可控的中低频热浪涌动，避免浑浊的宽带白噪呼啸；冰霜需具备高瞬态脆裂声、冰面挤压呻吟与冷冽的高频微粒闪烁。",
+    "法术元素-雷电与暗影心灵：雷电讲究鞭梢般的干脆爆裂头与收尾利落的电弧嘶鸣；暗影、死灵及类夺心魔心灵法术偏向中低频相位偏移嗡鸣、粘稠有机膜片震动与空洞的咽喉/共鸣腔低响。",
+    "怪物嗓音：魔法生物以真实动物呼吸、低胸腔共振为基础叠加可控的奇幻谐波；龙类嗓音参考《天际》龙语的喉音爆破与厚重胸腔吼叫（声音设计推导）；亡灵与异怪侧重干燥气声嘶哑或湿润弹响的咔哒声，确保辅音攻击力清晰。",
+    "环境与UI：魔法环境底噪应低密度且留白充足（如微弱气流、远距风铃共鸣、古老石室低频嗡鸣），不占满中频；UI与法术书/符文交互优先羊皮纸翻折、干爽木石轻敲与柔和钟琴瞬态，规避电子提示音。",
+    "空间远近：近景视角（呼应《博德之门3》近景镜头需求）选细节丰富、含手指/衣料/气息摩擦的近场干声；远景视角选高频自然滚降、瞬态轮廓更凝聚且无长拖尾的素材，靠素材自身干湿度而非额外加混响区分远近。",
+    "动态主次与音乐进退：动态上始终保证「施法语言/核心瞬态 > 元素主干 > 装饰微粒」；管弦弦乐、铜管与合唱团（如《天际》粗犷合唱）进退时往往占据200Hz-1kHz及宏大空间感，因此法术与环境素材应避开长时持续单音冲突，保留干净起止点。"
+  ],
+  "avoid": [
+    "避免明显的现代电子合成器音色（如未修饰的锯齿波、FM电音扫频、赛博激光“biu”声或科技感脉冲），会瞬间破坏奇幻魔法的有机可信度。",
+    "避免自带浓重长混响（教堂/大厅长尾响）的素材；在无新增混响的试听原则下，过湿的尾音会导致近景特写或不同室内外场景发生空间穿帮。",
+    "避免6kHz以上存在持续刺耳白噪嘶嘶声或过亮碎玻璃高频堆积的素材，此类音频在高频密集施法时极易引发听觉疲劳并掩蔽台词。",
+    "避免必须依赖大幅变速或变调才能勉强使用的素材；试听时应严格以原调原速评估，体量感与节奏感不达标即果断淘汰。",
+    "避免单薄的卡通/街机质感音效（如滑音哨声、塑料感电子铃声、缺乏中低频支撑的干瘪“叮当”声）。",
+    "避免100Hz以下长时间浑浊嗡嗡声堆积且缺乏起音瞬态的素材，易在多单位战斗或配合音乐进出时淹没动作节奏与怪物嗓音。",
+    "避免为所有动作强行叠加「圣咏吟唱」或「晶莹闪烁」装饰层，轻型法术或高频连发若强行堆叠装饰音会导致听感臃肿、主次失衡。"
+  ],
+  "actionGuidance": [
+    "试听总则：所有候选素材均须保持原调原速、无新增混响进行干听对比；严禁强行给每个阶段和动作都铺设装饰层，短平快的轻施法仅保留清晰的核心起手与释放即可。",
+    "准备（Windup）：优先挑选短促、低能量的声学微动素材，如魔杖轻挑空气的细微破风、法袍衣料摩擦、施法者短吸气或木石法器轻触声；要求包络干净，不抢占后续蓄力的动态爬升空间。",
+    "蓄力（Charge/Channeling）：选择包络平缓渐强、纹理可持续循环且无刺耳共振峰突变的素材（如稳步收束的气流、克制的颗粒摩擦、低幅符文共鸣），在原速下能量累积节奏须匹配动画时长，并为人声咒语与音乐进入留出中频走廊。",
+    "释放（Release/Cast）：瞬态必须果断清晰，起音前10-30ms内应有明确脉冲、木石迸裂或气流爆发头，通过200Hz-3kHz核心频段直白交代元素属性，拒绝软塌慢热的淡入释放声。",
+    "飞行（Projectile/Flight）：优先带有自然气流起伏、轻微音高滑动或细碎颗粒流动的中频拖尾素材；若带哨音或闪烁颗粒，需确保响度与高频密度克制，避免干扰战场空间定位与UI提示。",
+    "命中（Impact/Hit）：依据法术体量与受击物材质精准选材——重击需有坚实瞬态打击头与收敛利落的低频下潜，元素爆发需可闻材质交互反馈（如灼烧焦响、碎冰崩解、金属受震余韵），不选拖泥带水的巨型长爆。",
+    "收势（Follow-through/Recovery）：选用自然物理衰减的短尾声（如余烬轻爆、散逸微风、低沉能量回落）；简单动作可直接靠主体尾音自然收束，无需额外拼接多余的闪烁叮当装饰音。",
+    "动态主次与空间处理：近景镜头优先高信噪比、细微肌理清晰的近场录音素材；远距离或群战法术优先轮廓紧凑、中频集中且尾部干脆的素材，在不添加混响的前提下维持战场动态层次与清晰度。"
+  ],
+  "searchTerms": [
+    "Magic Spell Cast",
+    "Arcane Whoosh",
+    "Wand Flick",
+    "Fireball Impact",
+    "Ice Shatter",
+    "Lightning Crack",
+    "Dark Magic Drone",
+    "Rune Stone Hum",
+    "Crystal Chime",
+    "Staff Wood Foley",
+    "Magical Ambience",
+    "Portal Energy",
+    "Dragon Roar",
+    "Monster Breath",
+    "Parchment UI",
+    "魔法施法",
+    "奥术蓄力",
+    "魔杖挥动",
+    "法术命中",
+    "法术飞行拖尾",
+    "火焰爆裂",
+    "寒冰碎裂",
+    "雷电劈击",
+    "暗影低鸣",
+    "符文石共鸣",
+    "法杖木质摩擦",
+    "魔法环境底噪",
+    "怪物嘶吼",
+    "羊皮纸翻页UI",
+    "治愈微光"
+  ],
+  "limitations": "资料与推导边界说明：本研究所读取的公开百科资料仅提供了三部作品的制作背景与有限音乐线索——包括《哈利·波特》系列电影化进程、霍格沃茨微缩模型向数字模型演进及管弦配乐接替；《博德之门3》基于D&D第五版《被遗忘的国度》与夺心魔寄生剧情，且因应电影化近远景镜头切换大幅扩充了音频与美术团队；《上古卷轴5：天际》采用亚北极粗犷世界观、Jeremy Soule配乐、30人合唱团叠录为90人规模演唱虚构龙语以及34字符卢恩字母表。上述公开资料均未提供具体法术音效、武器碰撞、怪物嗓音或UI触发声的声学细节证据。因此，本档案中所有关于动作六阶段声学包络、频段分布、元素材质纹理、近远景素材选型及不合适音色判据的结论，均明确属于基于题材背景与行业经验的「声音设计推导」，而非直接源自资料文本。此外，本研究未声称实际听取过任何参考作品的原声带或游戏内提取音频，未穷尽魔法奇幻品类的全部作品，亦未核实任何作品或音色元素的实时市场热度。"
+}
