@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "style": "恐怖悬疑",
+  "researchedAt": "2026-11-21T15:01:02.392Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "本档案面向“恐怖悬疑”风格游戏，用于指导本地干声素材的试听与筛选。结合公开资料与声音设计推导，代表作品的共性在于：高度依赖“漫长压抑的铺垫”与“突发性威胁爆发”之间的张力反差——《寂静岭》资料提及以环境音效与“静默期（periods of silence）”诱发紧迫、不适与心理紊乱，并将声音作为象征符号；《生化危机》资料体现为资源受限下的探索生存，通过带有安静主题曲与打字机的“安全屋”与外部丧尸/变异生物战区形成喘息对比；《异形》资料中剪辑师Terry Rawlings指出以缓慢节奏蓄积悬疑，再在惊吓点骤然加速攻击。三者差异明显（设计推导）：《寂静岭》偏心理超现实与异化工业感，《生化危机》偏写实肉体恐怖与冷硬机械拟物，《异形》偏密闭科幻孤立感与未知生物压迫，选材时不应将单一作品等同于整个恐怖悬疑类型。本标准要求在试听阶段即通过源素材的频响、瞬态、谐波与自然直达声比例进行判断，保持源素材原调原速，不依赖后期添加混响，也不强迫每个动作都叠加装饰层。",
+  "references": [
+    {
+      "title": "Silent Hill",
+      "url": "https://en.wikipedia.org/?curid=390676",
+      "excerpt": "Silent Hill (Japanese: サイレントヒル, Hepburn: Sairento Hiru) is a Japanese horror franchise centered on a series of survival horror video games created by Team Silent and published by Konami. The franchise is primarily set in Silent Hill, a fictional American town plagued by supernatural events, the occult, and dreams manifested into physical form, often taking the shape of horrific environments and creatures stalking the protagonists. The series is heavily influenced by the literary genre of psychological horror, with its player characters being mostly \"everymen\". The franchise has expanded to include various printed works, three film adaptations\nSilent Hill HD Collection is a high-definition re-release of Silent Hill 2 and Silent Hill 3 for the PlayStation 3 and Xbox 360, featuring high-resolution visuals, new sounds, new voices, and Trophies/Achievements for both games. Silent Hill 2 includes the option to use both the old and new voices; however, Silent Hill 3 features only a new voice track, as the old voices were unavailable for legal reasons. Silent Hill 2 also features both the main scenario and the Born from a Wish sub-scenario, as seen in later re-releases such as the Director's Cut.\nThe individual installments in Silent Hill contain various forms of symbolism. The symbols are images, sounds, objects, creatures, or situations that represent concepts and facts, as well as the feelings, emotions, and mental states of the characters.\n=== Audio ===\nThe installments in the Silent Hill series feature various sound effects, some of which are ambient, as well as periods of silence. These sound effects are designed to induce certain emotions and feelings in the player, such as urgency, discomfort, or a sense of psychological disturbance. According to the series' former soun"
+    },
+    {
+      "title": "Resident Evil",
+      "url": "https://en.wikipedia.org/?curid=52820",
+      "excerpt": "Resident Evil, also known as Biohazard (バイオハザード, Baiohazādo) in Japan, is a Japanese horror game series and media franchise created by Capcom. It consists of survival horror, third-person shooter, and first-person games, with players typically surviving in environments inhabited by zombies and other mutated creatures. The franchise has expanded into media including a live-action film series, animated films, television series, comic books, novels, audio dramas, and merchandise. With over 218 million video game copies sold worldwide as of October 2026, Resident Evil is Capcom's best-selling franchise, the ninth best-selling video game franchise\nResident Evil, also known as Biohazard (バイオハザード, Baiohazādo) in Japan, is a Japanese horror game series and media franchise created by Capcom. It consists of survival horror, third-person shooter, and first-person games, with players typically surviving in environments inhabited by zombies and other mutated creatures. The franchise has expanded into media including a live-action film series, animated films, television series, comic books, novels, audio dramas, and merchandise. With over 218 million video game copies sold worldwide as of October 2026, Resident Evil is Capcom's best-selling franchise, the ninth best-selling video game franchise, the best‑selling horror game franchise, and one of the highest-grossing horror media franchises.\nExploration involves finding keys, examining objects and collecting information needed to open routes through interconnected environments. Safe rooms provide respite from enemies and serve as bases for exploration. They are associated with quieter musical themes and typewriters used to save progress. Healing items include herbs, which can be combined to improve their effects. Limited inventory spa"
+    },
+    {
+      "title": "Alien (film)",
+      "url": "https://en.wikipedia.org/?curid=23487440",
+      "excerpt": "Alien is a 1979 science fiction horror film directed by Ridley Scott and written by Dan O'Bannon, based on a story by O'Bannon and Ronald Shusett. It follows a commercial starship crew who investigate a derelict space vessel and are hunted by a deadly extraterrestrial creature. The film stars Tom Skerritt, Sigourney Weaver, Veronica Cartwright, Harry Dean Stanton, John Hurt, Ian Holm, and Yaphet Kotto. It was produced by Gordon Carroll, David Giler, and Walter Hill through their company Brandywine Productions and was distributed by 20th Century-Fox. Giler and Hill revised and made additions to the script; Shusett was the executive producer. T\nEditing and post-production took roughly 20 weeks and concluded in late January 1979. The sound effects editor, Terry Rawlings, had previously collaborated with Scott on sound effects editing for The Duellists. Scott and Rawlings edited much of Alien to have a slow pace to build suspense for the more tense and frightening moments. According to Rawlings: \"I think the way we did get it right was by keeping it slow, funny enough, which is completely different from what they do today. And I think the slowness of it made the moments that you wanted people to be sort of scared...then we could go as fast as we liked because you've sucked people into a corner and then attacked them, so to speak. And I think that's how it worked.\" The first cut of the film was over three hours long; the final version is just under two hours.\n=== Music ===\nThe musical score was composed by Jerry Goldsmith, conducted by Lionel Newman, and performed by the National Philharmonic Orchestra. Scott had originally wanted the film to be scored by Isao Tomita, but Fox wanted a more familiar composer and Goldsmith was recommended by then-president of Fox Alan Ladd Jr."
+    }
+  ],
+  "palette": [
+    "武器材质（写实与破败感）：选材偏老旧金属的干涩摩擦与非对称敲击（高频2-6kHz带有微弱毛刺与氧化锈蚀颗粒感，避免光滑清亮钢鸣）；枪械与工具偏向紧凑机械闭锁、击锤干脆瞬态（5-15ms锐利起音，尾音干爽收束）；钝器与近战偏向闷重木质/骨质撞击（120-350Hz中低频扎实，低频不拖尾）。",
+    "超自然/异化元素（克制与不安）：非华丽魔法，而是40-90Hz低频压迫嗡鸣（微幅不稳定调频或粗糙谐波抖动）、老旧电路50/60Hz交流哼声、极微弱窄带耳鸣啸叫（3-5kHz低电平持续音）以及酸液腐蚀/粘液冒泡等高频湿润颗粒感。",
+    "怪物嗓音（非人化生理特征）：包含粗糙次谐波与非线性失真的胸腔低吼、喉部干涩气声摩擦、湿黏口腔粘连与节肢/骨骼咔哒声；优先保留呼吸微颤与生物质感，避免带有明显人类语言咬字或可辨识人声加工痕迹的素材。",
+    "环境底噪（低噪底压迫）：以物理空间微观异响为主——封闭管道低频风压、老式灯管微弱电流嘶嘶声、建筑热胀冷缩结构嘎吱声、稀疏干爽水滴；需选择源素材自带极近自然反射或纯干声的片段，禁止自带浓重教堂/大厅尾音的素材。",
+    "UI与交互（物理拟物）：参考《生化危机》安全屋打字机等设定推导，选用机械按键、老旧继电器吸合、磁带卡顿、心跳或医疗仪微弱脉冲等低亮度物理声，高频温润克制，避免电子合成提示音。",
+    "空间远近与动态主次：近景素材要求高直达声、细节丰富（衣料摩擦、微弱喘息、血液滴落）；远景素材直接从库中挑选高频自然暗淡、电平微弱的远处异响，不靠后加混响制造距离。动态上需保持极宽对比度，底噪铺垫通常在较低电平留白，为突发瞬态保留充足动态余量（Headroom）。"
+  ],
+  "avoid": [
+    "带有浓重后期大厅混响、长延迟尾音（baked-in wet tail）的素材：违背无新增混响与干声可控原则，在游戏内易导致空间感混乱与局部动作糊成一团。",
+    "高亮度、清脆晶莹的奇幻魔法音色或日系街机/二次元打击音：过亮的高频泛音与夸张合成质感会瞬间破坏恐怖悬疑的真实威胁感与压抑氛围。",
+    "有明显时间拉伸伪影（金属颗粒感撕裂）或极端变调后导致的浑浊失真素材：选材须严格保留源素材原调原速，靠音色本身特征而非拙劣后期处理营造怪异感。",
+    "商业预告片式的过度压缩Boom、Braaam或高频白噪EDM Riser：全频段堵满且缺乏呼吸感，掩盖微妙的心理悬疑留白。",
+    "弹性过强、诙谐卡通的声响（如boing、pop）或温暖明亮、带有积极情绪暗示的和弦与钟琴提示音。",
+    "持续高响度压缩、动态范围极窄的“音墙”型素材：无法配合静默期与突发惊吓形成动态主次反差。"
+  ],
+  "actionGuidance": [
+    "准备/蓄力阶段：极度克制，优先选用单层不安预兆（如指节错动、衣物微擦、金属预紧卡扣、屏息吸气或极低电平低频微震）；不强行加装饰性扫频蓄力，必要时直接采用1-2秒“环境抽离/静默留白”作为心理蓄力（呼应《寂静岭》静默期与《异形》慢节奏拉扯）。",
+    "释放阶段：要求瞬态干脆、直达声比例高（如击发瞬态、利爪撕裂短促气音、怪物扑出瞬间爆发嘶吼），严格保持源素材原调原速，起音无多余拖沓前导。",
+    "飞行阶段：非高速投射物或大型挥击可彻底省略飞行装饰层，避免“每个动作都有Whoosh”的廉价感；确需表现挥空或投射时，选用频宽受限、贴近空气真实切割或沉重布料呼啸的干声，时长严格贴合动作轨迹。",
+    "命中阶段：强调材质碰撞与生理不适反馈（钝击闷响叠加骨裂脆响、金属刮擦硬面、湿黏穿刺），仅叠加必要核心层，不强行拼贴炫技尾音；保持源素材原调原速与自然短收尾，无新增混响。",
+    "收势阶段：用极简微弱余韵代替长尾音（如滴液声、喘息回落、枪栓复位、余震嘎吱），迅速将声场交还给低噪底环境，为下一次紧张循环制造落差。",
+    "音乐进退与动态主次：探索与安全区（参考《生化危机》安全屋）允许彻底无音乐或仅留极简安静主题/低电平脉冲；威胁逼近时再切入不协和弦或低频节奏，威胁解除后干脆淡出或硬切留白。前景交互与怪物声永远占据动态最高优先级，环境退居底层。",
+    "试听选材铁律：试听本地库时全程关闭DAW或引擎的混响总线、不变调、不变速，直接用波形起音斜率、频谱冷暖分布与信噪比判断是否可用。"
+  ],
+  "searchTerms": [
+    "恐怖环境底噪 horror ambience room tone dry",
+    "金属刮擦生锈 metal scrape rusty squeak dry",
+    "骨骼断裂血肉打击 bone break flesh impact gore",
+    "怪物嘶吼喉音喘息 monster growl hiss breath vocal",
+    "低频压迫嗡鸣 sub drone tension rumble",
+    "老式枪械上膛机械击发 gun cocking mechanical click dry",
+    "打字机继电器老旧开关 typewriter relay switch UI",
+    "木门吱呀脚步声微弱 creak door footsteps sparse dry",
+    "近场心跳耳鸣呼吸 heartbeat tinnitus breathing close",
+    "酸液腐蚀粘液泡沫 acid sizzle slime organic",
+    "挥击破风干声布料 whoosh swing cloth dry",
+    "不协和弦惊吓刺音 horror stinger dissonant string dry"
+  ],
+  "limitations": "资料依据与边界说明：1) 公开资料实证部分仅限于维基百科摘录内容——《寂静岭》的心理恐怖定位、声音象征意义、环境音效与静默期设计；《生化危机》的生存恐怖机制、丧尸/变异体、探索解谜以及安全屋安静主题曲与打字机存档设定；《异形》（1979）的太空幽闭猎杀背景、Terry Rawlings与Ridley Scott“先慢后快”制造悬疑惊吓的剪辑节奏及Jerry Goldsmith配乐事实。2) 属于声音设计推导（无资料直接声学证据）的部分包括：所有具体频段建议（如40-90Hz亚低频、2-6kHz刮擦毛刺、3-5kHz耳鸣）、武器材质/生物粘液/怪物次谐波等音色细节、动作六阶段（准备至收势）处理策略、音乐进退与动态主次规则、常见不合适音色排除项以及检索关键词。3) 本档案未实际听取《寂静岭》《生化危机》《异形》的任何原声带或游戏实机音频，未穷尽所有恐怖悬疑作品，也未核实任何作品或音效库的实时热度；上述三部作品仅作为心理、生化生存与科幻悬疑三条分支的参考坐标，不可将其等价于全部恐怖悬疑风格。"
+}
