@@ -508,6 +508,8 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   dirty = false;
   importSession = null;
   $("workspace").hidden = true;
+  $("reanalyze-visual").hidden = true;
+  $("reanalyze-brief").hidden = true;
   $("history").value = "";
   $("name").value = "我的视频音效";
   for(const id of ["video-description","sound-requirements","sound-style","custom-style"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;
