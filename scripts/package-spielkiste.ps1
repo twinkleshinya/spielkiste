@@ -14,7 +14,7 @@ foreach ($name in @("package.json", "package-lock.json", "tsconfig.json", ".env.
 }
 $stageScripts = Join-Path $stageRoot "scripts"
 New-Item -ItemType Directory -Path $stageScripts -Force | Out-Null
-foreach ($name in @("start-sfx.mjs", "create-sfx-demo.mjs", "create-desktop-shortcut.ps1", "stamp-sfx-frames.ps1", "package-spielkiste.ps1")) {
+foreach ($name in @("start-sfx.mjs", "start-web.mjs", "tool-git.mjs", "create-sfx-demo.mjs", "create-desktop-shortcut.ps1", "stamp-sfx-frames.ps1", "package-spielkiste.ps1")) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $stageScripts -Force
 }
 $stageSkills = Join-Path $stageRoot ".agents\skills"
@@ -22,6 +22,7 @@ New-Item -ItemType Directory -Path $stageSkills -Force | Out-Null
 foreach ($name in @("video-sfx-workflow", "video-sfx-timing", "video-sfx-selection", "video-sfx-mix-review")) {
     Copy-Item -LiteralPath (Join-Path $workspace ".agents\skills\$name") -Destination $stageSkills -Recurse -Force
 }
+Copy-Item -LiteralPath (Join-Path $workspace "tool-git.json") -Destination $stageRoot -Force
 $stageDocs = Join-Path $stageRoot "docs"
 New-Item -ItemType Directory -Path $stageDocs -Force | Out-Null
 $guide = Get-ChildItem -LiteralPath (Join-Path $workspace "docs") -Filter "Spielkiste-*.md" -File |
