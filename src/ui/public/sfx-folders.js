@@ -4,32 +4,36 @@
  * withholds the selected Windows path from page JavaScript. Keep that boundary
  * explicit instead of showing a fake in-page directory browser.
  */
-export const BROWSER_FOLDER_SELECTION_MESSAGE = "普通网页无法把 Windows 文件夹的完整路径交给工作台。请使用 Spielkiste 桌面版打开系统文件夹窗口，或从资源管理器复制完整路径后粘贴到输入框。";
+export const BROWSER_FOLDER_SELECTION_MESSAGE = "当前本地网页服务没有成功打开系统文件夹窗口。请使用 Spielkiste 桌面版，或从资源管理器复制完整路径后粘贴到输入框。";
 
 export function chooseLocalFolder(initialPath="",description="选择文件夹") {
   if(typeof window!=="undefined"&&typeof window.spielkisteDesktop?.chooseFolder==="function")return window.spielkisteDesktop.chooseFolder({initialPath,description});
-  return openBrowserFolderNotice();
+  return pickFolderViaLocalServer(initialPath,description);
 }
 
 /**
- * Browser fallback: use the browser's own native picker when available only
- * to make the limitation clear, then keep the path field as the source of
- * truth. No upload or in-page directory crawl is performed here.
+ * The local web server can launch the Windows FolderBrowserDialog and return
+ * the selected absolute path. This is the browser-mode equivalent of the
+ * Electron bridge; it never uploads or crawls the directory in the page.
  */
-async function openBrowserFolderNotice() {
-  if(typeof window!=="undefined"&&typeof window.showDirectoryPicker==="function") {
-    try {
-      const handle=await window.showDirectoryPicker({mode:"read"});
-      const name=handle?.name?`“${handle.name}”`:"该文件夹";
-      const message=`已通过系统窗口选择${name}。${BROWSER_FOLDER_SELECTION_MESSAGE}`;
-      if(typeof window.alert==="function")window.alert(message);
-    }catch(error) {
-      if(error?.name!=="AbortError"&&typeof window!=="undefined"&&typeof window.alert==="function")window.alert(`选择文件夹失败：${error.message||error}`);
+async function pickFolderViaLocalServer(initialPath,description) {
+  try {
+    const start=await fetch("/api/pick-folder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({initialPath,description})});
+    const picker=await start.json();
+    if(!start.ok||!picker?.id)throw new Error(picker?.error||"本地系统选择器接口不可用");
+    for(let attempt=0;attempt<240;attempt++) {
+      await new Promise(resolve=>setTimeout(resolve,500));
+      const response=await fetch(`/api/pick-folder/${encodeURIComponent(picker.id)}`);
+      const result=await response.json();
+      if(result.status==="success")return result.path||null;
+      if(result.status==="cancelled")return null;
+      if(result.status==="failed")throw new Error(result.error||"选择文件夹失败");
     }
-  }else if(typeof window!=="undefined"&&typeof window.alert==="function") {
-    window.alert(BROWSER_FOLDER_SELECTION_MESSAGE);
+    throw new Error("系统文件夹选择窗口等待超时，请直接从资源管理器复制完整路径并粘贴到输入框。");
+  }catch(error) {
+    if(typeof window!=="undefined"&&typeof window.alert==="function")window.alert(`${error?.message||error}。${BROWSER_FOLDER_SELECTION_MESSAGE}`);
+    return null;
   }
-  return null;
 }
 
 export function searchFolderPaths(initialPath='') {

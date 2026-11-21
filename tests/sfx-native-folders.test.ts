@@ -73,15 +73,15 @@ export async function testNativeFolderSelection() {
 
 export async function testBrowserFolderSelectionExplainsSystemPathLimit() {
   const source=await fs.readFile('src/ui/public/sfx-folders.js','utf8');
-  const alerts:string[]=[];
-  const context=vm.createContext({window:{
-    showDirectoryPicker:async()=>({name:'共享素材'}),
-    alert:(message:string)=>alerts.push(message)
-  }});
+  const alerts:string[]=[];let calls:any[]=[];let pollCount=0;
+  const context=vm.createContext({window:{alert:(message:string)=>alerts.push(message)},fetch:async(url:string,options:any)=>{
+    if(url==='/api/pick-folder'){calls.push(JSON.parse(options.body));return {ok:true,json:async()=>({id:'picker-1'})};}
+    pollCount++;
+    return {ok:true,json:async()=>pollCount===1?{status:'success',path:'\\\\server\\共享\\素材'}:{status:'success',path:'\\\\server\\共享\\素材'}};
+  },setTimeout});
   vm.runInContext(source.replaceAll('export const ', 'const ').replaceAll('export function ', 'function '),context);
   const result=await vm.runInContext('chooseLocalFolder("D:\\\\素材库")',context);
-  assert.equal(result,null,'browser fallback cannot return a Windows path');
-  assert.equal(alerts.length,1);
-  assert.match(alerts[0],/无法把 Windows 文件夹的完整路径/);
-  assert.match(alerts[0],/Spielkiste 桌面版/);
+  assert.equal(result,'\\\\server\\共享\\素材','browser mode returns the absolute path from the local Windows picker service');
+  assert.deepEqual(calls,[{initialPath:'D:\\素材库',description:'选择文件夹'}]);
+  assert.equal(alerts.length,0);
 }
