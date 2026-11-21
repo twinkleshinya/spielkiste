@@ -254,6 +254,9 @@ export async function testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis(
   for (const id of ["add-library-preference", "add-library-exclusion", "add-keyword-preference", "add-keyword-exclusion"]) {
     assert.match(html, new RegExp(`id="${id}"[^>]*class="[^"]*\\badd-button\\b`), `${id} must use the shared add-button style`);
   }
+  for (const id of ["add-event", "add-music", "add-described-event", "add-manual-event"]) {
+    assert.match(html, new RegExp(`id="${id}"[^>]*class="[^"]*\\badd-action-button\\b`), `${id} must use the shared add-action-button style`);
+  }
   assert.match(html, /风格词、感受词或具体作品名称/);
   assert.match(html, /先分析声音风格，再匹配声音/);
   assert.match(html, /Gemini重新分析生成/);
