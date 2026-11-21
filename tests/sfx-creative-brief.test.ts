@@ -24,7 +24,7 @@ export async function testReanalysisUsesNewBriefAndPreservesParent() {
     const video=path.join(root,'demo.mp4'), library=path.join(root,'library');
     await fs.mkdir(library); await fs.writeFile(video,'video');
     const service=new SfxService(path.join(root,'output'));
-    const source=await service.store.createRun({videoPath:video,libraryPath:library,name:'原始项目',videoDescription:'旧说明',soundRequirements:'旧要求',style:'修仙'});
+    const source=await service.store.createRun({projectId:'11111111-1111-4111-8111-111111111111',videoPath:video,libraryPath:library,name:'原始项目',videoDescription:'旧说明',soundRequirements:'旧要求',style:'修仙'});
     source.status='ready'; source.duration=1; source.scenes=[{start:0,end:1}];
     await service.store.save(source);
     let captured:any;
