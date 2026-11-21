@@ -5,7 +5,7 @@ export function createLibraryPreferences(container,{chooseFolder,isBusy,onChange
     if(container.children.length>=12)return;
     const entry=document.createElement("div");entry.className="library-preference";
     const key=`library-preference-${++serial}`;
-    entry.innerHTML=`<label>优先素材目录<div class="input-action"><input id="${key}" class="preference-path" placeholder="选择优先使用的资源目录"><button type="button" class="secondary preference-browse">选择目录</button></div></label><label class="preference-weight-label">权重<input class="preference-weight" type="number" min="1" max="10" step="0.5" aria-label="路径权重"></label><button type="button" class="danger-text preference-remove">移除</button>`;
+    entry.innerHTML=`<label>优先素材目录<div class="input-action"><input id="${key}" class="preference-path" placeholder="选择优先使用的资源目录"><button type="button" class="secondary preference-browse library-action-button">选择目录</button></div></label><label class="preference-weight-label">权重<input class="preference-weight" type="number" min="1" max="10" step="0.5" aria-label="路径权重"></label><button type="button" class="danger-text preference-remove">移除</button>`;
     entry.querySelector(".preference-path").value=value.path||"";entry.querySelector(".preference-weight").value=value.weight??3;
     entry.querySelector(".preference-browse").onclick=()=>{if(!isBusy())void chooseFolder(key,"选择优先使用的音效目录").catch(e=>onChange(e));};
     entry.querySelector(".preference-remove").onclick=()=>{if(!isBusy()){entry.remove();add.disabled=false;onChange();}};
@@ -47,7 +47,7 @@ export function createLibraryExclusions(container,{chooseFolder,isBusy,onChange}
     if(container.children.length>=12)return;
     const entry=document.createElement("div");entry.className="exclusion-row";
     const key=`library-exclusion-${++serial}`;
-    entry.innerHTML=`<label>排除目录<div class="input-action"><input id="${key}" class="exclusion-path" placeholder="该目录及子目录中的素材不参与选材"><button type="button" class="secondary exclusion-browse">选择目录</button></div></label><button type="button" class="danger-text exclusion-remove">移除</button>`;
+    entry.innerHTML=`<label>排除目录<div class="input-action"><input id="${key}" class="exclusion-path" placeholder="该目录及子目录中的素材不参与选材"><button type="button" class="secondary exclusion-browse library-action-button">选择目录</button></div></label><button type="button" class="danger-text exclusion-remove">移除</button>`;
     entry.querySelector(".exclusion-path").value=value;
     entry.querySelector(".exclusion-browse").onclick=()=>{if(!isBusy())void chooseFolder(key,"选择需要排除的音效目录").then(()=>onChange()).catch(error=>onChange(error));};
     entry.querySelector(".exclusion-remove").onclick=()=>{if(!isBusy()){entry.remove();add.disabled=false;onChange();}};
