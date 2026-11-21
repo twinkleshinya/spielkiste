@@ -1,4 +1,5 @@
-const { app, BrowserWindow, utilityProcess, dialog, shell } = require('electron');
+const { app, BrowserWindow, utilityProcess, dialog, shell, ipcMain } = require('electron');
+const {createFolderPicker}=require('./folder-picker.cjs');
 const path = require('node:path');
 const fs = require('node:fs');
 app.setName('Spielkiste');
@@ -39,9 +40,10 @@ async function start() {
     if (!message.port) return;
     clearTimeout(timer);
     const origin = `http://127.0.0.1:${message.port}`;
+    ipcMain.handle('spielkiste:choose-folder',createFolderPicker({getWindow:()=>window,origin,showOpenDialog:(...args)=>dialog.showOpenDialog(...args)}));
     window = new BrowserWindow({ title:'Spielkiste', width:1440, height:960, minWidth:1050, minHeight:720,
       icon:path.join(root,'src/ui/public/assets/spielkiste.ico'), show:false,
-      webPreferences:{ nodeIntegration:false, contextIsolation:true, sandbox:true } });
+      webPreferences:{ preload:path.join(__dirname,'preload.cjs'), nodeIntegration:false, contextIsolation:true, sandbox:true } });
     window.webContents.setWindowOpenHandler(({url}) => { if (/^https?:\/\//i.test(url)) shell.openExternal(url); return {action:'deny'}; });
     window.webContents.on('will-navigate', (event,url) => { if (!url.startsWith(`${origin}/`)) event.preventDefault(); });
     window.once('ready-to-show', () => { if (!smoke) window.show(); });

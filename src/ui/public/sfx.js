@@ -684,7 +684,7 @@ async function browseLocalFolder(target,description) {
   if(busy)return;setBusy(true);
   try {
     const directory=await chooseLocalFolder($(target).value.trim()||(target!=="library-path"?$("library-path").value.trim():""),description);
-    if(directory){$(target).value=directory;rememberLibrarySettings();status("已选择本机目录，直接读取音频，无需上传素材库。");}
+    if(directory){$(target).value=directory;rememberLibrarySettings();status("已选择素材目录，直接读取音频，无需上传素材库。");}
     else status("已取消选择，原路径保持不变。");
   }finally {setBusy(false);}
 }
