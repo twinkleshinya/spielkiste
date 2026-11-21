@@ -117,7 +117,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     const results = await Promise.allSettled(windows.slice(i, i + 2).map(async (window, j) => {
       signal?.throwIfAborted(); progress(`Gemini 2/4：动作分段 ${i + j + 1}/${windows.length}（${window.start}–${window.end} 秒）`);
       const selected = frames.filter(f => f.start >= window.start - .001 && f.start < window.end);
-      const result = await director.analyzeFrames(selected, `完整场景：${context}\n只分析窗口 ${window.start}–${window.end} 秒中的实际动作。${guardrails}\n返回JSON {"events":[${eventShape}]}。本轮不含环境和音乐；最多60个事件，描述中文，保留细小但真实的动作与UI反馈。`, signal);
+      const result = await director.analyzeFrames(selected, `完整场景：${context}\n只分析窗口 ${window.start}–${window.end} 秒中的实际动作。${guardrails}\n返回JSON {"events":[${eventShape}]}。本轮不含环境和音乐；最多60个事件，描述中文，保留细小但真实的动作与UI反馈。${brief}`, signal);
       await writeJson(path.join(outputDir, `analysis-window-${i + j + 1}.json`), { ...window, result });
       return parseEvents(result, duration, .2).filter(e => e.category !== "music" && e.category !== "ambience" && e.start >= window.start - .2 && e.start < window.end);
     }));
@@ -130,7 +130,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
       signal?.throwIfAborted(); progress(`Gemini 2/4：动作覆盖查漏 ${i + j + 1}/${windows.length}`);
       const existing = actions.filter(e => e.start < window.end && e.end > window.start).map(e => ({ start: e.start, end: e.end, type: e.type, actor: e.actor, phase: e.phase, description: e.description }));
       const selected = frames.filter(f => f.start >= window.start - .001 && f.start < window.end);
-      const result = await director.analyzeFrames(selected, `动作覆盖查漏。场景：${context}。窗口 ${window.start}–${window.end}。现有清单：${JSON.stringify(existing)}。${guardrails}\n逐张对照，只返回清单遗漏的真实动作：尤其落地后再次挥刀/命中、Boss抬臂/砸下、捶胸连续接触、UI收起。不要把“收势/站立/恢复”等泛称覆盖的区间当作没有其他动作。禁止重复已有事件，未遗漏则空数组。返回 {"events":[${eventShape}]}，不含音乐环境，最多25条。`, signal);
+      const result = await director.analyzeFrames(selected, `动作覆盖查漏。场景：${context}。窗口 ${window.start}–${window.end}。现有清单：${JSON.stringify(existing)}。${guardrails}\n逐张对照，只返回清单遗漏的真实动作：尤其落地后再次挥刀/命中、Boss抬臂/砸下、捶胸连续接触、UI收起。不要把“收势/站立/恢复”等泛称覆盖的区间当作没有其他动作。禁止重复已有事件，未遗漏则空数组。返回 {"events":[${eventShape}]}，不含音乐环境，最多25条。${brief}`, signal);
       await writeJson(path.join(outputDir, `analysis-audit-${i + j + 1}.json`), { ...window, result });
       return parseEvents(result, duration, .2).filter(e => !["music", "ambience"].includes(e.category) && e.start >= window.start - .2 && e.start < window.end);
     }));
@@ -143,7 +143,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
       signal?.throwIfAborted(); progress(`Gemini 2/4：短窗动作复查 ${i + j + 1}/${reviewWindows.length}（${window.start}–${window.end} 秒）`);
       const existing = actions.filter(e => e.start < window.end && e.end > window.start).map(e => ({ id: e.id, start: e.start, end: e.end, type: e.type, actor: e.actor, phase: e.phase, category: e.category, description: e.description }));
       const selected = await media.sampleFrames!(video, window.start, window.end, SFX_WORKFLOW.timing.reviewFps, path.join(outputDir, "frames", `action-review-${i + j + 1}`), signal, 768);
-      const result = await director.analyzeFrames(selected, `短窗动作复查。场景：${context}。只审核 ${window.start}–${window.end} 秒。现有清单：${JSON.stringify(existing)}。${guardrails}\n这组画面更清晰且每秒12帧，逐帧检查武器轨迹、双方身体、地面、技能光效和变化的UI。站起/收势/待机的泛称不能代替实际再次挥刀；持续捶胸要逐次标出首次接触；一次砸地不能被不同说法重复计数，脚落地和拳砸地按真实身体部位区分。\n只返回漏项或纠正项，没问题不要复述。JSON {"replaceEventIds":["被纠正或重复的原事件id"],"events":[${eventShape}]}。只有证据明确且你提供了更准确替代动作时才删除原事件；局部复查不得删除跨越此窗口的整个持续事件，环境和音乐不变，最多35个动作。`, signal);
+      const result = await director.analyzeFrames(selected, `短窗动作复查。场景：${context}。只审核 ${window.start}–${window.end} 秒。现有清单：${JSON.stringify(existing)}。${guardrails}\n这组画面更清晰且每秒12帧，逐帧检查武器轨迹、双方身体、地面、技能光效和变化的UI。站起/收势/待机的泛称不能代替实际再次挥刀；持续捶胸要逐次标出首次接触；一次砸地不能被不同说法重复计数，脚落地和拳砸地按真实身体部位区分。\n只返回漏项或纠正项，没问题不要复述。JSON {"replaceEventIds":["被纠正或重复的原事件id"],"events":[${eventShape}]}。只有证据明确且你提供了更准确替代动作时才删除原事件；局部复查不得删除跨越此窗口的整个持续事件，环境和音乐不变，最多35个动作。${brief}`, signal);
       const parsed = z.object({ replaceEventIds: z.array(z.string()).max(60).default([]) }).passthrough().parse(result);
       const events = parseEvents(result, duration, 1 / 12).filter(e => !["music", "ambience"].includes(e.category) && e.start >= window.start - .083 && e.start < window.end);
       const replacements = parsed.replaceEventIds.filter(id => events.length && existing.some(e => e.id === id && e.start >= window.start && e.end <= window.end));
