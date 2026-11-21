@@ -10,7 +10,7 @@ import type {AiReasoningEffort} from './SfxAiConfig.js';
 
 // Curated well-known reference works, not a live popularity ranking.
 export const STYLE_PRESETS=[
-  {style:'修仙',works:['黑神话：悟空','凡人修仙传','仙剑奇侠传'],pages:['Black Myth: Wukong','A Record of a Mortal’s Journey to Immortality','The Legend of Sword and Fairy']},
+  {style:'修仙',works:['黑神话：悟空','凡人修仙传','仙剑奇侠传'],pages:['Black Myth: Wukong',"A Record of Mortal's Journey to Immortality",'The Legend of Sword and Fairy']},
   {style:'武侠',works:['只狼','天涯明月刀','卧虎藏龙'],pages:['Sekiro: Shadows Die Twice','Moonlight Blade','Crouching Tiger, Hidden Dragon']},
   {style:'暗黑奇幻',works:['艾尔登法环','暗黑破坏神','指环王'],pages:['Elden Ring','Diablo IV','The Lord of the Rings (film series)']},
   {style:'科幻',works:['赛博朋克2077','光环','沙丘'],pages:['Cyberpunk 2077','Halo (franchise)','Dune (2021 film)']},
@@ -35,10 +35,10 @@ export async function collectStyleReferences(style:string,signal?:AbortSignal):P
     pages=result.query?.search?.map((p:any)=>String(p.title))||[];
   }
   const language=preset?'en':'zh';
-  const result=await readJson(`https://${language}.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exchars=6000&redirects=1&titles=${encodeURIComponent(pages!.join('|'))}&format=json`,signal);
-  const references:Reference[]=Object.values(result.query?.pages||{}).filter((p:any)=>typeof p.extract==='string'&&p.extract.length>150).map((p:any)=>{
+  const results=await Promise.allSettled(pages!.slice(0,5).map(title=>readJson(`https://${language}.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}&format=json`,signal)));
+  const references:Reference[]=results.flatMap(result=>result.status==='fulfilled'?Object.values(result.value.query?.pages||{}):[]).filter((p:any)=>typeof p.extract==='string'&&p.extract.length>150).map((p:any)=>{
     const extract=String(p.extract);const paragraphs=extract.split('\n').filter(t=>/sound|music|audio|音效|音乐|声音|作曲|配乐/i.test(t));
-    return {title:p.title,url:`https://${language}.wikipedia.org/?curid=${p.pageid}`,excerpt:(extract.slice(0,750)+'\n'+paragraphs.join('\n')).slice(0,1800)};
+    return {title:p.title,url:`https://${language}.wikipedia.org/?curid=${p.pageid}`,excerpt:(extract.slice(0,650)+'\n'+paragraphs.join('\n')).slice(0,1800)};
   });
   signal?.throwIfAborted();return references;
 }
