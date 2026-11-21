@@ -124,8 +124,10 @@ export async function testGeminiReceivesLibraryPreference() {
     let sent:SelectionTask[]=[];
     const selector=new GeminiAudioSelector({model:"test",describe:async()=>({assets:[{assetId:"a",summary:"单次低沉吼叫",tags:["roar"],energy:.8,hasMusic:false,hasSpeech:false}]}),choose:async tasks=>{sent=tasks;return {choices:tasks.map(t=>({taskId:t.taskId,assetId:"a",reason:"匹配",confidence:.9}))};}},
       {sample:async()=>({assetId:"a",data:"test",format:"wav",segments:[{start:0,end:2}]})});
-    await selector.select([event],{version:1,root,generatedAt:"now",warnings:[],assets:[a],libraryPreferences:[{path:path.dirname(a.path),weight:4}]} as any,{outputDir:root,cacheDir:path.join(root,"cache")});
+    await selector.select([event],{version:1,root,generatedAt:"now",warnings:[],assets:[a],style:'修仙',soundRequirements:'低沉但有古器质感',videoDescription:'巨型怪物吼叫',libraryPreferences:[{path:path.dirname(a.path),weight:4}]} as any,{outputDir:root,cacheDir:path.join(root,"cache")});
     const preference=(sent[0].candidates[0] as any).pathPreference;
     assert.equal(preference?.weight,4,"Gemini must know the path preference used in retrieval");
+    assert.equal(sent[0].creativeBrief?.style,'修仙','Gemini decisions must receive style');
+    assert.equal(sent[0].creativeBrief?.soundRequirements,'低沉但有古器质感');
   }finally {await fs.rm(root,{recursive:true,force:true});}
 }
