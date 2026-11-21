@@ -21,5 +21,3 @@ export async function testStyleResearchCacheAndEvidence() {
     assert.equal((await failed.list()).some((profile:any)=>profile.style==='未知'),false,'failed research must not create a researched profile');
   }finally{await fs.rm(root,{recursive:true,force:true});}
 }
-
-

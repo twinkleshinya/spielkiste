@@ -93,4 +93,3 @@ export class StyleResearcher {
     this.pending.set(id,task);try{return await task;}finally{this.pending.delete(id);}
   }
 }
-

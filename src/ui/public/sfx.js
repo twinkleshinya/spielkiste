@@ -726,8 +726,3 @@ if(initialId) {
 }else resetToNewProject({preserveLibraryInputs:true});
 await historyLoad;
 await loadAiConfig();
-
-
-
-
-
