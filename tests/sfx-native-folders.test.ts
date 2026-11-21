@@ -3,7 +3,7 @@ import {promises as fs} from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
-import {parseWindowsRoots} from '../src/ui/LocalFolders.js';
+import {parseNetworkShareRoots,parseWindowsRoots} from '../src/ui/LocalFolders.js';
 
 export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
   const roots = parseWindowsRoots([
@@ -16,6 +16,16 @@ export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
     ''
   ]);
   assert.deepEqual(roots, ['C:\\', 'Z:\\', '\\\\server\\Audio', '\\\\as01\\shared']);
+}
+
+export function testNetworkShareRootsParseNetUseOutput() {
+  const output = [
+    'Status       Local     Remote                    Network',
+    '-------------------------------------------------------------------------------',
+    'OK           Z:        \\\\nas01\\shared             Microsoft Windows Network',
+    'OK                     \\\\server\\Audio             Microsoft Windows Network'
+  ].join('\\n');
+  assert.deepEqual(parseNetworkShareRoots(output), ['\\\\as01\\shared', '\\\\server\\Audio']);
 }
 
 export async function testNativeFolderSelection() {

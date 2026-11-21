@@ -1,6 +1,10 @@
 import {promises as fs} from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import {execFile as execFileCallback} from "node:child_process";
+import {promisify} from "node:util";
+
+const execFile=promisify(execFileCallback);
 
 /** Normalize Windows filesystem roots while preserving UNC server/share paths. */
 export function parseWindowsRoots(values: string[]) {
@@ -19,6 +23,11 @@ export function parseWindowsRoots(values: string[]) {
   return roots;
 }
 
+export function parseNetworkShareRoots(output: string) {
+  const matches=output.match(/\\\\[^\\\s]+\\[^\\\s]+/g)??[];
+  return parseWindowsRoots(matches);
+}
+
 async function withTimeout<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   try {
@@ -29,6 +38,7 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds: number, fallbac
 /** Discover currently reachable UNC shares in addition to drive letters. */
 async function discoverWindowsNetworkRoots() {
   if (process.platform !== "win32") return [] as string[];
+  const connected=await execFile("net",["use"],{windowsHide:true,maxBuffer:1024*1024}).then(result=>parseNetworkShareRoots(`${result.stdout}\n${result.stderr}`)).catch(()=>[] as string[]);
   const servers = await withTimeout(
     fs.readdir("\\\\", { withFileTypes: true }).then(entries => entries.filter(entry => entry.isDirectory()).map(entry => entry.name).slice(0, 32)).catch(() => [] as string[]),
     3000,
@@ -44,7 +54,7 @@ async function discoverWindowsNetworkRoots() {
     shares.push(...entries);
     if (shares.length >= 100) break;
   }
-  return shares.slice(0, 100);
+  return parseWindowsRoots([...connected,...shares]).slice(0, 100);
 }
 
 /** Bounded breadth-first search; no audio decoding, uploads or symlink traversal. */
