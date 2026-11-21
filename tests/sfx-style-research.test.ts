@@ -7,7 +7,6 @@ export async function testStyleResearchCacheAndEvidence() {
   const module=await import('../src/sfx/StyleResearch.js') as any;
   assert.equal(typeof module.StyleResearcher,'function');
   assert.equal(['魔法','现代动作','赛博朋克','像素复古'].every((style)=>module.STYLE_PRESETS.some((preset:any)=>preset.style===style)),true,'预置风格应包含新增通用风格');
-  assert.equal(['魔法','现代动作','赛博朋克','像素复古'].every((style)=>module.STYLE_PRESETS.some((preset:any)=>preset.style===style)),true,'预置风格应包含新增通用风格');
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'spielkiste-style-'));let reads=0,calls=0;
   const profile={summary:'东方幻想动作声音',palette:['气流','金属'],avoid:['电子激光'],actionGuidance:['蓄力持续而非碎点击'],searchTerms:['magic','sword'],limitations:'文献推导，未试听原声'};
   const sources=async()=>{reads++;return [{title:'参考作品',url:'https://example.org/game',excerpt:'游戏题材与法术战斗公开资料'},{title:'参考影视',url:'https://example.org/film',excerpt:'公开制作资料'}];};
@@ -22,4 +21,5 @@ export async function testStyleResearchCacheAndEvidence() {
     assert.equal((await failed.list()).some((profile:any)=>profile.style==='未知'),false,'failed research must not create a researched profile');
   }finally{await fs.rm(root,{recursive:true,force:true});}
 }
+
 
