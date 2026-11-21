@@ -35,7 +35,7 @@ export async function testNativeFolderSelection() {
   const calls:any[]=[];
   let selected:string|null='\\\\server\\音频部\\素材库';
   const context=vm.createContext({window:{spielkisteDesktop:{chooseFolder:async(input:any)=>{calls.push(input);return selected;}}}});
-  vm.runInContext(source.replaceAll('export function ', 'function '),context);
+  vm.runInContext(source.replaceAll('export const ', 'const ').replaceAll('export function ', 'function '),context);
   const result=await vm.runInContext('chooseLocalFolder("Z:\\\\音效库", "选择素材库")',context);
   assert.equal(result,selected,'desktop selection returns the actual network filesystem path without uploading');
   assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),{initialPath:'Z:\\音效库',description:'选择素材库'});
