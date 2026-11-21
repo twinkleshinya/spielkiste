@@ -7,7 +7,7 @@ import {assetExclusionReasonResolver} from "../src/sfx/AssetExclusions.js";
 import { fixtureRun } from "./sfx-reaper-export.test.js";
 
 // Execute the browser's real handlers; only DOM/media/network boundaries are faked.
-async function editorHarness(storage = new Map<string, string>()) {
+export async function editorHarness(storage = new Map<string, string>()) {
   const source = await fs.readFile(path.resolve("src/ui/public/sfx.js"), "utf8");
   const elements = new Map<string, any>();
   const node = () => ({ value: "", textContent: "", hidden: false, disabled: false, checked: false, dataset: {}, style: {}, children: [] as any[], paused: true, currentTime: .7, src: "accepted-preview.mp4", elements: [],
@@ -63,6 +63,19 @@ async function editorHarness(storage = new Map<string, string>()) {
   $("reaper-dither").value = "auto";
   vm.runInContext('selectEvent("boss-event");', context);
   return { $, calls, storage, context, exclusions, exec: (code: string) => vm.runInContext(code, context), getRun: () => JSON.parse(JSON.stringify(vm.runInContext("run", context))), isDirty: () => vm.runInContext("dirty", context), failUpdate: () => { failUpdate = true; }, failRender: () => { failRender = true; }, setNextRun: (value: typeof initial) => { nextRun = structuredClone(value); } };
+}
+
+export async function testGenerateRequiresExplicitClick() {
+  const ui=await editorHarness();
+  let prevented=false;
+  await ui.$('create-form').onsubmit({preventDefault(){prevented=true;}});
+  assert.equal(prevented,true);
+  assert.equal(ui.calls.some(c=>c.url==='/api/sfx/runs'),false,'Enter submit must never start generation');
+  assert.equal(typeof ui.$('analyze').onclick,'function');
+  ui.$('video-description').value='角色释放剑气';ui.$('sound-requirements').value='重点是蓄力';ui.$('sound-style').value='修仙';
+  await ui.$('analyze').onclick({preventDefault(){}});
+  const sent=ui.calls.find(c=>c.url==='/api/sfx/runs');
+  assert.ok(sent);assert.equal(sent.body.videoDescription,'角色释放剑气');assert.equal(sent.body.style,'修仙');
 }
 
 export async function testSfxExclusionsStageRestoreAndGuard() {
