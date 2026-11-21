@@ -1,3 +1,5 @@
+import {StyleResearcher} from "./StyleResearch.js";
+import {creativeContext,type CreativeBrief} from "./CreativeBrief.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -42,6 +44,8 @@ import { ProjectGit } from "./ProjectGit.js";
 import { ReaperExporter } from "./ReaperExporter.js";
 import { AiConfigService, type AiReasoningEffort } from "./SfxAiConfig.js";
 
+function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,styleProfile:input.styleProfile};}
+
 type PreviewRenderer = { renderPreview(run: SfxRun, outputDir: string, options?: { preserveSavedMix?: boolean; preserveSourceEdits?: boolean; videoSource?: string; preservePlacementIds?: ReadonlySet<string> }): Promise<{ video: string; audio: string; revision: number }> };
 
 const EditSchema = z.object({ revision: z.number().int().nonnegative(), events: z.array(EventSchema).max(1000), placements: z.array(PlacementSchema).max(1000), originalGainDb: z.number().finite().min(-60).max(6), originalMuted:z.boolean().optional(), musicEnabled: z.boolean().optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
@@ -76,6 +80,7 @@ async function assertAutomaticAiReady(parsed: z.infer<typeof CreateRunSchema>): 
 
 export class SfxService {
   public store: SfxRunStore;
+  public styles: StyleResearcher;
   public projects: SfxProjectStore;
   public projectGit: ProjectGit;
   private pending = new Map<string, Promise<void>>();
@@ -89,6 +94,7 @@ export class SfxService {
     private mediaFactory = (): MediaSource => new MediaTools(),
     private rendererFactory = (): PreviewRenderer => new SfxRenderer()
   ) {
+    this.styles = new StyleResearcher(path.join(root,"style-profiles"));
     this.store = new SfxRunStore(path.join(root, "runs"));
     this.projectGit = new ProjectGit(path.join(root,'project-git'));
     const metadataRoot = path.resolve(root) === path.resolve(".output/sfx") ? path.resolve("projects") : path.join(root, "projects");
@@ -100,7 +106,7 @@ export class SfxService {
     const result = await this.projects.registerRun(run, operation);
     return result;
   }
-  private runIndex(run:SfxRun) {return {version:1 as const,root:run.libraryPath,generatedAt:run.createdAt,assets:run.assets,warnings:[],libraryPreferences:run.libraryPreferences,keywordPreferences:run.keywordPreferences,excludedLibraryPaths:run.excludedLibraryPaths,excludedKeywords:run.excludedKeywords};}
+  private runIndex(run:SfxRun) {return {...creativeFields(run),version:1 as const,root:run.libraryPath,generatedAt:run.createdAt,assets:run.assets,warnings:[],libraryPreferences:run.libraryPreferences,keywordPreferences:run.keywordPreferences,excludedLibraryPaths:run.excludedLibraryPaths,excludedKeywords:run.excludedKeywords};}
   private audioProvider(run:SfxRun) {return new CcSwitchAudioProvider(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high");}
   async status(id: string) {
     const run = this.failedWrites.get(id) || this.active.get(id) || await this.readRun(id);
@@ -219,6 +225,11 @@ export class SfxService {
         index.warnings.push(...musicIndex.warnings);
       }
       if (!index.assets.some(a => a.usable)) run.warnings.push("素材库没有可用音效，可先编辑事件，再补充素材重新分析。");
+      if(run.style) {
+        run.progress=`研究声音风格：${run.style}（已有档案将直接复用）`;await this.store.save(run);
+        run.styleProfile=await usagePhase("style-research",()=>this.styles.research(run.style!,run.workflow?.requestedModel||"gemini-4-argon",run.workflow?.reasoningEffort||"high",controller.signal));
+      }
+      Object.assign(index,creativeFields(run));
       run.progress = parsed.analysisMode === "scene" ? "检测镜头边界并生成复核清单" : "分析画面动作、物体、环境和声音意图";
       await this.store.save(run);
       const useVision = parsed.analysisMode === "auto" || parsed.analysisMode === "ollama";
@@ -231,7 +242,7 @@ export class SfxService {
         : new OllamaVisionProvider();
       if (parsed.analysisMode === "auto" && provider?.kind === "gemini") run.progress = "上传视频到 Gemini，分析动作时间点和声音事件";
       if (parsed.analysisMode === "auto" && provider?.kind === "ccswitch") run.progress = "读取 CC Switch 本地配置，分析关键帧动作和声音事件";
-      const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { signal: controller.signal, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
+      const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { ...creativeFields(run),signal: controller.signal, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
       if (parsed.analysisMode === "auto" && !["gemini", "ccswitch"].includes(result.mode)) throw new SfxError(`Gemini 未完成动作点位分析，请检查连接后重试。${result.warnings.slice(0, 2).join("；")}`);
       controller.signal.throwIfAborted();
       run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events }); run.analysisMode = result.mode; run.warnings.push(...result.warnings);
@@ -445,7 +456,7 @@ export class SfxService {
       if (input.revision !== source.revision) throw new SfxError("任务已更新，请重新打开后再选材", 409);
       if (!source.duration || !source.events.length) throw new SfxError("请先完成视频动作分析");
       const run = await this.store.createRun({ projectId: source.projectId, name: `${source.name} · Gemini选材`.slice(0, 120), videoPath: source.videoPath, libraryPath: source.libraryPath, libraryPreferences:source.libraryPreferences,keywordPreferences:source.keywordPreferences,excludedLibraryPaths:source.excludedLibraryPaths,excludedKeywords:source.excludedKeywords,workflowPreset:"custom",musicLibraryPath: source.musicLibraryPath, musicEnabled: source.musicEnabled !== false, aiSelection: true, autoMix:source.autoMix,originalGainDb:source.originalGainDb,selectionScope: input.selectionScope });
-      Object.assign(run, structuredClone({ duration: source.duration, originalGainDb: source.originalGainDb, originalMuted:source.originalMuted===true,assets: source.assets, events: source.events, placements: source.placements, scenes: source.scenes, analysisReport: source.analysisReport, analysisMode: source.analysisMode }));
+      Object.assign(run, structuredClone({ ...creativeFields(source),duration: source.duration, originalGainDb: source.originalGainDb, originalMuted:source.originalMuted===true,assets: source.assets, events: source.events, placements: source.placements, scenes: source.scenes, analysisReport: source.analysisReport, analysisMode: source.analysisMode }));
       run.workflow=structuredClone(source.workflow||workflowSnapshot("custom",{analysisMode:source.analysisMode,selectionScope:input.selectionScope,musicEnabled:source.musicEnabled!==false,aiSelection:true,autoMix:source.autoMix===true,originalGainDb:source.originalGainDb}));
       if(input.selectionScope!=="selective") {run.workflow.presetId="custom";run.workflow.name="自定义流程";}
       Object.assign(run.workflow,{operation:"reselect",timing:"reused",selection:"fresh",source:"fresh"});
@@ -520,7 +531,7 @@ export class SfxService {
         originalGainDb: source.originalGainDb
       });
       Object.assign(child, structuredClone({
-        duration: source.duration,
+        ...creativeFields(source),duration: source.duration,
         originalGainDb: source.originalGainDb,
         originalMuted: source.originalMuted === true,
         assets: source.assets,
@@ -655,7 +666,7 @@ export class SfxService {
       if (source.revision !== input.revision) throw new SfxError("任务已更新，请重新打开后再混音", 409);
       if (!source.placements.length) throw new SfxError("请先完成点位分析并选用音效");
       const run = await this.store.createRun({ projectId: source.projectId, name: `${source.name} · 自动混音`.slice(0, 120), videoPath: source.videoPath, libraryPath: source.libraryPath, libraryPreferences:source.libraryPreferences,keywordPreferences:source.keywordPreferences,excludedLibraryPaths:source.excludedLibraryPaths,excludedKeywords:source.excludedKeywords,workflowPreset:"custom",musicLibraryPath: source.musicLibraryPath, musicEnabled: source.musicEnabled !== false, aiSelection: source.aiSelection,originalGainDb:source.originalGainDb,autoMix: true });
-      Object.assign(run, structuredClone({ duration: source.duration, originalGainDb: source.originalGainDb,originalMuted:source.originalMuted===true,assets: source.assets, events: source.events, placements: source.placements, scenes: source.scenes, analysisMode: source.analysisMode, analysisReport: source.analysisReport, selectionReport: source.selectionReport,selectionScope: source.selectionScope,sourceReview:source.sourceReview }));
+      Object.assign(run, structuredClone({ ...creativeFields(source),duration: source.duration, originalGainDb: source.originalGainDb,originalMuted:source.originalMuted===true,assets: source.assets, events: source.events, placements: source.placements, scenes: source.scenes, analysisMode: source.analysisMode, analysisReport: source.analysisReport, selectionReport: source.selectionReport,selectionScope: source.selectionScope,sourceReview:source.sourceReview }));
       run.workflow=structuredClone(source.workflow||workflowSnapshot("custom",{analysisMode:source.analysisMode,selectionScope:source.selectionScope||"full",musicEnabled:source.musicEnabled!==false,aiSelection:source.aiSelection===true,autoMix:true,originalGainDb:source.originalGainDb}));
       Object.assign(run.workflow,{operation:"automix",timing:"reused",selection:"reused",source:input.reviewSource?"fresh":"reused"});
       run.workflow.options.autoMix=true;
@@ -796,7 +807,7 @@ export class SfxService {
         originalGainDb: source.originalGainDb
       });
       Object.assign(child, structuredClone({
-        duration: source.duration,
+        ...creativeFields(source),duration: source.duration,
         originalGainDb: source.originalGainDb,
         originalMuted: source.originalMuted === true,
         assets: source.assets,

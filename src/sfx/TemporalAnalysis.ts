@@ -1,3 +1,4 @@
+import {creativeContext,type CreativeBrief} from "./CreativeBrief.js";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -11,7 +12,7 @@ export interface FrameDirector {
   readonly model?:string;
   analyzeFrames(scenes: Scene[], prompt: string, signal?: AbortSignal): Promise<unknown>;
 }
-export interface AnalysisOptions { signal?: AbortSignal; progress?: (message: string) => void; musicEnabled?: boolean }
+export interface AnalysisOptions extends CreativeBrief { signal?: AbortSignal; progress?: (message: string) => void; musicEnabled?: boolean }
 export function temporalWindows(duration: number) {
   const windows: Array<{ start: number; end: number }> = [];
   for (let start = 0; start < duration; start += SFX_WORKFLOW.timing.hopSeconds) {
@@ -81,6 +82,8 @@ function parseEvents(value: unknown, duration: number, precision: number): Sound
 
 /** Uses the same workflow for every video; no video-specific cue times or asset IDs. */
 export async function analyzeTemporal(video: string, duration: number, outputDir: string, media: MediaSource, director: FrameDirector, options: AnalysisOptions = {}) {
+  const originalDirector=director,brief=creativeContext(options);
+  if(brief)director={model:originalDirector.model,analyzeFrames:(scenes,prompt,signal)=>originalDirector.analyzeFrames(scenes,prompt+brief,signal)};
   const signal = options.signal, progress = options.progress || (() => {});
   if (!media.sampleFrames) throw new Error("当前媒体工具不支持密集时间帧");
   if (duration > SFX_WORKFLOW.timing.maxVideoSeconds) throw new Error("精细动作分析当前支持 5 分钟以内视频，请先截取动作片段。");

@@ -140,7 +140,9 @@ export class AudioLibraryIndexer {
       const keyword=preferredKeyword(asset);
       const preferenceSteps=(preference?preference.weight-1:0)+(keyword?keyword.weight-1:0);
       const preferenceBonus=Math.min(SFX_WORKFLOW.libraryPreference.maxBonus,relevance*SFX_WORKFLOW.libraryPreference.bonusPerStep*preferenceSteps);
-      return { asset, score:relevance+preferenceBonus, reason: `名称/同义词：${hits.join("、") || matchedGroups.map(g => g[0]).join("、") || pathHits.join("、") || weakHits.join("、")}；${stagePenalty || uiPenalty ? "名称意图不完全一致，需听取判断" : "按声音意图优先排序"}${preference?`；路径优先 ×${preference.weight}：${preference.path}（相关性优先）`:""}${keyword?`；关键词优先 ×${keyword.weight}：${keyword.keyword}（${keyword.scope}，相关性优先）`:""}` };
+      const styleHits=(index.styleProfile?.searchTerms||[]).filter(term=>term.trim().length>1&&`${filename} ${pathText}`.normalize("NFKC").includes(term.normalize("NFKC").toLowerCase()));
+      const styleBonus=relevance>0?Math.min(1.5,relevance*.12*styleHits.length):0;
+      return { asset, score:relevance+preferenceBonus+styleBonus, reason: `${styleHits.length?`风格参考：${styleHits.join("、")}；`:""}名称/同义词：${hits.join("、") || matchedGroups.map(g => g[0]).join("、") || pathHits.join("、") || weakHits.join("、")}；${stagePenalty || uiPenalty ? "名称意图不完全一致，需听取判断" : "按声音意图优先排序"}${preference?`；路径优先 ×${preference.weight}：${preference.path}（相关性优先）`:""}${keyword?`；关键词优先 ×${keyword.weight}：${keyword.keyword}（${keyword.scope}，相关性优先）`:""}` };
     }).filter(r => r.score > 0).sort((a, b) => b.score - a.score || a.asset.relativePath.localeCompare(b.asset.relativePath)).slice(0, limit);
   }
 }

@@ -9,6 +9,7 @@ import { ExclusionFields,KeywordPreferencesSchema,SfxError } from "../sfx/models
 import {buildWorkflowReport} from "../sfx/WorkflowReport.js";
 import {workflowResources,workflowBundle,readWorkflowGuide,readWorkflowSkill} from "../sfx/WorkflowResources.js";
 import {SFX_WORKFLOW} from "../sfx/WorkflowPolicy.js";
+import {STYLE_PRESETS} from "../sfx/StyleResearch.js";
 import {listLocalFolders,searchLocalFolders} from "./LocalFolders.js";
 import {SFX_API_VERSION,SFX_REQUIRED_CAPABILITIES} from "./SfxServerCompatibility.js";
 import { AiConfigService } from "../sfx/SfxAiConfig.js";
@@ -68,6 +69,16 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
       return true;
     }
     const parts = url.pathname.slice("/api/sfx/".length).split("/");
+    if(parts[0]==='styles') {
+      if(req.method==='GET'&&!parts[1])json(res,{presets:STYLE_PRESETS.map(({style,works})=>({style,works})),profiles:await service.styles.list()});
+      else if(req.method==='POST'&&parts[1]==='research'){
+        const body=z.object({style:z.string().trim().min(1).max(120),refresh:z.boolean().default(false)}).parse(await readJson(req));
+        const config=await new AiConfigService().resolve();
+        json(res,await service.styles.research(body.style,config.model,config.reasoningEffort||'high',undefined,body.refresh));
+      }else throw new SfxError('接口不存在',404);
+      return true;
+    }
+
     if(parts[0]==='git-config') {
       if(req.method==='GET'&&!parts[1])json(res,await service.projectGit.snapshot());
       else if(req.method==='POST'&&!parts[1])json(res,await service.projectGit.save(await readJson(req)));
