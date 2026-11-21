@@ -85,7 +85,7 @@ export function testMusicCandidatesRequireIndependentLibrary() {
   planEventCandidates(musicEvent, { version: 1, root: ".", generatedAt: "now", assets, warnings: [], musicLibraryConfigured: true } as any);
   assert.deepEqual(musicEvent.candidates.map(candidate => candidate.assetId), ["music-library"], "music candidates must come only from the selected music library");
   const noLibrary = event({ id: "music-none", category: "music" as never, query: "music battle", description: "背景音乐" });
-  planEventCandidates(noLibrary, { version: 1, root: ".", generatedAt: "now", assets: [assets[0]], warnings: [] } as any);
+  planEventCandidates(noLibrary, { version: 1, root: ".", generatedAt: "now", assets: [assets[0]], warnings: [], musicLibraryConfigured: false } as any);
   assert.equal(noLibrary.candidates.length, 0, "music must stay empty when no independent music library is selected");
 }
 
