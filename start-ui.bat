@@ -44,7 +44,7 @@ if errorlevel 1 (
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r = Invoke-RestMethod -Uri 'http://localhost:4317/api/health' -TimeoutSec 2; if ($r.ok) { exit 0 } else { exit 1 } } catch { exit 1 }"
 if errorlevel 1 (
   echo Starting local server: http://localhost:4317/
-  start "Game Audio Outsourcing UI" /min powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:PORT='4317'; Set-Location -LiteralPath '%ROOT%'; node dist/src/ui/server.js"
+  start "Spielkiste Web" /min powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:PORT='4317'; Set-Location -LiteralPath '%ROOT%'; node scripts/start-web.mjs"
 )
 
 echo Waiting for local server...
@@ -61,7 +61,7 @@ exit /b 1
 :READY
 set "SFX_PORT=4320"
 echo Starting or refreshing video sound workspace: http://127.0.0.1:4320/sfx
-start "Video Sound Workspace" /min powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:PORT='4320'; $env:SFX_OPEN_BROWSER='0'; $env:SFX_FORCE_REFRESH='1'; Set-Location -LiteralPath '%ROOT%'; node scripts/start-sfx.mjs"
+start "Video Sound Workspace" /min powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:PORT='4320'; $env:SFX_OPEN_BROWSER='0'; $env:SFX_FORCE_REFRESH='1'; $env:SPIELKISTE_DISABLE_TOOL_WATCHER='1'; Set-Location -LiteralPath '%ROOT%'; node scripts/start-sfx.mjs"
 for /l %%i in (1,1,20) do (
   powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:4320/api/sfx/health' -TimeoutSec 1; if ($r.ok) { exit 0 } else { exit 1 } } catch { exit 1 }"
   if not errorlevel 1 goto SFX_READY

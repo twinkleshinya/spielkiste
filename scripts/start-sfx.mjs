@@ -6,7 +6,7 @@ import path from "node:path";
 
 process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
 if (Number(process.versions.node.split(".")[0]) < 22) throw new Error("Spielkiste requires Node.js 22 or later. Please install Node.js LTS.");
-startToolWatcher(process.cwd());
+if (process.env.SPIELKISTE_DISABLE_TOOL_WATCHER !== "1") startToolWatcher(process.cwd());
 const port = process.env.PORT || "4320";
 const url = `http://127.0.0.1:${port}/sfx`;
 const execFileAsync = promisify(execFile);
