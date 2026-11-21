@@ -38,7 +38,10 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds: number, fallbac
 /** Discover currently reachable UNC shares in addition to drive letters. */
 async function discoverWindowsNetworkRoots() {
   if (process.platform !== "win32") return [] as string[];
-  const connected=await execFile("net",["use"],{windowsHide:true,maxBuffer:1024*1024}).then(result=>parseNetworkShareRoots(`${result.stdout}\n${result.stderr}`)).catch(()=>[] as string[]);
+  let connected: string[] = [];
+  try {
+    connected=await execFile("net",["use"],{windowsHide:true,maxBuffer:1024*1024}).then(result=>parseNetworkShareRoots(`${result.stdout}\n${result.stderr}`));
+  } catch { connected=[]; }
   const servers = await withTimeout(
     fs.readdir("\\\\", { withFileTypes: true }).then(entries => entries.filter(entry => entry.isDirectory()).map(entry => entry.name).slice(0, 32)).catch(() => [] as string[]),
     3000,
