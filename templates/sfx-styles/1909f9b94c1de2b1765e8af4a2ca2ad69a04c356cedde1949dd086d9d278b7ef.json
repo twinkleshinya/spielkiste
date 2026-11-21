@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "style": "修仙",
+  "researchedAt": "2026-11-21T14:59:32.774Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "“修仙”游戏声音风格以东方传统器乐声学质感与自然灵气意象为基底，核心在于“物理写实冲击力”与“超自然清灵/道韵共振”的平衡（此风格归纳结合了题材资料与声音设计推导）。三部参考作品呈现出明显的共性与差异：共性上，均扎根中国神话或仙侠文化语境，强调东方乐器音色、自然材质与法术超验感的结合；差异上，据公开资料，《黑神话：悟空》由8082 Audio操刀，采用中国传统乐器与西方管弦乐融合，并融入陕北说书、甘肃花儿与佛教吟诵及经典曲目交响改编，整体偏向厚重、粗粝、民俗与宗教神怪色彩并存的硬核动作气质，绝不能将其等同于全部修仙风格；据题材资料与声音设计推导，《凡人修仙传》聚焦底层凡人步步修行的实用主义仙侠世界，声音重心应落在丹药、符箓、法宝材质摩擦、克制悬疑的灵力运转与真实生存质感；《仙剑奇侠传》作为经典仙侠RPG系列，则更偏向抒情唯美、明澈清亮的御剑剑气、中国传统五声音阶情绪引导与精致灵动的UI/法术反馈。本地试听选材时，须坚持以源素材原调原速且无新增混响的状态直接试听，依据频谱分布、瞬态锐度、谐波纯度与包络衰减等实际听感做判断，切忌仅凭文件名选材，也不要强行让每个动作都叠加装饰层。",
+  "references": [
+    {
+      "title": "Black Myth: Wukong",
+      "url": "https://en.wikipedia.org/?curid=65063196",
+      "excerpt": "Black Myth: Wukong‍ is a 2024 action role-playing game developed and published by the Chinese studio Game Science. The player assumes the role of the Destined One, a staff-wielding monkey, who embarks on a journey to recover six relics corresponding to Sun Wukong's six senses. The game is inspired by the classical Chinese novel Journey to the West. It is the first installment in the Black Myth series.\nBlack Myth: Wukong was released for PlayStation 5 and Windows on August 20, 2024, and for Xbox Series X/S on August 20, 2025. It received generally favorable reviews from critics and won several accolades including Game of the Year awards. It so\n8082 Audio produced the game's sound, including the music and voice work. It created the music using Chinese instruments and Western orchestral elements. It incorporated musical vocal styles rooted in Chinese traditions, such as Shanbei storytelling, Hua'er folk singing from Gansu, and Buddhist chanting. A notable musical highlight is a symphonic adaptation of \"Yungong Xunyin\", a theme song composed by Xu Jingqing for the 1986 television series Journey to the West. For the English voiceovers, Game Science was interested in and supportive of voice actors exploring regional accents, such as a Brummie accent for the character Yin Tiger. PitStop Productions, the studio producing the English voiceovers, approached this on a character-by-character basis and aimed to keep the voices fairly broad rather than tied to particular places in the game.\nFor the launch, Black Myth: Wukong received four editions: Digital Standard Edition, Digital Deluxe Edition, Deluxe Edition, and Collector's Edition. The Digital Standard Edition contains the base game. The Digital Deluxe Edition provides, alongside the base game, extra in-game content and a selec"
+    },
+    {
+      "title": "A Record of Mortal's Journey to Immortality",
+      "url": "https://en.wikipedia.org/?curid=77410785",
+      "excerpt": "A Record of a Mortal's Journey to Immortality (Chinese: 凡人修仙传; pinyin: Fán rén xiū xiān zhuàn) is a long-running Chinese xianxia serial web novel written by Wang Yu between 2008 and 2013 on Qidian. After its publication, it gradually became one of the most famous fantasy novels about immortal cultivation in Mainland China, a very popular web novel topic in Chinese online literature. In 2010, the book was published as a single volume by Taibai Literature and Art Publishing House, with a total of about 7.71 million characters.\nThe novel tells the story of the protagonist Han Li, a mortal who born into mediocrity in a fictional world of immortal\n"
+    },
+    {
+      "title": "The Legend of Sword and Fairy",
+      "url": "https://en.wikipedia.org/?curid=47270088",
+      "excerpt": "The Legend of Sword and Fairy (Chinese: 仙劍奇俠傳; pinyin: Xiānjiàn Qíxiá Zhuàn), also known as Sword and Fairy (仙劍) or Chinese Paladin, is a Chinese language fantasy video game series and media franchise centered on a series of nine Chinese mythology/xianxia-themed adventure role-playing computer games created by Yao Zhuangxian. The eponymous first game in the series is released for MS-DOS CLI in 1995 by the \"Crazy Boyz\" team (狂徒創作群) of the Taiwanese game developing and publishing company Softstar Entertainment (大宇資訊). It is one of the so-called \"Twin Swords of Softstar\" (大宇雙劍) along with the sister Xuan-Yuan Sword series, and has been widely re\nThe original Sword and Fairy game became both a commercial and critical success across Greater China, dominating the \"Favourite Singleplayer PC Game\" list for ten years, and multiple sequels, prequels and sidequels (nearly all developed by Softstar's Mainland China subsidiaries) have been spawned due to its unprecedented popularity. The game franchise itself has since branched into other video game genres such as online games, mobile games, business simulation, MMORPG and digital card games. Additionally, there are numerous spin-off adaptations such as live-action television series, web series, stage productions, audio dramas, novelizations and comic books adapted from the main games, as well as associated fan fictions, artbooks, soundtracks, tabletop games, digital skins and collectible merchandises such as trading cards, figurines, action figures and plush dolls.\nAfter the disbanding of Softstar Shanghai, Softstar's Beijing subsidiary, which at that time were mainly responsible for the sleeper hit spin-off business simulation game Paladin's Inn and the Richman digital board game series, took up the mantle and started developing T"
+    }
+  ],
+  "palette": [
+    "【武器材质-金铁与古铜】法宝、重剑、古钟与镇妖铃类素材：挑选具备丰富非谐波泛音（inharmonic partials）、中低频有扎实金属胸腔共鸣（200–600 Hz）、高频敲击瞬态干脆且延音呈自然金属震颤的音频。",
+    "【武器材质-玉石与木竹】飞剑剑柄、玉佩、法杖、竹简与符木：优先选择高频清脆洁净（3–7 kHz有明亮谐波峰、无刺耳金属毛刺）且尾音短促干净的玉石碰撞声，以及中频干爽、瞬态集中的硬木/竹节敲击声（500 Hz–2 kHz）。",
+    "【法术元素-剑气与风雷】剑气、御风与雷法：剑气与风系挑选窄带哨音感、气流纹理顺滑且中高频无散乱白噪的呼啸声；雷系需兼顾瞬间高压电弧脆裂瞬态（4–10 kHz清晰颗粒感）与紧实的低中频空气爆破冲击。",
+    "【法术元素-五行与阵法丹道】金木水火土与炼丹阵法：火系注重温暖噼啪的有机燃烧爆点而非厚重轰鸣；水系选用通透水滴、流动滤波扫频与清冽玻璃/玉质感共鸣；土石阵法讲究低频沉稳滚动（60–150 Hz）与碎石摩擦细节。",
+    "【怪物与生灵嗓音】妖兽、精怪与仙神灵体：妖兽注重原始动物喉腔震动、粗糙气管呼吸摩擦与低频胸腔咆哮；精怪或幽魂灵体倾向中空感气声耳语、多层次人声吟诵或泛音化声带震颤（可参考民俗说唱或宗教吟诵的质感启发，避免扁平干涩的现代人声喊叫）。",
+    "【环境与UI音效】洞府、仙山、宗门与交互：环境素材取稀薄流动的山谷风声、石窟孤立水滴、远景竹林沙沙声及稀疏寺观钟磬；UI选用丝绸/宣纸翻页、竹简轻合、木鱼轻叩或微弱清越的玉磬单音，要求起音清晰且不拖沓。",
+    "【音乐进退与空间动态】基于《黑神话：悟空》公开资料中的中西器乐结合思路及整体设计推导：配乐宜在探索与叙事时保持大留白与点状拨弦/管乐铺垫，仅在BOSS战、突破或高潮节点推进管弦厚度；空间远近靠素材原生直达声与空气感衰减（高频自然滚降）区分，不靠后加混响；动态主次以玩家核心受击、出招与UI瞬态为最前排，法术尾音与环境铺底主动让出中频清晰度。"
+  ],
+  "avoid": [
+    "【现代科幻/赛博电子音色】锯齿波/方波合成器扫频、激光枪式快速高频向下滑音（pew）、机械伺服电机声、机器人声码器调制或生硬的数字比特失真（Bitcrush）。",
+    "【西方重装魔幻/好莱坞工业大片陈词】厚重笨拙的西方板甲摩擦声、过度饱和失真的地狱恶魔重低音咆哮、以及毫无东方气韵的通用超英电影重低音冲击波（Braam / Sub-drop）。",
+    "【廉价塑料与卡通化拟音】中频鼻音过重（1–2 kHz闷响）的廉价塑料敲击充当玉石/木器、滑稽的卡通弹簧音、或现代枪械弹匣/扳机式的硬质工业机械咔哒声。",
+    "【刺耳白噪与过压失真素材】高频（>8 kHz）呈刺耳平直白噪的风声或法术呼啸、动态被极限压限（砖墙限制）导致毫无呼吸感与冲击纵深的干瘪爆音。",
+    "【自带过重混响的近景战斗素材】由于选材需保留原调原速且不新增混响，应剔除自带巨大教堂/山洞长尾混响的近距离拳脚、拔剑或UI素材，以免在实际混音空间中显得浑浊、脱节。"
+  ],
+  "actionGuidance": [
+    "【准备（Anticipation）】保持极度克制与近景写实感，仅选取衣袂丝绸摩擦、指节/剑鞘轻卡、干爽的吸气声或微弱木石触碰声；基础近战招式准备阶段不要强行叠加灵气闪烁等装饰层。",
+    "【蓄力（Charge）】挑选频谱呈平滑连续上升或向内聚拢张力的素材，如弓弦擦拭金属/玉器、渐强的窄带气流旋涡或稳定的低中频灵脉嗡鸣；避免阶梯状电子合成器上升音，并保留动态余量以衬托下一阶段的释放。",
+    "【释放（Release）】要求起音瞬态（Attack）干净利落、无拖泥带水的前摇噪声，例如符纸脆裂爆开、竹木弹射或剑锋破空的一瞬间；直接在原调原速下听辨其瞬态穿透力，不依赖后期拉高音调或加混响来制造气势。",
+    "【飞行（Flight/Projectile）】法宝或剑气飞行循环/中段应以柔和可控的中高频气流 whistle 与材质微颤为主，剔除持续刮耳的高频嘶嘶声与抢占低频的隆隆底噪，确保多发齐射时不糊成一团。",
+    "【命中（Impact）】以物理材质碰撞（血肉打击、金铁交鸣、石块碎裂）作为动态与中低频核心，仅在法术或高阶神通命中时按需叠加对应元素碎裂层（如电弧爆裂、水花溅射或玉碎声），切忌每次普通击中都堆叠满载装饰层。",
+    "【收势（Recovery）】采用短促、自然收束的尾音，如长剑入鞘的干脆卡扣声、器皿轻微回振余韵或一声微弱吐纳；连招快速收势时允许留白或仅用极轻物理拟音，避免繁琐的铃铛/风铃装饰层。",
+    "【空间远近与动态主次执行】近距离主角动作严格选用干声比例高、高频细节丰富的素材；中远距离敌方法术或环境事件选用高频自然柔和、瞬态略圆润的原生素材；通过原生素材的响度包络控制主次，让核心击打瞬态始终清晰穿透环境与配乐。"
+  ],
+  "searchTerms": [
+    "剑鸣 / 拔剑出鞘 / Sword Ring / Blade Draw",
+    "玉石碰撞 / 玉佩 / Jade Clink / Crystal Chime",
+    "气流破空 / 剑气呼啸 / Air Whoosh / Fast Swish",
+    "衣袂丝绸 / 布料摩擦 / Silk Rustle / Cloth Movement",
+    "竹简木器 / 木鱼磬声 / Bamboo Clack / Temple Woodblock",
+    "铜钟法器 / 佛教法铃 / Bronze Bell / Ritual Chime",
+    "雷电电弧 / 雷法轰击 / Lightning Crack / Electric Arc",
+    "火焰爆燃 / 丹炉火声 / Fire Burst / Flame Whoosh",
+    "法术蓄力 / 灵气聚拢 / Energy Swell / Mystic Hum",
+    "符纸撕裂 / 宣纸翻动 / Paper Tear / Parchment Foley",
+    "妖兽低吼 / 精怪气声 / Beast Growl / Spirit Whisper",
+    "山谷风声 / 洞府水滴 / Mountain Wind / Cave Water Drip"
+  ],
+  "limitations": "证据边界声明：1. 公开资料依据仅限题目提供的三段百科摘录，其中仅《黑神话：悟空》明确提供了声音相关事实（8082 Audio负责制作，融合中国传统乐器与西方管弦乐，包含陕北说书、甘肃花儿、佛教吟诵、1986版《西游记》《云宫迅音》交响改编以及英文配音的地方口音尝试）；《凡人修仙传》与《仙剑奇侠传》的公开资料仅涵盖题材背景、媒介形式与发行历史，没有任何具体的音频或声音设计实证。2. 本档案中关于《凡人修仙传》与《仙剑奇侠传》的声音风格区分、全篇的动作六阶段处理规范、武器/法术/怪物/环境/UI的频谱与听感选材标准、以及空间动态控制策略，均属于结合已有游戏音频常识与题材语境的【声音设计推导】。3. 研究过程中未实际听取任何上述作品的原声带或游戏内音频资源，未穷尽所有修仙题材作品，亦未核实任何实时市场热度或播放数据。"
+}
