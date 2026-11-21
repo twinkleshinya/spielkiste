@@ -70,3 +70,18 @@ export async function testNativeFolderSelection() {
   const cancelled=createFolderPicker({getWindow:()=>owner,origin:'http://127.0.0.1:4320',showOpenDialog:async()=>({canceled:true,filePaths:[]})});
   assert.equal(await cancelled(event,{}),null);
 }
+
+export async function testBrowserFolderSelectionExplainsSystemPathLimit() {
+  const source=await fs.readFile('src/ui/public/sfx-folders.js','utf8');
+  const alerts:string[]=[];
+  const context=vm.createContext({window:{
+    showDirectoryPicker:async()=>({name:'共享素材'}),
+    alert:(message:string)=>alerts.push(message)
+  }});
+  vm.runInContext(source.replaceAll('export const ', 'const ').replaceAll('export function ', 'function '),context);
+  const result=await vm.runInContext('chooseLocalFolder("D:\\\\素材库")',context);
+  assert.equal(result,null,'browser fallback cannot return a Windows path');
+  assert.equal(alerts.length,1);
+  assert.match(alerts[0],/无法把 Windows 文件夹的完整路径/);
+  assert.match(alerts[0],/Spielkiste 桌面版/);
+}
