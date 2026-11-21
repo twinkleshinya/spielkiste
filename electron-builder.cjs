@@ -4,6 +4,7 @@ module.exports = {
   files:['desktop/**','dist/src/**','src/ui/public/**','src/templates/**','templates/**',
     '.agents/skills/video-sfx-*/**','scripts/stamp-sfx-frames.ps1','package.json',
     '!src/ui/public/spielkiste-design-preview.html'],
+  extraFiles:[{from:'docs/Spielkiste-使用指南.html',to:'Spielkiste-使用指南.html'}],
   extraResources:[{from:'.output/desktop-runtime',to:'runtime'},
     {from:'docs/Spielkiste-团队使用说明.md',to:'使用说明.md'},
     {from:'docs/Spielkiste-使用指南.html',to:'Spielkiste-使用指南.html'},
