@@ -511,7 +511,7 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   $("reanalyze-visual").hidden = true;
   $("reanalyze-brief").hidden = true;
   $("history").value = "";
-  $("name").value = "我的视频音效";
+  $("name").value = "";
   for(const id of ["video-description","sound-requirements","sound-style","custom-style"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;
   $("video-path").value = "";
   $("library-path").value = preserveLibraryInputs ? (previous?.libraryPath || "") : "";

@@ -11,7 +11,7 @@
       <form id="create-form">
         <div class="setup-title"><h1>新建项目</h1><span>01 导入 · 02 分析 · 03 编排 · 04 预览</span></div>
         <div class="inputs-grid">
-          <label>项目名称<input id="name" value="我的视频音效" maxlength="120"></label>
+          <label>项目名称<input id="name" placeholder="可选，留空则使用视频文件名" maxlength="120"></label>
           <label class="wide">视频文件（直接读取本机路径）<div class="input-action"><input id="video-path" placeholder="例如 C:\Projects\demo.mp4" required><button type="button" id="pick-video" class="secondary">上传</button></div><input id="video-file" type="file" accept="video/*,.mkv,.avi" hidden></label>
           <label class="wide">音效素材库文件夹（本地或共享盘）<div class="input-action"><input id="library-path" placeholder="例如 D:\SoundLibrary 或 \\服务器\共享目录" required><button type="button" id="browse-library" class="secondary">选择文件夹</button><button type="button" id="search-library-path" class="secondary">搜索路径</button></div></label>
           <label>背景音乐素材库（可选本地或共享盘）<div class="input-action"><input id="music-library-path" placeholder="留空则从上方素材库中查找背景音乐"><button type="button" id="browse-music" class="secondary">选择文件夹</button><button type="button" id="search-music-path" class="secondary">搜索路径</button></div></label>
