@@ -46,7 +46,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["video-description","sound-requirements","sound-style","custom-style","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
+function setBusy(value) { busy = value; for (const id of ["video-description","sound-requirements","sound-style","custom-style","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -279,6 +279,8 @@ function selectEvent(id, seek = false) {
 function renderWorkspace(keepVideo = false) {
   const projectUrl = new URL(location.href); projectUrl.searchParams.delete("new");projectUrl.searchParams.set("run", run.id); history.replaceState(null, "", projectUrl);
   $("workspace").hidden = false; $("project-title").textContent = project?.name || run.name; $("run-id").textContent = run.id;
+  $("reanalyze-visual").hidden = !run || run.status !== "ready";
+  $("reanalyze-brief").hidden = !run || run.status !== "ready";
   $("duration-label").textContent = time(run.duration);void renderWorkflowReport();
   void loadVersionHistory();
   $("parent-version").hidden=!run.parentRunId;$("parent-version").href=run.parentRunId?`/sfx?run=${run.parentRunId}`:"#";
@@ -354,6 +356,27 @@ function loadProjectInputs() {
   loadExclusions(run);
   $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";
   const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险","魔法","现代动作","赛博朋克","像素复古"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);
+}
+async function reanalyzeProject(mode) {
+  if (!run || busy) return;
+  requireUpdatedPreview();
+  const description = mode === "visual" ? "" : $("video-description").value.trim();
+  const soundRequirements = $("sound-requirements").value.trim();
+  const style = selectedStyle();
+  const playback = { time: $("video").currentTime || 0, playing: false };
+  $("video").pause(); setBusy(true);
+  status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新的辅助说明重新分析画面、点位和音效…");
+  let submitted = false;
+  try {
+    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined });
+    submitted = true;
+    await poll(result.runId, true, playback, { recoverDraft: false });
+    loadProjectInputs();
+    status(mode === "visual" ? "Gemini 已重新分析并生成新版本，原版本仍保留。" : "已根据新的辅助说明重新分析并生成新版本，原版本仍保留。", false);
+  } catch (error) {
+    if (!submitted) updatePreviewStatus();
+    throw error;
+  } finally { setBusy(false); }
 }
 function editPayload() {return {revision:run.revision,events:run.events,placements:run.placements,originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,keywordPreferences:keywordPreferences.read(),...exclusionSettings()};}
 async function updateEditedPreview() {
@@ -526,6 +549,8 @@ $("analyze").onclick = guard(async () => {
     throw error;
   }finally {setBusy(false);}
 });
+$("reanalyze-visual").onclick = guard(() => reanalyzeProject("visual"));
+$("reanalyze-brief").onclick = guard(() => reanalyzeProject("brief"));
 $("history").onchange = guard(async () => {
   const projectId = $("history").value; if (!projectId) return;
   keepDraftBeforeLeaving();
