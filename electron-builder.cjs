@@ -1,5 +1,5 @@
 module.exports = {
-  appId:'com.spielkiste.desktop', productName:'Spielkiste', asar:false,
+  appId:'com.spielkiste.desktop', productName:'Spielkiste', asar:false, npmRebuild:false,
   directories:{output:'.output/desktop-release'},
   files:['desktop/**','dist/src/**','src/ui/public/**','src/templates/**','templates/**',
     '.agents/skills/video-sfx-*/**','scripts/stamp-sfx-frames.ps1','package.json',
