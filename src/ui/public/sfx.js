@@ -143,11 +143,22 @@ function showVideo(preview = false, playback) {
   $("show-source").classList.toggle("selected", !preview); $("show-preview").classList.toggle("selected", preview);
 }
 function renderEvents() {
-  const list = $("event-list"), timeline = $("timeline"); list.replaceChildren(); timeline.replaceChildren();
+  const timeline = $("timeline"); timeline.replaceChildren();
+  $("sfx-event-list").replaceChildren(); $("music-event-list").replaceChildren();
   $("event-count").textContent = `${run.events.length} 个点位 / ${run.placements.filter(p => p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).length} 个启用贴片`;
-  if (!run.events.length) list.append(text("p", "暂无事件。可以在播放头位置添加事件。", "empty-state"));
   const filter = $("event-filter").value;
+  for (const kind of ["sfx", "music"]) {
+    const group=run.events.filter(e=>(e.category==="music")===(kind==="music"));
+    const visible=group.filter(e=>filter==="all"||filter==="action"&&!["music","ambience"].includes(e.category)||e.category===filter);
+    $(kind+"-event-group").hidden=filter!=="all"&&!visible.length;
+    $(kind+"-group-count").textContent=`${group.length} 个点位 · ${group.filter(e=>!e.muted).length} 个未静音`;
+    const button=$("mute-"+kind+"-group"),restoring=group.some(e=>typeof e.groupMuteWasMuted==="boolean");
+    button.textContent=`${restoring?"恢复":"静音"}全部${kind==="music"?"音乐":"音效"}`;
+    button.disabled=busy||!group.length;button.setAttribute("aria-pressed",String(restoring));
+    if(!visible.length) $(kind+"-event-list").append(text("p",kind==="music"?"暂无音乐点位":"暂无音效点位","empty-state"));
+  }
   run.events.filter(e => filter === "all" || filter === "action" && !["music", "ambience"].includes(e.category) || e.category === filter).forEach((event, i) => {
+    const list=$(event.category==="music"?"music-event-list":"sfx-event-list");
     const p = run.placements.find(item => item.eventId === event.id); const chosen = run.assets.find(a => a.id === p?.assetId);
     const row=text("div","",`event-item${event.muted?" muted":""}`);row.dataset.eventId=event.id;
     const button = text("button", "", `event-row${selectedId === event.id ? " active" : ""}`); button.type = "button";
@@ -169,6 +180,18 @@ function renderEvents() {
   });
   const musicEvents = run.events.filter(e => e.category === "music");
   $("music-summary").textContent = `${musicEvents.length} 个音乐区间 · ${run.placements.filter(p => p.category === "music" && p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).length} 个启用音乐贴片 · 音乐也可逐点静音或删除`;
+}
+function toggleSoundGroup(kind) {
+  if(!run||busy)return;
+  const group=run.events.filter(e=>(e.category==="music")===(kind==="music"));
+  if(!group.length)return;
+  const restoring=group.some(e=>typeof e.groupMuteWasMuted==="boolean");
+  for(const event of group){
+    if(restoring){if(typeof event.groupMuteWasMuted==="boolean"){event.muted=event.groupMuteWasMuted;delete event.groupMuteWasMuted;}}
+    else{event.groupMuteWasMuted=event.muted===true;event.muted=true;}
+  }
+  markDirty();renderEvents();if(selectedEvent())selectEvent(selectedId);
+  status(`${kind==="music"?"音乐":"音效"}整体${restoring?"恢复":"静音"}已暂存，点击“更新视频预览”后试听。`);
 }
 function renderCandidates() {
   const box = $("candidates"); box.replaceChildren(); const event = selectedEvent(); if (!event) return;
@@ -579,6 +602,8 @@ $("reaper-export-form").onsubmit = async event => {
 $("video").ontimeupdate = () => { $("timecode").textContent = time($("video").currentTime); };
 $("video").onerror = () => status("浏览器无法播放该视频编码。可先编辑事件，再生成 H.264 预览。", true);
 $("event-filter").onchange = renderEvents;
+$("mute-sfx-group").onclick=guard(()=>toggleSoundGroup("sfx"));
+$("mute-music-group").onclick=guard(()=>toggleSoundGroup("music"));
 $("music-stage").onchange = () => { const e = selectedEvent(); if (e) { e.musicStage = $("music-stage").value; markDirty(); renderEvents(); } };
 $("music-intensity").oninput = () => { const e = selectedEvent(); if (!e) return; const delta = (num("music-intensity") - (e.intensity ?? .5)) * 7; e.intensity = num("music-intensity"); for (const p of run.placements.filter(p => p.eventId === e.id)) p.gainDb = Math.max(-60, Math.min(12, Math.round((p.gainDb + delta) * 100) / 100)); markDirty(); renderEvents(); renderPlacement(); };
 for (const [id, key] of Object.entries({ description: "description", query: "query", "event-start": "start", "event-end": "end", category: "category" })) {

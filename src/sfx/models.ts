@@ -38,6 +38,7 @@ export const EventSchema = z.object({
   id: z.string().min(1), start: z.number().finite().nonnegative(), end: z.number().finite().positive(),
   type: z.string().min(1), description: z.string().max(2000), query: z.string().max(2000),
   category: CategorySchema, confidence: z.number().min(0).max(1), source: z.enum(["vision", "scene", "manual"]),
+  groupMuteWasMuted: z.boolean().optional(),
   candidates: z.array(CandidateSchema), requiresHumanReview: z.boolean(), locked: z.boolean().optional(), muted: z.boolean().optional(),
   layers: z.array(SoundLayerSchema).optional(), actor: z.string().max(200).optional(), phase: z.string().max(100).optional(),
   evidence: z.string().max(2000).optional(), timingPrecision: z.number().positive().optional(),
