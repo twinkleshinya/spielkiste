@@ -7,7 +7,9 @@ import {fileURLToPath} from 'node:url';
 const exec=promisify(execFile);
 export const sourceDirectories=['src','tests','templates','desktop','examples'];
 const rootFiles=['package.json','package-lock.json','tsconfig.json','.env.example','.gitignore','.gitattributes','README.md','Spielkiste.bat','start-sfx.bat','start-ui.bat','electron-builder.cjs','tool-git.json'];
-const scriptNames=['start-sfx.mjs','create-sfx-demo.mjs','create-desktop-shortcut.ps1','stamp-sfx-frames.ps1','package-spielkiste.ps1','prepare-desktop.mjs','tool-git.mjs','release-desktop.mjs','verify-desktop.mjs'];
+const scriptNames=['start-sfx.mjs','create-sfx-demo.mjs','create-desktop-shortcut.ps1','stamp-sfx-frames.ps1','package-spielkiste.ps1','prepare-desktop.mjs','tool-git.mjs','release-desktop.mjs','verify-desktop.mjs','build-user-guide.mjs'];
+const guideFiles=['docs/Spielkiste-团队使用说明.md','docs/Spielkiste-使用指南.html'];
+const guideAssets='docs/spielkiste-guide-assets';
 const skillNames=['video-sfx-workflow','video-sfx-timing','video-sfx-selection','video-sfx-mix-review'];
 export async function sourceFiles(root){
  const files=[];
@@ -16,7 +18,8 @@ export async function sourceFiles(root){
  }
  for(const directory of sourceDirectories)await walk(directory);
  for(const skill of skillNames)await walk(`.agents/skills/${skill}`);
- for(const name of [...rootFiles,...scriptNames.map(name=>`scripts/${name}`),'docs/Spielkiste-团队使用说明.md']){try{if((await fs.stat(path.join(root,name))).isFile())files.push(name);}catch{}}
+ await walk(guideAssets);
+ for(const name of [...rootFiles,...scriptNames.map(name=>`scripts/${name}`),...guideFiles]){try{if((await fs.stat(path.join(root,name))).isFile())files.push(name);}catch{}}
  return files.filter(name=>name!=='src/ui/public/spielkiste-design-preview.html').sort();
 }
 export class ToolCodeGit {
@@ -70,7 +73,7 @@ export class ToolCodeGit {
  async restoreLocked(commit){if(!/^[a-f0-9]{7,40}$/.test(commit))throw new Error('Invalid commit');
   await this.checkpointLocked({push:false,message:'Spielkiste: preserve code before restore'});
   const paths=(await this.git(['ls-tree','-r','-z','--name-only',commit])).stdout.split('\0').filter(Boolean);
-  const permitted=relative=>rootFiles.includes(relative)||scriptNames.some(name=>relative===`scripts/${name}`)||sourceDirectories.some(dir=>relative.startsWith(`${dir}/`))||skillNames.some(dir=>relative.startsWith(`.agents/skills/${dir}/`))||relative==='docs/Spielkiste-团队使用说明.md';
+  const permitted=relative=>rootFiles.includes(relative)||scriptNames.some(name=>relative===`scripts/${name}`)||sourceDirectories.some(dir=>relative.startsWith(`${dir}/`))||skillNames.some(dir=>relative.startsWith(`.agents/skills/${dir}/`))||guideFiles.includes(relative)||relative.startsWith(`${guideAssets}/`);
   for(const relative of paths)if(!permitted(relative)||relative.split('/').includes('..')||path.isAbsolute(relative))throw new Error(`Unsafe restore path: ${relative}`);
   const current=await sourceFiles(this.root);
   for(const relative of paths){const {stdout}=await exec(process.env.SPIELKISTE_GIT||'git',['show',`${commit}:${relative}`],{cwd:this.mirror,encoding:'buffer',maxBuffer:16*1024*1024,windowsHide:true});const target=path.join(this.root,relative);await fs.mkdir(path.dirname(target),{recursive:true});await fs.writeFile(target,stdout);}
