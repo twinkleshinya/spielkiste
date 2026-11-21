@@ -3,11 +3,11 @@ const {createFolderPicker}=require('./folder-picker.cjs');
 const path = require('node:path');
 const fs = require('node:fs');
 app.setName('Spielkiste');
-const userData=path.join(app.getPath('appData'),'Spielkiste');
+const smoke = process.argv.includes('--spielkiste-smoke');
+const userData=smoke&&process.env.SPIELKISTE_DATA_DIR?path.join(process.env.SPIELKISTE_DATA_DIR,'.desktop-state'):path.join(app.getPath('appData'),'Spielkiste');
 fs.mkdirSync(userData,{recursive:true});
 app.setPath('userData',userData);
 let backend, window, quitting = false;
-const smoke = process.argv.includes('--spielkiste-smoke');
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (window) { window.restore(); window.focus(); } });
