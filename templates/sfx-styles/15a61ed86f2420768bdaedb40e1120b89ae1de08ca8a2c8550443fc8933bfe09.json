@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "style": "卡通喜剧",
+  "researchedAt": "2026-11-21T15:01:23.341Z",
+  "model": "gemini-4-hydrogen",
+  "basis": "document-research",
+  "summary": "“卡通喜剧”游戏声音设计风格的核心在于强节奏同步、高听觉辨识度与夸张但干净的物理/情绪反差。基于公开资料与声音设计推导，三部参考作品在“以声音强化动作喜剧节奏”上存在共同点，但实现路径各有侧重，且均不能单独代表整个卡通或功夫/平台跳跃品类：1）《超级马力欧》（资料证实其拥有标志性音效与近藤浩治主题曲，无敌星触发专属提速变色与音乐，后期《银河》引入管弦乐）偏向高度凝练、带有明确游戏状态反馈的明快音高符号与节奏提示（声音质感细节属设计推导）；2）《猫和老鼠》（资料证实斯科特·布拉德利将爵士、古典与流行音乐结合，以配乐强调动作、制造幽默并直接替代传统音效）代表典型的器乐拟音化与闹剧打击乐同步；3）《功夫熊猫》（资料仅证实其为拟人化动物演绎的中国古代奇幻武侠喜剧，无直接声音描述）经设计推导，其声音逻辑在于将沉重Q弹、笨拙滑稽的体型拟音与扎实利落的东方武侠打击/器乐质地结合。本地试听选材时，应严格保留源素材原调原速且不添加混响，直接检验干声的瞬态锐度、音高包络与中频清晰度。",
+  "references": [
+    {
+      "title": "Super Mario",
+      "url": "https://en.wikipedia.org/?curid=5249586",
+      "excerpt": "Super Mario (also known as Super Mario Bros. and simply Mario) is a platform game series developed and published by Nintendo and starring their mascot, Mario. The series was created by Japanese game designer Shigeru Miyamoto and is the flagship series of the greater Mario franchise. At least one Super Mario game has been released for every major Nintendo video game console. A limited number of Super Mario games have also released on non-Nintendo gaming platforms.\nThe Super Mario games are set primarily in the fictional Mushroom Kingdom, typically with Mario as the main player character. He is often joined by his brother, Luigi, and other memb\nInvincibility is an effect first appearing in Super Mario Bros., where it is granted by a Super Star, a yellow flashing star with eyes, originally known as the \"Starman\" and also called the \"Rainbow Star\" in Super Mario Galaxy and Super Mario Galaxy 2. Picking up the star makes the character temporarily invincible, able to resist any harm. Use of the item is accompanied by a distinctive music track that appears consistently across most of the games. The player character flickers a variety of colors – and in some games, moves with increased speed and enhanced jumping ability – while under the Star's influence. \n=== Music ===\nMuch of the original Super Mario Bros. music and sound effects have become iconic and are oftentimes incorporated into modern games. The original Super Mario Bros. theme, composed by Koji Kondo, has become one of the most well-known video game themes around the world.\nSuper Mario Galaxy, released in 2007, became the first game in the Super Mario series to feature orchestrated music, which would return in its sequel and other subsequent games such as Super Mario 3D World.\nFollowing a 1983 crash in the video game "
+    },
+    {
+      "title": "Tom and Jerry",
+      "url": "https://en.wikipedia.org/?curid=871053",
+      "excerpt": "Tom and Jerry (also known as Tom & Jerry) is an American animated media franchise and series of comedy short films created in 1940 by William Hanna and Joseph Barbera. Best known for its 161 theatrical short films produced and released by Metro-Goldwyn-Mayer, the series centers on the rivalry between a cat named Tom and a mouse named Jerry. Many shorts also feature several recurring characters.\nCreated in 1940 as the MGM cartoon department struggled to compete with Walt Disney Productions and Leon Schlesinger Productions (Warner Bros.' Looney Tunes and Merrie Melodies), Tom and Jerry's initial short-film titled Puss Gets the Boot proved succe\nA number of spin-offs have been made, including the television series The Tom and Jerry Show (1975), The Tom and Jerry Comedy Show (1980–1982), Tom & Jerry Kids (1990–1993), Tom and Jerry Tales (2006–2008), and The Tom and Jerry Show (2014–2021). In 1992, the first feature-length film based on the series, Tom and Jerry: The Movie, was released. Thirteen direct-to-video films have been produced since 2002. In 2019, a musical adaptation of the series, titled Tom and Jerry: Purr-Chance to Dream, debuted in Japan, in advance of Tom and Jerry's 80th anniversary. In 2021, the live-action/animated hybrid film Tom and Jerry was released, while a Chinese-American computer-animated film, Tom and Jerry: Forbidden Compass, premiered in June 2025.\nMusic plays a very important part in the shorts, emphasizing the action, bringing in humor, filling in for traditional sound effects, and lending emotion to the scenes. Musical director Scott Bradley created complex scores that combined elements of jazz, classical, and pop music. Bradley often used contemporary pop songs and songs from other films, including MGM films such as The Wizard of Oz and Meet"
+    },
+    {
+      "title": "Kung Fu Panda",
+      "url": "https://en.wikipedia.org/?curid=28722847",
+      "excerpt": "Kung Fu Panda is an American media franchise made by DreamWorks Animation. Beginning with the 2008 film Kung Fu Panda, it follows the titular Po Ping (primarily voiced by Jack Black and Mick Wingert), a bumbling, gluttonous giant panda who is improbably chosen as the prophesied Dragon Warrior and becomes a master of kung fu. The franchise is set in a fantasy wuxia genre version of ancient China populated by anthropomorphic animals. Although everyone initially doubts him, including Po himself, he proves himself worthy as he strives to fulfill his destiny and save China from evil forces.\nThe franchise consists mainly of four animated films: Kun\n"
+    }
+  ],
+  "palette": [
+    "【武器与打击材质】以干脆、短促、具象共振的材质为主：试听时应能听到清晰的木鱼/竹板敲击瞬态、空心葫芦闷响、带有短促中频弹跳尾音的铁锅/铜锣轻敲、以及弹性橡胶/气球拉扯感；包络需起音迅猛、衰减干脆（无拖沓低频轰鸣）。",
+    "【法术与元素】偏向具象化与音高化的“轻盈表达”：如快速上行或下行的音高滑音（滑音笛、合成器正弦/三角波扫频）、清亮の木琴/钟琴颗粒感高频泛音、紧凑的气泡破裂声与干净的气流喷吐声；频谱集中在中高频，避免厚重噪声墙遮蔽旋律轮廓。",
+    "【怪物与角色嗓音】强调夸张的共振峰偏移与喜剧语气拟人化：如鼻音化的嘎吱/尖叫、笨重角色的短促哼哧与气喘、弹性吞咽或打嗝音、高表达力的动物嘶鸣混合滑稽语调；咬字与气口清晰，保留喜剧节奏停顿，避免黏腻恐怖的喉音摩擦。",
+    "【环境与UI】UI优先选用短衰减原声拨弦（Pizzicato）、马林巴/卡林巴木质颗粒音、清脆机械按压与轻快铜管/木管短句（Stinger）；环境底噪应保持明亮通透、低密度（如轻风、稀疏鸟鸣或干净的室内干声），避免浑浊的中低频持续底噪。"
+  ],
+  "avoid": [
+    "【过度写实与血腥质感】避免湿黏的肉体撕裂、沉重逼真的骨裂声或写实枪械爆鸣，此类高频刺耳瞬态与写实细节会破坏卡通喜剧的荒诞安全感。",
+    "【长尾混响与影院级铺底】严禁在选材阶段选用自带大厅长混响、潮湿尾音或厚重次低频（40Hz以下）震荡的素材，长尾衰减会糊掉卡通动作高频切换所需的节奏留白。",
+    "【暗黑失真与刺耳白噪】回避持续的工业金属刮擦、过度削波失真、以及宽频段持续白噪声喷射，这些音色缺乏音高与材质趣味，易造成听觉疲劳。",
+    "【迟缓起音的氛围铺垫】短促喜剧动作忌用慢起音（Slow Attack）或浑浊糊散的合成器Pad，候选音频若波形前端斜坡过缓，通常无法匹配卡通关键帧的突发感。"
+  ],
+  "actionGuidance": [
+    "【准备/蓄力】使用紧绷、音高渐升或弹性拉扯类素材（如快速上扬的弦乐拨奏、橡皮筋绷紧摩擦、短促木管颤音），包络需呈现明确的张力爬升，时间严格贴合蓄力帧长度。",
+    "【释放】追求极简干净的起音瞬态（如轻脆甩鞭、干爽空气破空声）；注意不要强行给每个普通动作都叠加工艺装饰层，常规轻攻击或日常跳跃只需单一干脆的材质或风声即可，避免声音拥挤。",
+    "【飞行】突出运动轨迹的音高变化或周期性抖动（如竹蜻蜓般轻快扑翼、音高微弯的口哨飞矢）；短距离或极快投掷物直接采用单一飞行音色，无需强加尾迹粒子装饰。",
+    "【命中】核心是“Q弹撞击感+清晰材质辨识”：将扎实的中低频闷击（Thump）与滑稽材质顶音（木头梆响、锅盖嗡鸣、弹性回弹）对齐，要求瞬态分离度高、衰减迅速利落。",
+    "【收势】仅在夸张摔倒、大招失误或喜剧定格等关键节点加入点缀性收势音（如眩晕转圈颤音、轻微放气噗声、小碎步急停摩擦）；普通连招收势保持干净留白，不额外堆砌装饰层。",
+    "【音乐进退与动态主次】参考《猫和老鼠》配乐兼任音效及《超级马力欧》无敌星专属音乐切入的思路：在喜剧桥段或特殊状态切换时，音乐可主动承担节奏重音或直接让位给高频滑稽音效；动态层级上，核心打击、角色叫声与关键UI必须稳居前景，环境与伴奏需在瞬态窗口主动退让。",
+    "【空间远近与试听规范】本地试听必须严格保持源素材原调原速且无任何新增混响，直接评估音频本身的频谱亮度与干声瞬态；空间远近在选材阶段通过判断素材自身的高频自然衰减与近场/中场拾音干湿度来匹配，不靠后期暴力加湿混响伪造距离。"
+  ],
+  "searchTerms": [
+    "Cartoon Boing",
+    "Slide Whistle",
+    "Slapstick Hit",
+    "Woodblock Bonk",
+    "Comical Whoosh",
+    "Pizzicato Pluck",
+    "Bubble Pop",
+    "Squishy Foley",
+    "Kung Fu Whoosh",
+    "Bamboo Clack",
+    "卡通弹簧",
+    "滑音笛",
+    "喜剧敲击",
+    "木鱼咚响",
+    "搞笑挥舞",
+    "拨弦音效",
+    "气泡破裂",
+    "Q弹撞击",
+    "功夫甩风",
+    "搞笑角色叫声"
+  ],
+  "limitations": "1. 资料边界说明：所读取的维基百科公开摘录仅包含有限的作品背景与音乐概况——《超级马力欧》摘录提及标志性主题曲与音效、无敌星音乐及《银河》的管弦乐化；《猫和老鼠》摘录提及斯科特·布拉德利融合爵士/古典/流行配乐以强调动作并替代传统音效；《功夫熊猫》摘录仅描述其拟人化动物与古代奇幻武侠喜剧设定，未提供任何声音或音效证据。2. 结论性质区分：除上述已证实信息外，本档案中关于具体武器材质、法术元素、怪物嗓音、环境/UI选材标准、动作六阶段（准备至收势）处理、空间远近判断指标以及《功夫熊猫》的武侠喜剧声音结合方式，均属于结合已有游戏声音设计知识所做的【设计推导】，非针对原片音轨的实证分析。3. 声明：本档案未实际听取任何原声带或游戏音频，未穷尽相关系列或卡通喜剧品类的全部作品，亦未核实任何作品或素材的实时市场热度。"
+}
