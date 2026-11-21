@@ -3,6 +3,20 @@ import {promises as fs} from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
+import {parseWindowsRoots} from '../src/ui/LocalFolders.js';
+
+export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
+  const roots = parseWindowsRoots([
+    'C:\\',
+    'z:\\',
+    '\\\\server\\Audio',
+    '\\\\SERVER\\Audio',
+    '  \\\\nas01\\shared\\SFX  ',
+    'not-a-path',
+    ''
+  ]);
+  assert.deepEqual(roots, ['C:\\', 'Z:\\', '\\\\server\\Audio', '\\\\as01\\shared\\SFX']);
+}
 
 export async function testNativeFolderSelection() {
   const source=await fs.readFile('src/ui/public/sfx-folders.js','utf8');

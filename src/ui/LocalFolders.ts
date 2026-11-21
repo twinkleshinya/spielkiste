@@ -2,6 +2,51 @@ import {promises as fs} from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
+/** Normalize Windows filesystem roots while preserving UNC server/share paths. */
+export function parseWindowsRoots(values: string[]) {
+  const seen = new Set<string>();
+  const roots: string[] = [];
+  for (const value of values) {
+    const trimmed = value.trim().replace(/^"|"$/g, "").replaceAll("/", "\\");
+    if (!trimmed) continue;
+    const drive = /^([a-z]):\\?$/i.exec(trimmed);
+    const unc = /^\\\\([^\\]+)\\([^\\]+)(?:\\.*)?$/u.exec(trimmed);
+    const normalized = drive ? `${drive[1].toUpperCase()}:\\` : unc ? `\\\\${unc[1]}\\${unc[2]}` : "";
+    if (!normalized) continue;
+    const key = normalized.toLocaleLowerCase();
+    if (!seen.has(key)) { seen.add(key); roots.push(normalized); }
+  }
+  return roots;
+}
+
+async function withTimeout<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([promise, new Promise<T>(resolve => { timer = setTimeout(() => resolve(fallback), milliseconds); })]);
+  } finally { if (timer) clearTimeout(timer); }
+}
+
+/** Discover currently reachable UNC shares in addition to drive letters. */
+async function discoverWindowsNetworkRoots() {
+  if (process.platform !== "win32") return [] as string[];
+  const servers = await withTimeout(
+    fs.readdir("\\\\", { withFileTypes: true }).then(entries => entries.filter(entry => entry.isDirectory()).map(entry => entry.name).slice(0, 32)).catch(() => [] as string[]),
+    3000,
+    [] as string[]
+  );
+  const shares: string[] = [];
+  for (const server of servers) {
+    const entries = await withTimeout(
+      fs.readdir(`\\\\${server}`, { withFileTypes: true }).then(items => items.filter(item => item.isDirectory()).map(item => `\\\\${server}\\${item.name}`)).catch(() => [] as string[]),
+      1200,
+      [] as string[]
+    );
+    shares.push(...entries);
+    if (shares.length >= 100) break;
+  }
+  return shares.slice(0, 100);
+}
+
 /** Bounded breadth-first search; no audio decoding, uploads or symlink traversal. */
 export async function searchLocalFolders(input:{path:string;query:string;signal?:AbortSignal;maxDirectories?:number}) {
   if(!input.path?.trim())throw new Error('请先指定搜索范围目录。');
@@ -36,7 +81,9 @@ export async function searchLocalFolders(input:{path:string;query:string;signal?
 export async function listLocalFolders(input:{path?:string;offset?:number}={}) {
   const offset=Math.max(0,Math.floor(input.offset||0));
   if(!input.path?.trim()) {
-    const roots=process.platform==="win32"?"CDEFGHIJKLMNOPQRSTUVWXYZAB".split("").map(letter=>`${letter}:\\`):[path.parse(os.homedir()).root];
+    const driveRoots=process.platform==="win32"?"CDEFGHIJKLMNOPQRSTUVWXYZAB".split("").map(letter=>`${letter}:\\`):[path.parse(os.homedir()).root];
+    const discovered=process.platform==="win32"?await discoverWindowsNetworkRoots():[];
+    const roots=parseWindowsRoots([...driveRoots,...discovered]);
     const available=await Promise.all(roots.map(async root=>{
       let timer:NodeJS.Timeout|undefined;
       try {return await Promise.race([fs.stat(root).then(s=>s.isDirectory()?root:null).catch(()=>null),new Promise<null>(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);}
