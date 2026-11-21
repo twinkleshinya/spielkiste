@@ -10,7 +10,7 @@
     "predev": "tsc -p tsconfig.json",
     "dev": "node dist/src/cli.js",
     "build": "tsc -p tsconfig.json",
-    "ui": "tsc -p tsconfig.json && node dist/src/ui/server.js",
+    "ui": "node scripts/start-web.mjs",
     "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
     "test": "tsc -p tsconfig.json && node dist/tests/run-tests.js",
     "test:onboarding": "tsc -p tsconfig.json && node --input-type=module -e \"import {testAiConfigCore} from './dist/tests/sfx-workflow.test.js'; await testAiConfigCore(); console.log('Onboarding checks passed');\"",

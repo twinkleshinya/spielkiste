@@ -83,7 +83,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, job, 202);
     }
     if (req.method === "GET" && url.pathname === "/api/health") {
-      return sendJson(res, { ok: true, port: PORT });
+      return sendJson(res, { ok: true, port: PORT, webEntry: process.env.SPIELKISTE_WEB_ENTRY === "1" });
     }
     if (req.method === "GET" && url.pathname === "/api/path-preview") {
       return sendJson(

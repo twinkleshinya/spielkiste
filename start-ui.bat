@@ -41,10 +41,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r = Invoke-RestMethod -Uri 'http://localhost:4317/api/health' -TimeoutSec 2; if ($r.ok) { exit 0 } else { exit 1 } } catch { exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r = Invoke-RestMethod -Uri 'http://localhost:4317/api/health' -TimeoutSec 2; if ($r.ok -and $r.webEntry -eq $true) { exit 0 } else { exit 1 } } catch { exit 1 }"
 if errorlevel 1 (
   echo Starting local server: http://localhost:4317/
-  start "Spielkiste Web" /min powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:PORT='4317'; Set-Location -LiteralPath '%ROOT%'; node scripts/start-web.mjs"
+  start "Spielkiste Web" /min powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:PORT='4317'; $env:SPIELKISTE_FORCE_WEB_REFRESH='1'; Set-Location -LiteralPath '%ROOT%'; node scripts/start-web.mjs"
 )
 
 echo Waiting for local server...
