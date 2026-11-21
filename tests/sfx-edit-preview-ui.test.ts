@@ -244,7 +244,15 @@ export async function testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis(
   const html = await fs.readFile(path.resolve("src/ui/public/sfx.html"), "utf8");
   const source = await fs.readFile(path.resolve("src/ui/public/sfx.js"), "utf8");
   assert.match(html, /视频内容辅助说明（可选）/);
+  assert.match(html, /声音要求（可选填）/);
+  assert.match(html, /视频内容辅助说明（可选填）/);
   assert.match(html, /留空时，完全根据视频画面自动分析/);
+  assert.match(html, /背景音乐素材库（独立目录，可选）/);
+  assert.doesNotMatch(html, /留空则从上方素材库中查找背景音乐/);
+  assert.match(html, /＋ 添加目录/);
+  assert.match(html, /＋ 添加关键词/);
+  assert.match(html, /风格词、感受词或具体作品名称/);
+  assert.match(html, /先分析声音风格，再匹配声音/);
   assert.match(html, /Gemini重新分析生成/);
   assert.match(html, /根据新说明重新分析/);
   assert.match(source, /\/api\/sfx\/runs\/\$\{run\.id\}\/reanalyze/);
