@@ -227,6 +227,7 @@ export class SfxService {
         index.excludedKeywords=run.excludedKeywords;
       } finally { clearTimeout(scanTimer); }
       controller.signal.throwIfAborted();
+      index.musicLibraryConfigured = Boolean(musicLibrary && musicLibrary !== library && parsed.musicEnabled);
       run.assets = index.assets; run.warnings = index.warnings;
       if (musicLibrary && musicLibrary !== library && parsed.musicEnabled) {
         run.progress = "索引单独选择的背景音乐目录";

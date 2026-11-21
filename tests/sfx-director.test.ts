@@ -82,7 +82,7 @@ export function testDirectorSemanticSafety() {
 export function testMusicCandidatesRequireIndependentLibrary() {
   const assets = [asset("main-music", "main/bgm_battle_loop.wav", 30), { ...asset("music-library", "selected/track.wav", 30), musicOnly: true }];
   const musicEvent = event({ id: "music-independent", category: "music" as never, query: "music battle", description: "背景音乐" });
-  planEventCandidates(musicEvent, { version: 1, root: ".", generatedAt: "now", assets, warnings: [] } as any);
+  planEventCandidates(musicEvent, { version: 1, root: ".", generatedAt: "now", assets, warnings: [], musicLibraryConfigured: true } as any);
   assert.deepEqual(musicEvent.candidates.map(candidate => candidate.assetId), ["music-library"], "music candidates must come only from the selected music library");
   const noLibrary = event({ id: "music-none", category: "music" as never, query: "music battle", description: "背景音乐" });
   planEventCandidates(noLibrary, { version: 1, root: ".", generatedAt: "now", assets: [assets[0]], warnings: [] } as any);

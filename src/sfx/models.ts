@@ -22,7 +22,7 @@ export const ExclusionFields = {
   excludedLibraryPaths:z.array(z.string().trim().min(1).max(2000).refine(value=>Boolean(value.replace(/^"|"$/g,"").trim()),"排除目录不能为空")).max(12).optional(),
   excludedKeywords:z.array(z.string().trim().min(1).max(120)).max(50).optional()
 };
-export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
+export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
 export type AudioLibraryIndex = z.infer<typeof IndexSchema>;
 export const CandidateSchema = z.object({ assetId: z.string(), score: z.number(), reason: z.string() });
 export const LayerRoleSchema = z.enum(["ambience", "music", "foley", "impact", "whoosh", "texture", "tail"]);
