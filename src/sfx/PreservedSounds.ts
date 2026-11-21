@@ -7,7 +7,7 @@ import {writeJson} from "./SfxRunStore.js";
 import {normalizeExcludedLibraryPaths,normalizeKeywordPreferences,normalizeLibraryPreferences,preferenceKey} from "./LibraryPreferences.js";
 import {normalizeExcludedKeywords} from "./AssetExclusions.js";
 
-type VideoLibraries=Pick<SfxRun,"videoPath"|"libraryPath"|"musicLibraryPath"|"musicEnabled"|"libraryPreferences"|"keywordPreferences"|"excludedLibraryPaths"|"excludedKeywords">;
+type VideoLibraries=Pick<SfxRun,"videoDescription"|"soundRequirements"|"style"|"videoPath"|"libraryPath"|"musicLibraryPath"|"musicEnabled"|"libraryPreferences"|"keywordPreferences"|"excludedLibraryPaths"|"excludedKeywords">;
 type PreservedVersion={version:1;runId:string;revision:number;videoHash:string;soundsHash:string;preservedAt:string};
 async function fileHash(file:string) {
   const hash=createHash("sha256");for await(const chunk of createReadStream(file))hash.update(chunk);return hash.digest("hex");
@@ -28,7 +28,7 @@ export class PreservedSounds {
     const preferences=normalizeLibraryPreferences(input.libraryPreferences).map(p=>({path:preferenceKey(p.path),weight:p.weight}));
     const keywords=normalizeKeywordPreferences(input.keywordPreferences);
     const excludedLibraryPaths=normalizeExcludedLibraryPaths(input.excludedLibraryPaths).map(preferenceKey),excludedKeywords=normalizeExcludedKeywords(input.excludedKeywords);
-    const key=createHash("sha256").update(JSON.stringify({videoHash,library:libraryKey(input.libraryPath),music:input.musicLibraryPath?libraryKey(input.musicLibraryPath):null,musicEnabled:input.musicEnabled!==false,...(preferences.length?{libraryPreferences:preferences}:{}),...(keywords.length?{keywordPreferences:keywords}:{}),...(excludedLibraryPaths.length?{excludedLibraryPaths}:{}),...(excludedKeywords.length?{excludedKeywords}:{})})).digest("hex");
+    const key=createHash("sha256").update(JSON.stringify({videoHash,...(input.videoDescription?{videoDescription:input.videoDescription}:{}),...(input.soundRequirements?{soundRequirements:input.soundRequirements}:{}),...(input.style?{style:input.style}:{}),library:libraryKey(input.libraryPath),music:input.musicLibraryPath?libraryKey(input.musicLibraryPath):null,musicEnabled:input.musicEnabled!==false,...(preferences.length?{libraryPreferences:preferences}:{}),...(keywords.length?{keywordPreferences:keywords}:{}),...(excludedLibraryPaths.length?{excludedLibraryPaths}:{}),...(excludedKeywords.length?{excludedKeywords}:{})})).digest("hex");
     return {videoHash,file:path.join(this.root,`${key}.json`)};
   }
   async preserve(run:SfxRun):Promise<PreservedVersion> {
