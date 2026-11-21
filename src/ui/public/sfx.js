@@ -353,7 +353,7 @@ function loadProjectInputs() {
   $("name").value=project?.name || run.name;$("video-path").value=run.videoPath;$("library-path").value=run.libraryPath;$("music-library-path").value=run.musicLibraryPath||"";libraryPreferences.load(run.libraryPreferences||[]);keywordPreferences.load(run.keywordPreferences||[]);
   loadExclusions(run);
   $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";
-  const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);
+  const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险","魔法","现代动作","赛博朋克","像素复古"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);
 }
 function editPayload() {return {revision:run.revision,events:run.events,placements:run.placements,originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,keywordPreferences:keywordPreferences.read(),...exclusionSettings()};}
 async function updateEditedPreview() {
@@ -726,6 +726,7 @@ if(initialId) {
 }else resetToNewProject({preserveLibraryInputs:true});
 await historyLoad;
 await loadAiConfig();
+
 
 
 
