@@ -106,7 +106,7 @@ export class SfxService {
     const result = await this.projects.registerRun(run, operation);
     return result;
   }
-  private runIndex(run:SfxRun) {return {...creativeFields(run),version:1 as const,root:run.libraryPath,generatedAt:run.createdAt,assets:run.assets,warnings:[],libraryPreferences:run.libraryPreferences,keywordPreferences:run.keywordPreferences,excludedLibraryPaths:run.excludedLibraryPaths,excludedKeywords:run.excludedKeywords};}
+  private runIndex(run:SfxRun) {return {...creativeFields(run),version:1 as const,root:run.libraryPath,generatedAt:run.createdAt,assets:run.assets,warnings:[],musicLibraryConfigured:Boolean(run.musicLibraryPath && path.resolve(run.musicLibraryPath)!==path.resolve(run.libraryPath)),libraryPreferences:run.libraryPreferences,keywordPreferences:run.keywordPreferences,excludedLibraryPaths:run.excludedLibraryPaths,excludedKeywords:run.excludedKeywords};}
   private audioProvider(run:SfxRun) {return new CcSwitchAudioProvider(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high");}
   async status(id: string) {
     const run = this.failedWrites.get(id) || this.active.get(id) || await this.readRun(id);
@@ -785,6 +785,7 @@ export class SfxService {
       const exclusions=z.object(ExclusionFields).parse(options);
       if(exclusions.excludedLibraryPaths!==undefined)index.excludedLibraryPaths=normalizeExcludedLibraryPaths(exclusions.excludedLibraryPaths);
       if(exclusions.excludedKeywords!==undefined)index.excludedKeywords=normalizeExcludedKeywords(exclusions.excludedKeywords);
+      if (category === "music" && index.musicLibraryConfigured !== true) return [];
       const initial = new AudioLibraryIndexer().search(index, category === "music" ? `music ${query}` : query, 40,context);
       const shortlist=diverseCandidates(initial,8);
       for(let i=0;i<shortlist.length;i+=3) {
