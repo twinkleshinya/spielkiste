@@ -116,7 +116,8 @@ export class AudioLibraryIndexer {
     const music = /\bmusic\b|\bbgm\b|背景音乐|配乐|音乐/i.test(query);
     const groups = searchGroups.filter(group => group.some(w => contains(queryText, w)));
     const primary = groups.find(g => searchGroups.indexOf(g) < 12);
-    return index.assets.filter(a => a.usable && !excluded(a) && isMusicAsset(a) === music).map(asset => {
+    const hasIndependentMusic = index.assets.some(a => a.musicOnly === true);
+    return index.assets.filter(a => a.usable && !excluded(a) && (!music || !hasIndependentMusic || a.musicOnly === true) && (!music || a.musicOnly === true || isMusicAsset(a)) && (music || !a.musicOnly) ).map(asset => {
       const filename = asset.fileName.toLowerCase();
       const pathText = asset.relativePath.toLowerCase();
       const hits = words.filter(w => contains(filename, w));

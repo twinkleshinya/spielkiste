@@ -2,7 +2,7 @@ import {testKeywordRanking,testKeywordPlannerScope,testKeywordPersistence,testGe
 import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBoundaries,testExclusionsPersistenceAndManualSelection,testExclusionsHttpRoutes} from "./sfx-library-exclusions.test.js";
 import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute} from "./sfx-edit-preview-ui.test.js";
 import assert from "node:assert/strict";
-import { testDirectorMusicSchema, testDirectorSemanticSafety, testDirectorContinuousPlacements, testDirectorTemporalMerging, testDirectorWorkflow } from "./sfx-director.test.js";
+import { testDirectorMusicSchema, testDirectorSemanticSafety, testMusicCandidatesRequireIndependentLibrary, testDirectorContinuousPlacements, testDirectorTemporalMerging, testDirectorWorkflow } from "./sfx-director.test.js";
 import { testSfxLibrary, testSfxLazyLibrary, testSfxAnalysis, testSfxRendering, testSfxApi } from "./sfx-tests.js";
 import { testSfxImportPaths } from "./sfx-import.test.js";
 import { testSfxMultilayer, testSfxAutoModeSchema, testSfxActionCoverageAndSemanticMatching } from "./sfx-tests.js";
@@ -201,6 +201,7 @@ await audioSelectionTests.testGeminiAudioDistinctLayers();
 await audioSelectionTests.testGeminiCandidateOnset();
 testDirectorMusicSchema();
 testDirectorSemanticSafety();
+testMusicCandidatesRequireIndependentLibrary();
 testDirectorContinuousPlacements();
 testDirectorTemporalMerging();
 await testDirectorWorkflow();

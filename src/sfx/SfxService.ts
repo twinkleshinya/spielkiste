@@ -232,7 +232,7 @@ export class SfxService {
         run.progress = "索引单独选择的背景音乐目录";
         const musicIndex = await new AudioLibraryIndexer().indexDirectory(musicLibrary, undefined, undefined, controller.signal);
         const existing = new Set(index.assets.map(a => a.id));
-        index.assets.push(...musicIndex.assets.filter(a => !existing.has(a.id)).map(a => ({ ...a, relativePath: `[music] ${a.relativePath}` })));
+        index.assets.push(...musicIndex.assets.filter(a => !existing.has(a.id)).map(a => ({ ...a, musicOnly: true, relativePath: `[music] ${a.relativePath}` })));
         index.warnings.push(...musicIndex.warnings);
       }
       if (!index.assets.some(a => a.usable)) run.warnings.push("素材库没有可用音效，可先编辑事件，再补充素材重新分析。");

@@ -7,6 +7,7 @@ export const AcousticSchema = z.object({ version: z.literal(1), fingerprint: z.s
 export const AssetSchema = z.object({
   id: z.string(), path: z.string(), relativePath: z.string(), fileName: z.string(),
   size: z.number(), mtimeMs: z.number(), tags: z.array(z.string()),
+  musicOnly: z.boolean().optional(),
   duration: z.number().positive().optional(), channels: z.number().optional(), sampleRate: z.number().optional(),
   usable: z.boolean(), warning: z.string().optional()
   , onset: z.number().nonnegative().optional(), peakDb: z.number().optional(), rmsDb: z.number().optional(), pitchSweep: z.boolean().optional(), acoustics: AcousticSchema.optional()
