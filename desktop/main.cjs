@@ -49,7 +49,7 @@ async function start() {
     window.once('ready-to-show', () => { if (!smoke) window.show(); });
     await window.loadURL(`${origin}/sfx?new=1`);
     if (smoke) {
-      const snapshot = await window.webContents.executeJavaScript(`({title:document.title,ready:!!document.getElementById('create-form')})`);
+      const snapshot = await window.webContents.executeJavaScript(`({title:document.title,ready:!!document.getElementById('create-form'),nativeFolderPicker:typeof window.spielkisteDesktop?.chooseFolder==='function'})`);
       fs.writeFileSync(path.join(workspace,'desktop-smoke.json'), JSON.stringify({ ...snapshot, port:message.port, workspace, runtime, packaged:app.isPackaged }));
       if (process.env.SPIELKISTE_SMOKE_HOLD !== '1') { quitting=true; backend.kill(); app.exit(snapshot.ready?0:2); }
     }

@@ -17,6 +17,12 @@ export async function testNativeFolderSelection() {
   assert.equal(await vm.runInContext('chooseLocalFolder()',context),null,'cancel must not open a second picker');
 
   const require=createRequire(import.meta.url);
+  const exposed:any[]=[];
+  const preload=await fs.readFile('desktop/preload.cjs','utf8');
+  vm.runInNewContext(preload,{require:(name:string)=>{assert.equal(name,'electron');return {contextBridge:{exposeInMainWorld:(...args:any[])=>exposed.push(args)},ipcRenderer:{invoke:async(...args:any[])=>args}};}});
+  assert.equal(exposed[0][0],'spielkisteDesktop');
+  assert.deepEqual(Object.keys(exposed[0][1]),['chooseFolder'],'preload exposes only the folder operation');
+  assert.equal((await exposed[0][1].chooseFolder({initialPath:'Z:\\'}))[0],'spielkiste:choose-folder');
   const {createFolderPicker}=require(path.resolve('desktop/folder-picker.cjs'));
   const frame={url:'http://127.0.0.1:4320/sfx?new=1'};
   const owner={webContents:{mainFrame:frame},isDestroyed:()=>false};

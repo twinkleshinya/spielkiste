@@ -10,7 +10,7 @@ const child=spawn(process.env.SPIELKISTE_TEST_EXE||path.join(release,'Spielkiste
 const report={started:new Date().toISOString(),checks:[]};
 try{
  let boot;for(let i=0;i<90;i++){try{boot=JSON.parse(await fs.readFile(path.join(workspace,'desktop-smoke.json'),'utf8'));break;}catch{await new Promise(resolve=>setTimeout(resolve,500));}}
- assert.ok(boot?.ready,'packaged desktop UI starts');assert.equal(boot.packaged,true);report.checks.push('packaged UI and backend startup');report.port=boot.port;
+ assert.ok(boot?.ready,'packaged desktop UI starts');assert.equal(boot.packaged,true);assert.equal(boot.nativeFolderPicker,true,'native folder picker is exposed by the sandboxed preload');report.checks.push('packaged UI, backend startup and native folder picker bridge');report.port=boot.port;
  const base=`http://127.0.0.1:${boot.port}`;
  async function api(url,body){const response=await fetch(base+url,body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const value=await response.json();if(!response.ok)throw new Error(`${url}: ${JSON.stringify(value)}`);return value;}
  async function wait(id){for(let i=0;i<360;i++){const status=await api(`/api/sfx/runs/${id}/status`);if(status.status==='failed')throw new Error(status.error);if(status.status==='ready')return api(`/api/sfx/runs/${id}`);await new Promise(resolve=>setTimeout(resolve,500));}throw new Error('render timeout');}
