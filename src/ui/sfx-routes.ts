@@ -9,7 +9,7 @@ import { ExclusionFields,KeywordPreferencesSchema,SfxError } from "../sfx/models
 import {buildWorkflowReport} from "../sfx/WorkflowReport.js";
 import {workflowResources,workflowBundle,readWorkflowGuide,readWorkflowSkill} from "../sfx/WorkflowResources.js";
 import {SFX_WORKFLOW} from "../sfx/WorkflowPolicy.js";
-import {listLocalFolders} from "./LocalFolders.js";
+import {listLocalFolders,searchLocalFolders} from "./LocalFolders.js";
 import {SFX_API_VERSION,SFX_REQUIRED_CAPABILITIES} from "./SfxServerCompatibility.js";
 import { AiConfigService } from "../sfx/SfxAiConfig.js";
 
@@ -57,6 +57,11 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
     if (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host)) throw new SfxError("仅允许本机访问", 403);
     if (req.headers.origin && req.headers.origin !== `http://${host}`) throw new SfxError("不允许跨站访问本地文件", 403);
     if (req.headers["sec-fetch-site"] === "cross-site") throw new SfxError("不允许跨站访问", 403);
+    if(req.method==='GET'&&url.pathname==='/api/sfx/search-folders') {
+      const controller=new AbortController();res.on('close',()=>controller.abort());
+      const result=await searchLocalFolders({path:url.searchParams.get('path')||'',query:url.searchParams.get('query')||'',signal:controller.signal});
+      if(!res.destroyed)json(res,result);return true;
+    }
     if(req.method==="GET"&&url.pathname==="/api/sfx/local-folders") {
       try {json(res,await listLocalFolders({path:url.searchParams.get("path")||undefined,offset:Number(url.searchParams.get("offset"))||0}));}
       catch(error){json(res,{error:error instanceof Error?error.message:String(error)},400);}

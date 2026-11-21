@@ -2,6 +2,36 @@ import {promises as fs} from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
+/** Bounded breadth-first search; no audio decoding, uploads or symlink traversal. */
+export async function searchLocalFolders(input:{path:string;query:string;signal?:AbortSignal;maxDirectories?:number}) {
+  if(!input.path?.trim())throw new Error('请先指定搜索范围目录。');
+  const query=input.query?.normalize('NFKC').trim().toLocaleLowerCase();
+  if(!query||query.length>120)throw new Error('请输入 1–120 字的路径关键词。');
+  const root=path.resolve(input.path.trim().replace(/^"|"$/g,''));
+  const signal=AbortSignal.any([...(input.signal?[input.signal]:[]),AbortSignal.timeout(10000)]);
+  signal.throwIfAborted();
+  const rootStat=await fs.stat(root);if(!rootStat.isDirectory())throw new Error('搜索范围必须是目录。');
+  const queue=[root],folders:Array<{name:string;path:string}>=[];
+  const max=Math.min(15000,Math.max(1,input.maxDirectories||8000));
+  let scanned=0,skipped=0,truncated=false;
+  while(queue.length&&scanned<max&&folders.length<200) {
+    signal.throwIfAborted();const current=queue.shift()!;scanned++;
+    try {
+      let aborted:()=>void=()=>{};
+      const entries=await Promise.race([fs.readdir(current,{withFileTypes:true}),new Promise<never>((_,reject)=>{
+        aborted=()=>reject(signal.reason);signal.addEventListener('abort',aborted,{once:true});
+      })]).finally(()=>signal.removeEventListener('abort',aborted));
+      for(const entry of entries)if(entry.isDirectory()&&!entry.isSymbolicLink()&&!['.git','node_modules','$RECYCLE.BIN','System Volume Information'].includes(entry.name)) {
+        const directory=path.join(current,entry.name);
+        if(path.relative(root,directory).normalize('NFKC').toLocaleLowerCase().includes(query))folders.push({name:entry.name,path:directory});
+        queue.push(directory);if(folders.length>=200){truncated=true;break;}
+      }
+    }catch(error){signal.throwIfAborted();if(current===root)throw error;skipped++;}
+  }
+  truncated ||= queue.length>0;
+  return {path:root,folders,scanned,skipped,truncated};
+}
+
 /** Read one directory level only. Never scan, copy or upload library contents. */
 export async function listLocalFolders(input:{path?:string;offset?:number}={}) {
   const offset=Math.max(0,Math.floor(input.offset||0));
