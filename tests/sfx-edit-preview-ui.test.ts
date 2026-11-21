@@ -252,7 +252,7 @@ export async function testCreativeBriefIsAuxiliaryAndSupportsExplicitReanalysis(
   assert.match(html, /id="add-library-preference"[^>]*>添加</);
   assert.match(html, /id="add-keyword-preference"[^>]*>添加</);
   assert.match(html, /风格词、感受词或具体作品名称/);
-  assert.match(html, /先分析风格，再参与画面分析和素材匹配/);
+  assert.match(html, /先分析声音风格，再匹配声音/);
   assert.match(html, /Gemini重新分析生成/);
   assert.match(html, /根据新说明重新分析/);
   assert.match(source, /\/api\/sfx\/runs\/\$\{run\.id\}\/reanalyze/);

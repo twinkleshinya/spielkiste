@@ -59,7 +59,7 @@ export function testDirectorSemanticSafety() {
   planEventCandidates(missing, index);
   assert.equal(missing.candidates.length, 0, "never fill an uncovered action with an unrelated file");
   const music = event({ category: "music" as never, query: "music boss battle" });
-  planEventCandidates(music, index);
+  planEventCandidates(music, { ...index, musicLibraryConfigured: true, assets: assets.map(a => a.id === "music" ? { ...a, musicOnly: true } : a) } as any);
   assert.equal(music.candidates[0]?.assetId, "music", "music must only select actual music assets");
   const empty = event({ category: "music" as never, query: "music battle" });
   planEventCandidates(empty, { ...index, assets: assets.filter(a => a.id !== "music") });
@@ -80,7 +80,7 @@ export function testDirectorSemanticSafety() {
 }
 
 export function testMusicCandidatesRequireIndependentLibrary() {
-  const assets = [asset("main-music", "main/bgm_battle_loop.wav", 30), { ...asset("music-library", "selected/track.wav", 30), musicOnly: true }];
+  const assets = [asset("main-music", "main/bgm_battle_loop.wav", 30), { ...asset("music-library", "selected/bgm_battle_loop.wav", 30), musicOnly: true }];
   const musicEvent = event({ id: "music-independent", category: "music" as never, query: "music battle", description: "背景音乐" });
   planEventCandidates(musicEvent, { version: 1, root: ".", generatedAt: "now", assets, warnings: [], musicLibraryConfigured: true } as any);
   assert.deepEqual(musicEvent.candidates.map(candidate => candidate.assetId), ["music-library"], "music candidates must come only from the selected music library");
