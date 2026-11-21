@@ -46,7 +46,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["discard-edits", "analyze", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; }
+function setBusy(value) { busy = value; for (const id of ["discard-edits", "analyze", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -443,7 +443,7 @@ async function quickEdit(target,targetId,action) {
   if (!item) return;
   if(target==="event") {
     if(action==="delete") {run.events=run.events.filter(e=>e.id!==targetId);run.placements=run.placements.filter(p=>p.eventId!==targetId);}
-    else item.muted=action==="mute";
+    else {item.muted=action==="mute";if(typeof item.groupMuteWasMuted==="boolean")item.groupMuteWasMuted=item.muted;}
   } else if(action==="delete")run.placements=run.placements.filter(p=>p.id!==targetId);
   else item.enabled=action==="unmute";
   markDirty();
