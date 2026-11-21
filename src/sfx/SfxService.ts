@@ -297,7 +297,7 @@ export class SfxService {
     }).parse(body);
     const cleanName = source.name.replace(/ · (?:重新分析|编辑|定位|补声|自动混音|Gemini选材)(?:副本|\d+)?$/, "").slice(0, 100);
     const result = await this.create({
-      projectId: source.projectId,
+      projectId: source.projectId || this.projects.deriveProjectId(source),
       parentRunId: source.id,
       reanalysisMode: input.mode,
       name: `${cleanName} · 重新分析`,
