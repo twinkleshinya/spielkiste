@@ -47,6 +47,7 @@ export async function editorHarness(storage = new Map<string, string>()) {
         return response({ runId: nextRun.id });
       }
       if (url.endsWith("/status")) return response({ status: nextRun.status, progress: "ready" });
+      if (url==="/api/sfx/runs") return response({runId:nextRun.id});
       if (url.endsWith("/export/reaper")) return response({ outputPath: body.outputPath, projectDirectory: "folder", placementTrackCount: 1, folderTrackCount: 2, manifest: { media: [] }, settings: body });
       if (/\/runs\/[^/]+$/.test(url)) return response(structuredClone(nextRun));
       if (url.endsWith("/versions") || url === "/api/sfx/projects") return response([]);

@@ -12,10 +12,10 @@ export async function testStyleResearchCacheAndEvidence() {
   const model=async(prompt:string)=>{calls++;assert.ok(prompt.includes('参考作品'));return profile;};
   try {
     const researcher=new module.StyleResearcher(root,sources,model);
-    const first=await researcher.research('修仙','gemini-test','high');assert.equal(first.basis,'document-research');assert.equal(first.references.length,2);
-    await researcher.research('修仙','gemini-test','high');assert.equal(reads,1);assert.equal(calls,1);
-    await researcher.research('修仙','gemini-test','high',undefined,true);assert.equal(calls,2);
-    const failed=new module.StyleResearcher(path.join(root,'failed'),async()=>[],model);
+    const first=await researcher.research('测试修仙','gemini-test','high');assert.equal(first.basis,'document-research');assert.equal(first.references.length,2);
+    await researcher.research('测试修仙','gemini-test','high');assert.equal(reads,1);assert.equal(calls,1);
+    await researcher.research('测试修仙','gemini-test','high',undefined,true);assert.equal(calls,2);
+    const failedRoot=path.join(root,'failed');await fs.mkdir(failedRoot);const failed=new module.StyleResearcher(failedRoot,async()=>[],model);
     await assert.rejects(failed.research('未知','gemini-test','high'),/资料|参考/);
     assert.equal((await failed.list()).length,0,'failed research must not create a researched profile');
   }finally{await fs.rm(root,{recursive:true,force:true});}
