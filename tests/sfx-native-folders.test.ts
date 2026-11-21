@@ -6,26 +6,28 @@ import {createRequire} from 'node:module';
 import {parseNetworkShareRoots,parseWindowsRoots} from '../src/ui/LocalFolders.js';
 
 export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
+  const unc=(server:string,share:string)=>String.raw`\\${server}\${share}`;
   const roots = parseWindowsRoots([
-    'C:\\',
-    'z:\\',
-    '\\\\server\\Audio',
-    '\\\\SERVER\\Audio',
-    '  \\\\as01\\shared\\SFX  ',
+    'C:'+'\\',
+    'z:'+'\\',
+    unc('server','Audio'),
+    unc('SERVER','Audio'),
+    '  '+unc('as01','shared')+'\\SFX  ',
     'not-a-path',
     ''
   ]);
-  assert.deepEqual(roots, ['C:\\', 'Z:\\', '\\\\server\\Audio', '\\\\as01\\shared']);
+  assert.deepEqual(roots, ['C:'+'\\', 'Z:'+'\\', unc('server','Audio'), unc('as01','shared')]);
 }
 
 export function testNetworkShareRootsParseNetUseOutput() {
+  const unc=(server:string,share:string)=>String.raw`\\${server}\${share}`;
   const output = [
     'Status       Local     Remote                    Network',
     '-------------------------------------------------------------------------------',
-    'OK           Z:        \\\\nas01\\shared             Microsoft Windows Network',
-    'OK                     \\\\server\\Audio             Microsoft Windows Network'
-  ].join('\\n');
-  assert.deepEqual(parseNetworkShareRoots(output), ['\\\\as01\\shared', '\\\\server\\Audio']);
+    'OK           Z:        '+unc('as01','shared')+'             Microsoft Windows Network',
+    'OK                     '+unc('server','Audio')+'             Microsoft Windows Network'
+  ].join('\n');
+  assert.deepEqual(parseNetworkShareRoots(output), [unc('as01','shared'), unc('server','Audio')]);
 }
 
 export async function testNativeFolderSelection() {
