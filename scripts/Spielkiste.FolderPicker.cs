@@ -27,16 +27,10 @@ namespace Spielkiste {
   }
   [ComVisible(true), ClassInterface(ClassInterfaceType.None)]
   class DialogEvents : IFileDialogEvents {
-    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
-    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
     public int OnFileOk(IFileOpenDialog dialog) { return 0; }
     public int OnFolderChanging(IFileOpenDialog dialog, IShellItem folder) { return 0; }
     public void OnFolderChange(IFileOpenDialog dialog) {
-      System.IO.File.WriteAllText(FolderPicker.StagePath, "folder changed; showing window");
-      IntPtr window;
-      ((IOleWindow)dialog).GetWindow(out window);
-      ShowWindow(window, 5);
-      SetForegroundWindow(window);
+      System.IO.File.WriteAllText(FolderPicker.StagePath, "folder loaded");
     }
     public void OnSelectionChange(IFileOpenDialog dialog) {}
     public void OnShareViolation(IFileOpenDialog dialog, IShellItem item, out uint response) { response=0; }
@@ -76,8 +70,6 @@ namespace Spielkiste {
     internal static string StagePath;
     [DllImport("shell32.dll", CharSet=CharSet.Unicode, PreserveSig=false)]
     static extern void SHCreateItemFromParsingName(string name, IntPtr bind, ref Guid iid, out IShellItem item);
-    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
-    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     public static string Choose(string title, string initialPath, string stagePath) {
       StagePath=stagePath;
       System.IO.File.WriteAllText(stagePath, "creating Windows dialog");
@@ -96,15 +88,22 @@ namespace Spielkiste {
           dialog.SetFolder(folder);
         } catch { /* An unavailable initial path must not prevent selection. */ }
         finally { if(folder != null) Marshal.ReleaseComObject(folder); }
-        // Do not attach the dialog to an unrelated process's foreground
-        // window: an embedded browser may be hosted on a different desktop.
-        IntPtr owner = IntPtr.Zero;
+        // Let Show initialize the shell window normally. A local owner keeps
+        // this modal above the browser without altering another app's window.
+        using(var owner = new System.Windows.Forms.Form()) {
+        owner.Text=title;
+        owner.StartPosition=System.Windows.Forms.FormStartPosition.CenterScreen;
+        owner.Size=new System.Drawing.Size(1,1);
+        owner.TopMost=true;
+        owner.ShowInTaskbar=true;
+        owner.Show();
+        owner.Activate();
         var events = new DialogEvents();
         uint cookie;
         dialog.Advise(events, out cookie);
         System.IO.File.WriteAllText(stagePath, "showing Windows dialog");
         int result;
-        try { result = dialog.Show(owner); }
+        try { result = dialog.Show(owner.Handle); }
         finally { dialog.Unadvise(cookie); GC.KeepAlive(events); }
         if(result == unchecked((int)0x800704C7)) return null;
         Marshal.ThrowExceptionForHR(result);
@@ -116,6 +115,7 @@ namespace Spielkiste {
           try { return Marshal.PtrToStringUni(name); }
           finally { Marshal.FreeCoTaskMem(name); }
         } finally { Marshal.ReleaseComObject(selected); }
+        }
       } finally { Marshal.ReleaseComObject(dialog); }
     }
   }

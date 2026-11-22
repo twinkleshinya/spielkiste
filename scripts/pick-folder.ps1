@@ -13,11 +13,13 @@ try {
   if (!(Test-Path -LiteralPath $helper)) {
     $temporary = Join-Path $cache ('picker-build-' + [Guid]::NewGuid().ToString('N') + '.exe')
     try {
-      Add-Type -Path $source -ReferencedAssemblies 'System.Web.Extensions' -OutputAssembly $temporary -OutputType WindowsApplication
+      Add-Type -Path $source -ReferencedAssemblies 'System.Web.Extensions','System.Windows.Forms','System.Drawing' -OutputAssembly $temporary -OutputType WindowsApplication
       if (!(Test-Path -LiteralPath $helper)) { Move-Item -LiteralPath $temporary -Destination $helper }
     } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary } }
   }
-  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Hidden -PassThru
+  # Only the PowerShell compiler/launcher is hidden. The GUI process must use
+  # a normal startup state: SW_HIDE can override the dialog's first ShowWindow.
+  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Normal -PassThru
   if (!$process.WaitForExit(115000)) {
     $process.Kill()
     throw 'Windows folder selection timed out. Please try again.'
