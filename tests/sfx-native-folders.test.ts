@@ -3,6 +3,8 @@ import {promises as fs} from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
+import {EventEmitter} from 'node:events';
+import ts from 'typescript';
 import {parseNetworkShareRoots,parseWindowsRoots} from '../src/ui/LocalFolders.js';
 
 export function testWindowsFolderRootsMergeMappedAndNetworkPaths() {
@@ -84,4 +86,25 @@ export async function testBrowserFolderSelectionExplainsSystemPathLimit() {
   assert.equal(result,'\\\\server\\共享\\素材','browser mode returns the absolute path from the local Windows picker service');
   assert.deepEqual(calls,[{initialPath:'D:\\素材库',description:'选择文件夹'}]);
   assert.equal(alerts.length,0);
+}
+
+// Exercise the actual server functions with only the Windows process boundary
+// replaced. A helper which exits without a result must never stay "running".
+export async function testFolderPickerReportsHelperExit() {
+  const source=await fs.readFile('src/ui/server.ts','utf8');
+  const functions=source.slice(source.indexOf('async function startFolderPicker('),source.indexOf('async function openFolder('));
+  const child=new EventEmitter() as EventEmitter & {unref:()=>void};child.unref=()=>{};
+  let script='';
+  const context=vm.createContext({process:{platform:'win32',cwd:()=>process.cwd(),env:process.env},path,Date,Math,
+    folderPickers:new Map(),Buffer,setTimeout,clearTimeout,
+    fs:{mkdir:async()=>{},writeFile:async(_file:string,content:string)=>{script=content;},readFile:async()=>{throw new Error('ENOENT');}},
+    spawn:()=>{setTimeout(()=>child.emit('spawn'),0);return child;}
+  });
+  vm.runInContext(ts.transpile(functions,{target:ts.ScriptTarget.ES2022}),context);
+  const started=await vm.runInContext('startFolderPicker({initialPath:"C:\\\\",description:"选择素材"})',context);
+  child.emit('exit',1,null);
+  const result=await vm.runInContext(`getFolderPicker(${JSON.stringify(started.id)})`,context);
+  assert.equal(result.status,'failed','a crashed helper must fail immediately, not leave the whole page waiting for two minutes');
+  assert.match(result.error,/1|退出|启动/);
+  assert.ok(script);
 }
