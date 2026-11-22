@@ -9,6 +9,7 @@ import { ExclusionFields,KeywordPreferencesSchema,SfxError } from "../sfx/models
 import {buildWorkflowReport} from "../sfx/WorkflowReport.js";
 import {workflowResources,workflowBundle,readWorkflowGuide,readWorkflowSkill} from "../sfx/WorkflowResources.js";
 import {SFX_WORKFLOW} from "../sfx/WorkflowPolicy.js";
+import {styleBlendOptions} from "../sfx/CreativeBrief.js";
 import {STYLE_PRESETS} from "../sfx/StyleResearch.js";
 import {listLocalFolders,searchLocalFolders} from "./LocalFolders.js";
 import {SFX_API_VERSION,SFX_REQUIRED_CAPABILITIES} from "./SfxServerCompatibility.js";
@@ -185,7 +186,7 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
     } else throw new SfxError("接口不存在", 404);
   } catch (e) {
     if (res.headersSent) res.destroy();
-    else json(res, { ...((e as any).code==='STYLE_CONFLICT'?{code:'STYLE_CONFLICT',conflicts:(e as any).conflicts}:{}),error: e instanceof z.ZodError ? e.issues.map(i => `${i.path.join(".")}：${i.message}`).join("；") : e instanceof Error ? e.message : String(e) }, e instanceof SfxError ? e.status : e instanceof z.ZodError ? 400 : (e as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500);
+    else json(res, { ...((e as any).code==='STYLE_CONFLICT'?{code:'STYLE_CONFLICT',conflicts:(e as any).conflicts,suggestions:styleBlendOptions((e as any).suggestions)}:{}),error: e instanceof z.ZodError ? e.issues.map(i => `${i.path.join(".")}：${i.message}`).join("；") : e instanceof Error ? e.message : String(e) }, e instanceof SfxError ? e.status : e instanceof z.ZodError ? 400 : (e as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500);
   }
   return true;
 }

@@ -157,7 +157,7 @@ export class SfxService {
     if(unresolved.length){
       const aspects={timbre:'音色',material:'材质',dynamics:'动态',space:'空间',music:'音乐',rhythm:'节奏',other:'声音方向'};
       const details=unresolved.map(c=>`「${c.left}」与「${c.right}」的${aspects[c.aspect]}存在冲突`).join('；');
-      throw Object.assign(new SfxError(`${details}。请在“声音要求”中补充具体要求后重试。`,409),{code:'STYLE_CONFLICT',conflicts:unresolved});
+      throw Object.assign(new SfxError(`${details}。请选择一种混合方式，或补充自定义声音要求后重新检查。`,409),{code:'STYLE_CONFLICT',conflicts:unresolved,suggestions:compatibility.suggestions});
     }
     return {...brief,styleCompatibility:compatibility};
   }

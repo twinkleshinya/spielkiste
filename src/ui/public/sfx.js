@@ -12,13 +12,25 @@ const num = id => Number($(id).value);
 const time = value => { const n = Math.max(0, Number(value) || 0); return `${String(Math.floor(n / 60)).padStart(2, "0")}:${(n % 60).toFixed(3).padStart(6, "0")}`; };
 const api = async (url, body) => {
   const response = await fetch(url, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  const data = await response.json(); if (!response.ok) throw Object.assign(new Error(data.error || `请求失败：${response.status}`),{code:data.code,conflicts:data.conflicts}); return data;
+  const data = await response.json(); if (!response.ok) throw Object.assign(new Error(data.error || `请求失败：${response.status}`),{code:data.code,conflicts:data.conflicts,suggestions:data.suggestions}); return data;
 };
+let conflictSelection = '', conflictIdentity = '', appliedConflictRequirements = '';
+function hideStyleConflict(){ $('style-conflict-panel').hidden=true;conflictSelection='';conflictIdentity=''; }
 function handleRequestError(error){
   status(error.message,true);
   if(error.code==='STYLE_CONFLICT'){
-    $('style-conflict').hidden=false;$('style-conflict').textContent=error.message;
-    $('sound-requirements').focus();$('sound-requirements').scrollIntoView({block:'center',behavior:'smooth'});
+    const identity=JSON.stringify([selectedStyle(),selectedReferenceWorks()]);
+    if($('style-conflict-panel').hidden||identity!==conflictIdentity)$('style-conflict-custom').value='';
+    conflictIdentity=identity;conflictSelection='';
+    $('style-conflict-panel').hidden=false;$('style-conflict').textContent=error.message;
+    const container=$('style-conflict-options');container.replaceChildren();const radios=[];
+    for(const option of (Array.isArray(error.suggestions)?error.suggestions:[]).filter(o=>typeof o?.title==='string'&&typeof o?.requirements==='string'&&o.requirements.trim()).slice(0,3)){
+      const label=text('label','','style-blend-option'),radio=document.createElement('input'),description=document.createElement('span');
+      radio.type='radio';radio.name='style-blend';radio.checked=false;radios.push(radio);
+      radio.onchange=()=>{for(const other of radios)other.checked=other===radio;conflictSelection=option.requirements;};
+      description.append(text('strong',option.title),text('small',option.requirements));label.append(radio,description);container.append(label);
+    }
+    $('style-conflict-panel').scrollIntoView({block:'center',behavior:'smooth'});
   }
 }
 function status(message, error = false) { $("status").textContent = message; $("status").classList.toggle("error", error); }
@@ -53,7 +65,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
+function setBusy(value) { busy = value; for (const id of ["style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -360,17 +372,17 @@ async function projectAction(action, body) {
   if(!run||busy)return;
   setBusy(true); try { const result=await api(`/api/sfx/projects/${run.projectId}/${action}`,body); if(result.project) project=result.project; if(result.runId){await poll(result.runId,true,{time:$('video').currentTime||0,playing:false});} else {await refreshHistory();renderWorkspace(true);} return result; } finally {setBusy(false);} }
 function loadProjectInputs() {
-  $("style-conflict").hidden=true;
+  hideStyleConflict();
   $("name").value=project?.name || run.name;$("video-path").value=run.videoPath;$("library-path").value=run.libraryPath;$("music-library-path").value=run.musicLibraryPath||"";libraryPreferences.load(run.libraryPreferences||[]);keywordPreferences.load((run.keywordPreferences||[]).filter(p=>p.purpose!=="reference"));
   loadExclusions(run);
-  $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";
+  $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";appliedConflictRequirements="";
   $("reference-works").value=referenceWorksFrom(run).join("；");
   const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险","魔法","现代动作","赛博朋克","像素复古"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);for(const [i,reference] of (run.referenceStyles||[]).entries())showStyleProfile(reference.profile,Boolean(run.styleProfile)||i>0);
 }
 async function reanalyzeProject(mode) {
   if (!run || busy) return;
   requireUpdatedPreview();
-  $("style-conflict").hidden=true;
+  hideStyleConflict();
   const description = mode === "visual" ? "" : $("video-description").value.trim();
   const soundRequirements = $("sound-requirements").value.trim();
   const style = selectedStyle();
@@ -523,7 +535,7 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   $("reanalyze-brief").hidden = true;
   $("history").value = "";
   $("name").value = "";
-  for(const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;$("style-conflict").hidden=true;
+  for(const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;appliedConflictRequirements="";hideStyleConflict();
   $("video-path").value = "";
   $("library-path").value = preserveLibraryInputs ? (previous?.libraryPath || "") : "";
   $("music-library-path").value = preserveLibraryInputs ? (previous?.musicLibraryPath || "") : "";
@@ -546,11 +558,11 @@ function showStyleProfile(profile,append=false){
   for(const text of [profile.summary,"音色："+profile.palette.join("；"),"避免："+profile.avoid.join("；"),...profile.actionGuidance,"依据限制："+profile.limitations]){const p=document.createElement("p");p.textContent=text;content.append(p);}
   for(const reference of profile.references){const p=document.createElement("p"),a=document.createElement("a");a.textContent=reference.title;try{const url=new URL(reference.url);if(url.protocol!=="https:")continue;a.href=url.href;}catch{continue;}a.target="_blank";a.rel="noopener noreferrer";p.append(a);content.append(p);}
 }
-$("sound-style").onchange=()=>{$("custom-style-label").hidden=$("sound-style").value!=="custom";$("style-profile-panel").hidden=true;const style=selectedStyle();if(style)void api("/api/sfx/styles").then(result=>{if(style!==selectedStyle())return;const profile=result.profiles?.find(p=>p.style===style);if(profile)showStyleProfile(profile);}).catch(()=>{});};
+$("sound-style").onchange=()=>{hideStyleConflict();$("custom-style-label").hidden=$("sound-style").value!=="custom";$("style-profile-panel").hidden=true;const style=selectedStyle();if(style)void api("/api/sfx/styles").then(result=>{if(style!==selectedStyle())return;const profile=result.profiles?.find(p=>p.style===style);if(profile)showStyleProfile(profile);}).catch(()=>{});};
 async function researchSelectedStyle(refresh=false){
   const style=selectedStyle(),works=selectedReferenceWorks();
   if(!style&&!works.length)throw new Error("请选择风格，或在声音方向区填写参考作品");if(busy)return;setBusy(true);
-  $("style-conflict").hidden=true;status(refresh?"正在重新研究并检查声音方向…":"正在分析并检查声音方向…");
+  hideStyleConflict();status(refresh?"正在重新研究并检查声音方向…":"正在分析并检查声音方向…");
   try{
     const result=await api('/api/sfx/styles/check',{style,referenceWorks:works,soundRequirements:$("sound-requirements").value.trim(),refresh});
     let count=0;if(result.styleProfile)showStyleProfile(result.styleProfile,count++>0);
@@ -559,6 +571,21 @@ async function researchSelectedStyle(refresh=false){
   }finally{setBusy(false);}
 
 }
+$('reference-works').addEventListener('input',hideStyleConflict);$('custom-style').addEventListener('input',hideStyleConflict);
+$('apply-style-conflict').onclick=guard(async()=>{
+  if(busy)return;
+  const custom=$('style-conflict-custom').value.trim();
+  if(!conflictSelection&&!custom)throw new Error('请选择一种混合方式，或填写自定义要求。');
+  if(conflictIdentity!==JSON.stringify([selectedStyle(),selectedReferenceWorks()])){hideStyleConflict();throw new Error('声音方向已改变，请重新检查。');}
+  let existing=$('sound-requirements').value.trim();
+  if(appliedConflictRequirements&&existing.endsWith(appliedConflictRequirements))existing=existing.slice(0,-appliedConflictRequirements.length).trim();
+  const additions=[conflictSelection,custom].filter(value=>value&&!existing.includes(value));
+  const requirements=[existing,...additions].filter(Boolean).join('\n');
+  if(requirements.length>4000)throw new Error('声音要求合计不能超过4000字，请精简后重试。');
+  appliedConflictRequirements=additions.join('\n');$('sound-requirements').value=requirements;setBusy(true);status('正在检查已确认的声音要求…');
+  try{await api('/api/sfx/styles/check',{style:selectedStyle(),referenceWorks:selectedReferenceWorks(),soundRequirements:requirements});hideStyleConflict();status('声音方向检查通过。请点击生成，或根据新说明重新分析。');}
+  finally{setBusy(false);}
+});
 $("research-style").onclick=guard(()=>researchSelectedStyle());$("refresh-style").onclick=guard(()=>researchSelectedStyle(true));
 $("search-library-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("library-path").value.trim());if(value){$("library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
 $("search-music-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("music-library-path").value.trim()||$("library-path").value.trim());if(value){$("music-library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
@@ -568,7 +595,7 @@ $("analyze").onclick = guard(async () => {
   if(!$("create-form").reportValidity())return;
   if($("sound-style").value==="custom"&&!selectedStyle())throw new Error("请输入自定义风格名称");
   keepDraftBeforeLeaving();
-  $("style-conflict").hidden=true;status("正在检查声音方向…");
+  hideStyleConflict();status("正在检查声音方向…");
   const input = { videoDescription:$("video-description").value.trim(),soundRequirements:$("sound-requirements").value.trim(),style:selectedStyle(),name: $("name").value, workflowPreset:"reference-v6",reusePreserved:true,videoPath: $("video-path").value.trim().replace(/^"|"$/g, ""), libraryPath: $("library-path").value.trim().replace(/^"|"$/g, ""),referenceWorks:selectedReferenceWorks(),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings(), musicLibraryPath: $("music-library-path").value.trim().replace(/^"|"$/g, "") };
   setBusy(true);
   try {

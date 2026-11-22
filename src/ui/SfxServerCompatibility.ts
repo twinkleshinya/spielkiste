@@ -16,6 +16,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "style-research",
   "reference-work-style",
   "style-conflict-clarification",
+  "style-conflict-options",
   "folder-keyword-search",
   "creative-brief",
   "project-git-export"
