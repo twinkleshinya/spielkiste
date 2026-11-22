@@ -96,7 +96,7 @@ export async function testFolderPickerReportsHelperExit() {
   const child=new EventEmitter() as EventEmitter & {unref:()=>void};child.unref=()=>{};
   let script='';
   const context=vm.createContext({process:{platform:'win32',cwd:()=>process.cwd(),env:process.env},path,Date,Math,
-    folderPickers:new Map(),Buffer,setTimeout,clearTimeout,
+    folderPickers:new Map(),Buffer,setTimeout,clearTimeout,appResource:(...parts:string[])=>path.resolve(...parts),
     fs:{mkdir:async()=>{},writeFile:async(_file:string,content:string)=>{script=content;},readFile:async()=>{throw new Error('ENOENT');}},
     spawn:()=>{setTimeout(()=>child.emit('spawn'),0);return child;}
   });

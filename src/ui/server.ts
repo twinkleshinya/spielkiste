@@ -35,6 +35,7 @@ const folderPickers = new Map<
     path?: string;
     error?: string;
     resultPath: string;
+    helper?: ReturnType<typeof spawn>;
   }
 >();
 
@@ -389,34 +390,12 @@ async function startFolderPicker(input: { initialPath?: string; description?: st
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const pickerDir = path.join(process.cwd(), ".output", "folder-pickers");
   await fs.mkdir(pickerDir, { recursive: true });
-  const resultPath = path.join(pickerDir, `${id}.txt`);
-  const scriptPath = path.join(pickerDir, `${id}.ps1`);
-  const initialPath = path.resolve(process.cwd(), input.initialPath?.trim() || ".");
-  const script = [
-    "Add-Type -AssemblyName System.Windows.Forms",
-    "$form = New-Object System.Windows.Forms.Form",
-    "$form.TopMost = $true",
-    "$form.StartPosition = 'CenterScreen'",
-    "$form.Width = 1",
-    "$form.Height = 1",
-    "$form.ShowInTaskbar = $false",
-    "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog",
-    `$dialog.Description = ${powershellString(input.description || "选择外包文档文件夹路径")}`,
-    `$dialog.SelectedPath = ${powershellString(initialPath)}`,
-    "$dialog.ShowNewFolderButton = $true",
-    "$form.Add_Shown({ $form.Activate(); $form.BringToFront() })",
-    "$null = $form.Show()",
-    "$result = $dialog.ShowDialog($form)",
-    "if ($result -eq [System.Windows.Forms.DialogResult]::OK) {",
-    `  Set-Content -LiteralPath ${powershellString(resultPath)} -Value $dialog.SelectedPath -Encoding UTF8`,
-    "} else {",
-    `  Set-Content -LiteralPath ${powershellString(resultPath)} -Value '__CANCELLED__' -Encoding UTF8`,
-    "}",
-    "$form.Close()",
-    "$form.Dispose()"
-  ].join("\n");
-  await fs.writeFile(scriptPath, script, "utf8");
-  const picker = {
+  const resultPath = path.join(pickerDir, `${id}.json`);
+  const requestPath = path.join(pickerDir, `${id}.request.json`);
+  const initialPath = typeof input.initialPath === 'string' ? input.initialPath.trim().replace(/^"|"$/g,'') : '';
+  const description = typeof input.description === 'string' ? input.description.slice(0,200) : '选择文件夹';
+  await fs.writeFile(requestPath,JSON.stringify({initialPath,description,resultPath}),"utf8");
+  const picker: NonNullable<ReturnType<typeof folderPickers.get>> = {
     id,
     status: "running" as const,
     startedAt: new Date().toISOString(),
@@ -424,14 +403,19 @@ async function startFolderPicker(input: { initialPath?: string; description?: st
   };
   folderPickers.set(id, picker);
   const child = spawn(
-    "powershell",
-    ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-STA", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", appResource('scripts','pick-folder.ps1'), "-RequestPath", requestPath],
     {
       detached: true,
-      windowsHide: false,
+      windowsHide: true,
       stdio: "ignore"
     }
   );
+  picker.helper=child;
+  child.once('error',error=>{picker.status='failed';picker.error=`系统文件夹窗口启动失败：${error.message}`;});
+  child.once('exit',(code,signal)=>{
+    if(picker.status==='running'){picker.status='failed';picker.error=`系统文件夹窗口已退出（${code ?? signal}），未返回选择结果。`;}
+  });
   child.unref();
   return {
     id,
@@ -443,27 +427,21 @@ async function startFolderPicker(input: { initialPath?: string; description?: st
 async function getFolderPicker(id: string) {
   const picker = folderPickers.get(id);
   if (!picker) return { id, status: "failed", error: "未找到文件夹选择任务。" };
-  if (picker.status !== "running") return picker;
   const elapsedMs = Date.now() - new Date(picker.startedAt).getTime();
   try {
-    const raw = (await fs.readFile(picker.resultPath, "utf8")).replace(/^\uFEFF/, "").trim();
-    if (raw === "__CANCELLED__") {
-      picker.status = "cancelled";
-    } else if (raw) {
-      picker.status = "success";
-      picker.path = raw;
-    }
+    const result=JSON.parse((await fs.readFile(picker.resultPath, "utf8")).replace(/^\uFEFF/, ""));
+    if(result.status==='success'&&typeof result.path==='string'&&result.path){picker.status='success';picker.path=result.path;}
+    else if(result.status==='cancelled')picker.status='cancelled';
+    else if(result.status==='failed'){picker.status='failed';picker.error=result.error||'系统文件夹选择失败。';}
   } catch {
-    if (elapsedMs > 120000) {
+    if (picker.status==='running'&&elapsedMs > 120000) {
+      picker.helper?.kill();
       picker.status = "failed";
       picker.error = "文件夹选择超时；请直接把路径粘贴到输入框。";
     }
   }
-  return picker;
-}
-
-function powershellString(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
+  const {helper,resultPath,...snapshot}=picker;
+  return snapshot;
 }
 
 async function openFolder(input: { folderPath?: string }) {
