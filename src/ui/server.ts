@@ -406,7 +406,6 @@ async function startFolderPicker(input: { initialPath?: string; description?: st
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-STA", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", appResource('scripts','pick-folder.ps1'), "-RequestPath", requestPath],
     {
-      detached: true,
       windowsHide: true,
       stdio: "ignore"
     }
@@ -430,8 +429,8 @@ async function getFolderPicker(id: string) {
   const elapsedMs = Date.now() - new Date(picker.startedAt).getTime();
   try {
     const result=JSON.parse((await fs.readFile(picker.resultPath, "utf8")).replace(/^\uFEFF/, ""));
-    if(result.status==='success'&&typeof result.path==='string'&&result.path){picker.status='success';picker.path=result.path;}
-    else if(result.status==='cancelled')picker.status='cancelled';
+    if(result.status==='success'&&typeof result.path==='string'&&result.path){picker.status='success';picker.path=result.path;delete picker.error;}
+    else if(result.status==='cancelled'){picker.status='cancelled';delete picker.error;}
     else if(result.status==='failed'){picker.status='failed';picker.error=result.error||'系统文件夹选择失败。';}
   } catch {
     if (picker.status==='running'&&elapsedMs > 120000) {
