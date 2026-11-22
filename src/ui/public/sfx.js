@@ -293,7 +293,8 @@ function renderWorkspace(keepVideo = false) {
   const coveredActions = new Set(run.placements.filter(p => p.enabled&&!run.events.find(e=>e.id===p.eventId)?.muted).map(p => p.eventId));
   const actionCoverage = actionEvents.filter(e => coveredActions.has(e.id)).length;
   $("selection-summary").hidden = !selection;
-  $("style-summary").hidden=!run.styleProfile;$("style-summary").textContent=run.styleProfile?`风格：${run.styleProfile.style} · ${run.styleProfile.model} · ${run.styleProfile.references.length} 份参考资料 · ${run.styleProfile.researchedAt}。${run.styleProfile.summary}（文献研究与声音设计推导，未试听参考原声）`:"";
+  const styleSummaries=[...(run.styleProfile?[`风格：${run.styleProfile.style} · ${run.styleProfile.summary}`]:[]),...(run.referenceStyles||[]).map(r=>`参考作品：${r.keyword}（${r.scope}，权重 ${r.weight}） · ${r.profile.summary}`)];
+  $("style-summary").hidden=!styleSummaries.length;$("style-summary").textContent=styleSummaries.length?styleSummaries.join("；")+"（文献研究与声音设计推导，未试听参考原声）":"";
   $("selection-summary").textContent = selection ? `${selection.model} · 音频选材${({ complete: "完成", partial: "部分完成", fallback: "使用规则回退", skipped: "无可分析候选" })[selection.status]}：分析 ${selection.analyzedAssets} 份候选片段（${selection.cachedAssets} 份缓存），选用 ${selection.selectedLayers} 层，拒选 ${selection.rejectedLayers} 层，规则回退 ${selection.fallbackLayers} 层。动作覆盖 ${actionCoverage}/${actionEvents.length} 个，尚缺 ${actionEvents.length - actionCoverage} 个动作素材。只分析候选片段，风格与混音仍需试听。` : "";
   if (selection?.scope === "selective") $("selection-summary").textContent += ` 本次为关键与疑难候选复核，其余 ${selection.ruleRetainedLayers || 0} 层沿用名称规则选材。`;
   updatePreviewStatus(); if (!keepVideo) showVideo(false);
@@ -355,7 +356,7 @@ function loadProjectInputs() {
   $("name").value=project?.name || run.name;$("video-path").value=run.videoPath;$("library-path").value=run.libraryPath;$("music-library-path").value=run.musicLibraryPath||"";libraryPreferences.load(run.libraryPreferences||[]);keywordPreferences.load(run.keywordPreferences||[]);
   loadExclusions(run);
   $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";
-  const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险","魔法","现代动作","赛博朋克","像素复古"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);
+  const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险","魔法","现代动作","赛博朋克","像素复古"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);for(const [i,reference] of (run.referenceStyles||[]).entries())showStyleProfile(reference.profile,Boolean(run.styleProfile)||i>0);
 }
 async function reanalyzeProject(mode) {
   if (!run || busy) return;
@@ -368,7 +369,7 @@ async function reanalyzeProject(mode) {
   status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新的辅助说明重新分析画面、点位和音效…");
   let submitted = false;
   try {
-    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined });
+    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined,keywordPreferences:keywordPreferences.read() });
     submitted = true;
     await poll(result.runId, true, playback, { recoverDraft: false });
     loadProjectInputs();
@@ -523,14 +524,20 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   history.replaceState(null, "", "/sfx?new=1");
 }
 function selectedStyle(){return $("sound-style").value==="custom"?$("custom-style").value.trim():$("sound-style").value;}
-function showStyleProfile(profile){
+function showStyleProfile(profile,append=false){
   $("style-profile-panel").hidden=false;$("style-profile-title").textContent=`${profile.style} · 风格档案 · ${profile.researchedAt.slice(0,10)}`;
-  const content=$("style-profile-content");content.replaceChildren();
+  const content=$("style-profile-content");if(!append)content.replaceChildren();else $("style-profile-title").textContent="声音风格与参考作品研究档案";const heading=document.createElement("p");heading.textContent=`${profile.targetType==="work"?"参考作品":"声音风格"}：${profile.style}`;content.append(heading);
   for(const text of [profile.summary,"音色："+profile.palette.join("；"),"避免："+profile.avoid.join("；"),...profile.actionGuidance,"依据限制："+profile.limitations]){const p=document.createElement("p");p.textContent=text;content.append(p);}
   for(const reference of profile.references){const p=document.createElement("p"),a=document.createElement("a");a.textContent=reference.title;try{const url=new URL(reference.url);if(url.protocol!=="https:")continue;a.href=url.href;}catch{continue;}a.target="_blank";a.rel="noopener noreferrer";p.append(a);content.append(p);}
 }
 $("sound-style").onchange=()=>{$("custom-style-label").hidden=$("sound-style").value!=="custom";$("style-profile-panel").hidden=true;const style=selectedStyle();if(style)void api("/api/sfx/styles").then(result=>{if(style!==selectedStyle())return;const profile=result.profiles?.find(p=>p.style===style);if(profile)showStyleProfile(profile);}).catch(()=>{});};
-async function researchSelectedStyle(refresh=false){const style=selectedStyle();if(!style)throw new Error("请先选择或输入风格");if(busy)return;setBusy(true);status(refresh?"正在重新研究风格与参考资料…":"正在读取或分析风格…");try{const result=await api("/api/sfx/styles/research",{style,refresh});showStyleProfile(result);status("风格档案已保存，生成时将用于画面分析和声音选材。");}finally{setBusy(false);}}
+async function researchSelectedStyle(refresh=false){
+  const style=selectedStyle(),references=keywordPreferences.read().filter(p=>p.purpose==="reference");
+  const targets=[...(style?[{style,targetType:"style"}]:[]),...references.map(p=>({style:p.keyword,targetType:"work"}))];
+  if(!targets.length)throw new Error("请选择风格，或添加参考作品风格并填写作品名");if(busy)return;setBusy(true);
+  status(refresh?"正在重新研究风格与参考作品…":"正在读取或分析声音风格与参考作品…");
+  try{let count=0;for(const target of targets){const result=await api("/api/sfx/styles/research",{...target,refresh});showStyleProfile(result,count++>0);}status("风格与参考作品档案已保存，生成时将按权重和适用对象参与画面分析与声音选材。");}finally{setBusy(false);}
+}
 $("research-style").onclick=guard(()=>researchSelectedStyle());$("refresh-style").onclick=guard(()=>researchSelectedStyle(true));
 $("search-library-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("library-path").value.trim());if(value){$("library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
 $("search-music-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("music-library-path").value.trim()||$("library-path").value.trim());if(value){$("music-library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});

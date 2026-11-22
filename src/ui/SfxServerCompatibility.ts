@@ -1,4 +1,4 @@
-export const SFX_API_VERSION = "2026-11-21";
+export const SFX_API_VERSION = "2026-11-22";
 
 export const SFX_REQUIRED_CAPABILITIES = [
   "add-described-event",
@@ -14,6 +14,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "library-exclusions",
   "ai-reasoning-effort",
   "style-research",
+  "reference-work-style",
   "folder-keyword-search",
   "creative-brief",
   "project-git-export"

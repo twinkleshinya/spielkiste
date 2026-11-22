@@ -1,5 +1,6 @@
 import path from "node:path";
 import type {AudioAsset,KeywordPreference,LibraryPreference,SoundEvent} from "./models.js";
+import type {ReferenceStyle} from "./CreativeBrief.js";
 
 export function preferencePath(value:string) {
   const clean=value.trim().replace(/^"|"$/g,"");
@@ -49,8 +50,9 @@ const keywordText=(value:string)=>value.normalize("NFKC").trim().toLowerCase();
 export function normalizeKeywordPreferences(preferences:KeywordPreference[]=[]):KeywordPreference[] {
   const unique=new Map<string,KeywordPreference>();
   for(const entry of preferences) {
-    const keyword=keywordText(entry.keyword),scope=entry.scope||"all",key=`${scope}:${keyword}`;
-    if(!unique.has(key)||entry.weight>unique.get(key)!.weight)unique.set(key,{keyword,weight:entry.weight,scope});
+    const reference=entry.purpose==='reference';
+    const keyword=reference?entry.keyword.normalize('NFKC').trim():keywordText(entry.keyword),scope=entry.scope||"all",key=`${reference?'reference':'material'}:${scope}:${keywordText(keyword)}`;
+    if(!unique.has(key)||entry.weight>unique.get(key)!.weight)unique.set(key,{keyword,weight:entry.weight,scope,...(reference?{purpose:'reference' as const}:{})});
   }
   return [...unique.values()].sort((a,b)=>a.scope.localeCompare(b.scope)||a.keyword.localeCompare(b.keyword));
 }
@@ -64,7 +66,11 @@ function contextScope(context?:PreferenceContext):KeywordPreference["scope"]|und
 }
 export function keywordPreferencesFor(context:PreferenceContext|undefined,preferences:KeywordPreference[]=[]) {
   const scope=contextScope(context);
-  return preferences.filter(p=>p.weight>1&&(p.scope==="all"||p.scope===scope));
+  return preferences.filter(p=>p.purpose!=='reference'&&p.weight>1&&(p.scope==="all"||p.scope===scope));
+}
+export function referenceStylesFor(context:PreferenceContext|undefined,references:ReferenceStyle[]=[]) {
+  const scope=contextScope(context);
+  return references.filter(p=>p.scope==='all'||p.scope===scope);
 }
 /** Remove only the historical auto prefix when the event's own intent did not request it. */
 export function preferredSearchQuery(query:string,context:PreferenceContext|undefined,preferences:KeywordPreference[]=[]) {

@@ -3,7 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { AudioAsset, AudioLibraryIndex } from "./models.js";
 import { runFfmpeg } from "./FfmpegBinaries.js";
-import {keywordPreferenceResolver,pathPreferenceResolver,preferredSearchQuery,type PreferenceContext} from "./LibraryPreferences.js";
+import {keywordPreferenceResolver,pathPreferenceResolver,preferredSearchQuery,referenceStylesFor,type PreferenceContext} from "./LibraryPreferences.js";
 import {SFX_WORKFLOW} from "./WorkflowPolicy.js";
 import {assetExclusionReasonResolver} from "./AssetExclusions.js";
 
@@ -110,6 +110,7 @@ export class AudioLibraryIndexer {
     query=preferredSearchQuery(query,context,index.keywordPreferences);
     const preferredPath=pathPreferenceResolver(index.libraryPreferences);
     const preferredKeyword=keywordPreferenceResolver(index.keywordPreferences,context);
+    const profiles=[...(index.styleProfile?[{profile:index.styleProfile,weight:3}]:[]),...referenceStylesFor(context,index.referenceStyles)];
     const words = rawWords(query);
     const expanded = tokens(query);
     const queryText = query.toLowerCase();
@@ -141,8 +142,10 @@ export class AudioLibraryIndexer {
       const keyword=preferredKeyword(asset);
       const preferenceSteps=(preference?preference.weight-1:0)+(keyword?keyword.weight-1:0);
       const preferenceBonus=Math.min(SFX_WORKFLOW.libraryPreference.maxBonus,relevance*SFX_WORKFLOW.libraryPreference.bonusPerStep*preferenceSteps);
-      const styleHits=(index.styleProfile?.searchTerms||[]).filter(term=>term.trim().length>1&&`${filename} ${pathText}`.normalize("NFKC").includes(term.normalize("NFKC").toLowerCase()));
-      const styleBonus=relevance>0?Math.min(1.5,relevance*.12*styleHits.length):0;
+      const text=`${filename} ${pathText}`.normalize('NFKC');
+      const matches=profiles.map(p=>({...p,hits:[...new Set(p.profile.searchTerms.flatMap(term=>term.normalize('NFKC').toLowerCase().split(/[_\s/、,，]+/u)).filter(term=>term.length>1))].filter(term=>contains(text,term))}));
+      const styleHits=[...new Set(matches.flatMap(p=>p.hits))];
+      const styleBonus=relevance>0?Math.min(1.5,...matches.map(p=>relevance*.12*p.hits.length*p.weight/3),0):0;
       return { asset, score:relevance+preferenceBonus+styleBonus, reason: `${styleHits.length?`风格参考：${styleHits.join("、")}；`:""}名称/同义词：${hits.join("、") || matchedGroups.map(g => g[0]).join("、") || pathHits.join("、") || weakHits.join("、")}；${stagePenalty || uiPenalty ? "名称意图不完全一致，需听取判断" : "按声音意图优先排序"}${preference?`；路径优先 ×${preference.weight}：${preference.path}（相关性优先）`:""}${keyword?`；关键词优先 ×${keyword.weight}：${keyword.keyword}（${keyword.scope}，相关性优先）`:""}` };
     }).filter(r => r.score > 0).sort((a, b) => b.score - a.score || a.asset.relativePath.localeCompare(b.asset.relativePath)).slice(0, limit);
   }

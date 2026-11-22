@@ -24,18 +24,20 @@ export function createKeywordPreferences(container,{isBusy,onChange}) {
   function row(value={keyword:"",weight:3,scope:"all"}) {
     if(container.children.length>=12)return;
     const entry=document.createElement("div");entry.className="keyword-preference";
-    entry.innerHTML='<label>优先关键词<input class="preference-keyword" placeholder="例如 金属、metal、yetuga（每行一个）" maxlength="120" aria-label="优先关键词"></label><label>适用范围<select class="preference-scope" aria-label="关键词适用对象"><option value="all">全部声音</option><option value="boss">仅 Boss / 怪物</option><option value="player">仅玩家 / 角色</option><option value="ui">仅 UI</option><option value="ambience">仅环境</option><option value="music">仅音乐</option></select></label><label class="preference-weight-label">权重<input class="preference-weight" type="number" min="1" max="10" step="0.5" aria-label="关键词权重"></label><button type="button" class="danger-text preference-remove">移除</button>';
+    entry.innerHTML='<label>关键词 / 作品名称<input class="preference-keyword" placeholder="例如 金属、脚步（每行一个）" maxlength="120" aria-label="优先关键词或作品名称"></label><label>用途<select class="preference-purpose" aria-label="关键词用途"><option value="material">素材关键词</option><option value="reference">参考作品风格</option></select></label><label>适用范围<select class="preference-scope" aria-label="关键词适用对象"><option value="all">全部声音</option><option value="boss">仅 Boss / 怪物</option><option value="player">仅玩家 / 角色</option><option value="ui">仅 UI</option><option value="ambience">仅环境</option><option value="music">仅音乐</option></select></label><label class="preference-weight-label">权重<input class="preference-weight" type="number" min="1" max="10" step="0.5" aria-label="关键词权重"></label><button type="button" class="danger-text preference-remove">移除</button>';
     entry.querySelector(".preference-keyword").value=value.keyword||"";
     entry.querySelector(".preference-weight").value=value.weight??3;
     entry.querySelector(".preference-scope").value=value.scope||"all";
+    const purpose=entry.querySelector('.preference-purpose');purpose.value=value.purpose==='reference'?'reference':'material';
+    const updatePlaceholder=()=>{entry.querySelector('.preference-keyword').placeholder=purpose.value==='reference'?'例如 卡赞、黑神话：悟空（每行一部作品）':'例如 金属、脚步（每行一个）';};updatePlaceholder();
     entry.querySelector(".preference-remove").onclick=()=>{if(!isBusy()){entry.remove();add.disabled=false;onChange();}};
     entry.addEventListener("input",()=>onChange());
-    entry.addEventListener("change",event=>{if(event.target.tagName==="SELECT")onChange();});
+    entry.addEventListener("change",event=>{if(event.target.tagName==="SELECT"){updatePlaceholder();onChange();}});
     container.append(entry);add.disabled=container.children.length>=12;
   }
   add.onclick=()=>{if(!isBusy()){row();onChange();}};
   return {
-    read:()=>[...container.children].map(entry=>({keyword:entry.querySelector(".preference-keyword").value.trim(),weight:Number(entry.querySelector(".preference-weight").value),scope:entry.querySelector(".preference-scope").value})).filter(p=>p.keyword),
+    read:()=>[...container.children].map(entry=>({keyword:entry.querySelector(".preference-keyword").value.trim(),weight:Number(entry.querySelector(".preference-weight").value),scope:entry.querySelector(".preference-scope").value,...(entry.querySelector('.preference-purpose').value==='reference'?{purpose:'reference'}:{})})).filter(p=>p.keyword),
     load:values=>{container.replaceChildren();for(const value of (values||[]).slice(0,12))row(value);add.disabled=container.children.length>=12;},
     setBusy:value=>{for(const input of container.querySelectorAll("input,select,button"))input.disabled=value;add.disabled=value||container.children.length>=12;}
   };

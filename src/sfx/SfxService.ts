@@ -44,7 +44,7 @@ import { ProjectGit } from "./ProjectGit.js";
 import { ReaperExporter } from "./ReaperExporter.js";
 import { AiConfigService, type AiReasoningEffort } from "./SfxAiConfig.js";
 
-function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,styleProfile:input.styleProfile};}
+function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,styleProfile:input.styleProfile,referenceStyles:input.referenceStyles};}
 
 type PreviewRenderer = { renderPreview(run: SfxRun, outputDir: string, options?: { preserveSavedMix?: boolean; preserveSourceEdits?: boolean; videoSource?: string; preservePlacementIds?: ReadonlySet<string> }): Promise<{ video: string; audio: string; revision: number }> };
 
@@ -241,6 +241,10 @@ export class SfxService {
         run.progress=`研究声音风格：${run.style}（已有档案将直接复用）`;await this.store.save(run);
         run.styleProfile=await usagePhase("style-research",()=>this.styles.research(run.style!,run.workflow?.requestedModel||"gemini-4-argon",run.workflow?.reasoningEffort||"high",controller.signal));
       }
+      if(run.keywordPreferences?.some(p=>p.purpose==='reference')) {
+        run.progress='分析参考作品声音风格（已有档案将直接复用）';await this.store.save(run);
+        run.referenceStyles=await usagePhase('style-research',()=>this.styles.researchKeywords(run.keywordPreferences,run.workflow?.requestedModel||'gemini-4-argon',run.workflow?.reasoningEffort||'high',controller.signal));
+      }
       Object.assign(index,creativeFields(run));
       run.progress = parsed.analysisMode === "scene" ? "检测镜头边界并生成复核清单" : "分析画面动作、物体、环境和声音意图";
       await this.store.save(run);
@@ -294,7 +298,8 @@ export class SfxService {
       mode: z.enum(["visual", "brief"]),
       videoDescription: z.string().trim().max(4000).optional(),
       soundRequirements: z.string().trim().max(4000).optional(),
-      style: z.string().trim().max(120).optional()
+      style: z.string().trim().max(120).optional(),
+      keywordPreferences: KeywordPreferencesSchema.optional()
     }).parse(body);
     const cleanName = source.name.replace(/ · (?:重新分析|编辑|定位|补声|自动混音|Gemini选材)(?:副本|\d+)?$/, "").slice(0, 100);
     const result = await this.create({
@@ -312,7 +317,7 @@ export class SfxService {
       workflowPreset: source.workflow?.presetId || "reference-v6",
       selectionScope: source.selectionScope || "selective",
       libraryPreferences: source.libraryPreferences,
-      keywordPreferences: source.keywordPreferences,
+      keywordPreferences: input.keywordPreferences ?? source.keywordPreferences,
       excludedLibraryPaths: source.excludedLibraryPaths,
       excludedKeywords: source.excludedKeywords,
       videoDescription: input.mode === "visual" ? undefined : input.videoDescription,
@@ -991,6 +996,7 @@ export class SfxService {
       const originalMuted=edit.originalMuted??(edit.originalGainDb!==run.originalGainDb?false:run.originalMuted===true);
       const keywordPreferences=normalizeKeywordPreferences(edit.keywordPreferences??run.keywordPreferences);
       if(edit.keywordPreferences!==undefined)edit.keywordPreferences=keywordPreferences;
+      const referenceStyles=run.referenceStyles?.filter(r=>keywordPreferences.some(p=>p.purpose==="reference"&&p.keyword.toLocaleLowerCase()===r.keyword.toLocaleLowerCase()&&p.scope===r.scope&&p.weight===r.weight));
       const excludedLibraryPaths=normalizeExcludedLibraryPaths(edit.excludedLibraryPaths??run.excludedLibraryPaths);
       const excludedKeywords=normalizeExcludedKeywords(edit.excludedKeywords??run.excludedKeywords);
       if(edit.excludedLibraryPaths!==undefined)edit.excludedLibraryPaths=excludedLibraryPaths;
@@ -1048,6 +1054,7 @@ export class SfxService {
           try{await fs.copyFile(path.join(this.store.directory(id),file),path.join(this.store.directory(run.id),file));}catch(e){if((e as NodeJS.ErrnoException).code!=="ENOENT")throw e;}
       }
       Object.assign(run, edit, { originalMuted,revision: run.revision + 1, status: "ready", progress: "修改已保存，请重新生成预览" });
+      run.referenceStyles=referenceStyles;
       if(run.workflow)Object.assign(run.workflow.options,{keywordPreferences:run.keywordPreferences||[],excludedLibraryPaths:run.excludedLibraryPaths||[],excludedKeywords:run.excludedKeywords||[]});
       delete run.error;delete run.mixReport;
       await withModelUsage(run.id,this.store.directory(run.id),"save-manual-edits",async()=>{

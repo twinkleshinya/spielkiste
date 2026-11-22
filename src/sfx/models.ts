@@ -1,5 +1,5 @@
 import { z } from "zod";
-import {CreativeFields,StyleProfileSchema} from "./CreativeBrief.js";
+import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema} from "./CreativeBrief.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
 export const CategorySchema = z.enum(["foley", "impact", "whoosh", "ambience", "music", "other"]);
@@ -15,14 +15,14 @@ export const AssetSchema = z.object({
 export type AudioAsset = z.infer<typeof AssetSchema>;
 export const LibraryPreferenceSchema=z.object({path:z.string().trim().min(1).max(2000),weight:z.number().finite().min(1).max(10)});
 export type LibraryPreference=z.infer<typeof LibraryPreferenceSchema>;
-export const KeywordPreferenceSchema=z.object({keyword:z.string().trim().min(1).max(120).refine(value=>/[\p{L}\p{N}]/u.test(value),"关键词需要包含文字或数字"),weight:z.number().finite().min(1).max(10),scope:z.enum(["all","boss","player","ui","ambience","music"]).default("all")});
+export const KeywordPreferenceSchema=z.object({keyword:z.string().trim().min(1).max(120).refine(value=>/[\p{L}\p{N}]/u.test(value),"关键词需要包含文字或数字"),weight:z.number().finite().min(1).max(10),scope:z.enum(["all","boss","player","ui","ambience","music"]).default("all"),purpose:z.enum(["material","reference"]).optional()});
 export const KeywordPreferencesSchema=z.array(KeywordPreferenceSchema).max(12);
 export type KeywordPreference=z.infer<typeof KeywordPreferenceSchema>;
 export const ExclusionFields = {
   excludedLibraryPaths:z.array(z.string().trim().min(1).max(2000).refine(value=>Boolean(value.replace(/^"|"$/g,"").trim()),"排除目录不能为空")).max(12).optional(),
   excludedKeywords:z.array(z.string().trim().min(1).max(120)).max(50).optional()
 };
-export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
+export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
 export type AudioLibraryIndex = z.infer<typeof IndexSchema>;
 export const CandidateSchema = z.object({ assetId: z.string(), score: z.number(), reason: z.string() });
 export const LayerRoleSchema = z.enum(["ambience", "music", "foley", "impact", "whoosh", "texture", "tail"]);
@@ -67,7 +67,7 @@ export const SelectionReportSchema = z.object({
   decisions: z.array(z.object({ eventIds: z.array(z.string()), taskId: z.string(), assetId: z.string().nullable(), reason: z.string(), basis: z.enum(["audio-context", "fallback"]) })),
   audio: z.array(z.object({ assetId: z.string(), summary: z.string(), tags: z.array(z.string()), energy: z.number(), hasMusic: z.boolean(), hasSpeech: z.boolean() }))
 });
-export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),
+export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(),
   ...ExclusionFields,
   version: z.literal(1), id: z.string(), projectId: z.string().uuid().optional(), name: z.string(), createdAt: z.string(), revision: z.number().int().nonnegative(),
   status: z.enum(["analyzing", "ready", "rendering", "failed"]), progress: z.string(), error: z.string().optional(),

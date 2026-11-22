@@ -5,7 +5,7 @@ export const SFX_WORKFLOW = {
   timing: {fps:5,windowSeconds:6,hopSeconds:5.6,reviewFps:12,reviewSeconds:3,reviewHopSeconds:2.8,contactFps:30,maxVideoSeconds:300},
   candidates: {searchLimit:40,measuredFamilies:8,alternatives:5,durationSimilarity:.8,bandSimilarity:.985,envelopeSimilarity:.965,centroidDifference:220},
   libraryPreference:{baseWeight:1,defaultWeight:3,minWeight:1,maxWeight:10,maxPaths:12,bonusPerStep:.04,maxBonus:4,overlap:"max",relevanceFirst:true},
-  keywordPreference:{defaultWeight:3,minWeight:1,maxWeight:10,maxKeywords:12,match:"literal-name-tokens",overlap:"max",sharedPreferenceBudget:true,relevanceFirst:true},
+  keywordPreference:{defaultWeight:3,minWeight:1,maxWeight:10,maxKeywords:12,match:"literal-name-tokens",referenceWork:"research-before-match",overlap:"max",sharedPreferenceBudget:true,relevanceFirst:true},
   selection: {scope:"selective",ambiguousEvents:12,maxAudioAssets:160,effectSampleSeconds:6,musicSampleSeconds:24},
   editing: {fadeInSeconds:.005,fadeOutSeconds:.08,vocalReleaseSeconds:.35,movementReleaseSeconds:.18,maxModelExtensionSeconds:.5,maxModelReleaseSeconds:.4},
   mix: {addedReverb:false,preservePitch:true,preserveSpeed:true,originalGainDb:-60,originalMuted:true,targetLufs:-20,truePeakDb:-1.5,loudnessRange:11,
