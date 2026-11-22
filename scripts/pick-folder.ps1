@@ -1,0 +1,29 @@
+param([Parameter(Mandatory=$true)][string]$RequestPath)
+$ErrorActionPreference = 'Stop'
+$request = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+try {
+  # A GUI executable owns the interactive window. PowerShell only compiles and
+  # waits for it; hosting the dialog inside a hidden PowerShell process is unreliable.
+  $source = Join-Path $PSScriptRoot 'Spielkiste.FolderPicker.cs'
+  $cache = Split-Path -Parent $request.resultPath
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try { $hash = [BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($source))).Replace('-','').Substring(0,16) }
+  finally { $sha.Dispose() }
+  $helper = Join-Path $cache ('Spielkiste.FolderPicker-' + $hash + '.exe')
+  if (!(Test-Path -LiteralPath $helper)) {
+    $temporary = Join-Path $cache ('picker-build-' + [Guid]::NewGuid().ToString('N') + '.exe')
+    try {
+      Add-Type -Path $source -ReferencedAssemblies 'System.Web.Extensions' -OutputAssembly $temporary -OutputType WindowsApplication
+      if (!(Test-Path -LiteralPath $helper)) { Move-Item -LiteralPath $temporary -Destination $helper }
+    } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary } }
+  }
+  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Hidden -PassThru
+  if (!$process.WaitForExit(115000)) {
+    $process.Kill()
+    throw 'Windows folder selection timed out. Please try again.'
+  }
+  if (!(Test-Path -LiteralPath $request.resultPath)) { throw 'Windows folder picker exited without returning a result.' }
+} catch {
+  @{status='failed';error=$_.Exception.Message} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8
+  exit 1
+}
