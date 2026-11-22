@@ -1,10 +1,4 @@
-/**
- * The full filesystem path can only be returned by the Electron desktop host.
- * A normal browser may open its native directory picker, but it deliberately
- * withholds the selected Windows path from page JavaScript. Keep that boundary
- * explicit instead of showing a fake in-page directory browser.
- */
-export const BROWSER_FOLDER_SELECTION_MESSAGE = "当前本地网页服务没有成功打开系统文件夹窗口。请使用 Spielkiste 桌面版，或从资源管理器复制完整路径后粘贴到输入框。";
+/** Full paths come from the desktop bridge or the trusted local server. */
 
 export function chooseLocalFolder(initialPath="",description="选择文件夹") {
   if(typeof window!=="undefined"&&typeof window.spielkisteDesktop?.chooseFolder==="function")return window.spielkisteDesktop.chooseFolder({initialPath,description});
@@ -18,21 +12,21 @@ export function chooseLocalFolder(initialPath="",description="选择文件夹") 
  */
 async function pickFolderViaLocalServer(initialPath,description) {
   try {
-    const start=await fetch("/api/pick-folder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({initialPath,description})});
+    const start=await fetch("/api/pick-folder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({initialPath,description}),signal:AbortSignal.timeout(10000)});
     const picker=await start.json();
     if(!start.ok||!picker?.id)throw new Error(picker?.error||"本地系统选择器接口不可用");
     for(let attempt=0;attempt<240;attempt++) {
       await new Promise(resolve=>setTimeout(resolve,500));
-      const response=await fetch(`/api/pick-folder/${encodeURIComponent(picker.id)}`);
+      const response=await fetch(`/api/pick-folder/${encodeURIComponent(picker.id)}`,{signal:AbortSignal.timeout(10000)});
       const result=await response.json();
+      if(!response.ok)throw new Error(result.error||"无法读取文件夹选择结果");
       if(result.status==="success")return result.path||null;
       if(result.status==="cancelled")return null;
       if(result.status==="failed")throw new Error(result.error||"选择文件夹失败");
     }
     throw new Error("系统文件夹选择窗口等待超时，请直接从资源管理器复制完整路径并粘贴到输入框。");
   }catch(error) {
-    if(typeof window!=="undefined"&&typeof window.alert==="function")window.alert(`${error?.message||error}。${BROWSER_FOLDER_SELECTION_MESSAGE}`);
-    return null;
+    throw new Error(`系统文件夹选择未完成：${error?.message||error}。可从资源管理器复制完整路径后粘贴到输入框。`);
   }
 }
 

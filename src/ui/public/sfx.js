@@ -727,7 +727,7 @@ $("video-file").onchange = guard(async () => {
   finally { setBusy(false); $("video-file").value = ""; }
 });
 async function browseLocalFolder(target,description) {
-  if(busy)return;setBusy(true);
+  if(busy)return;setBusy(true);status("正在打开 Windows 文件夹窗口，请在系统窗口中选择目录或取消…");
   try {
     const directory=await chooseLocalFolder($(target).value.trim()||(target!=="library-path"?$("library-path").value.trim():""),description);
     if(directory){$(target).value=directory;rememberLibrarySettings();status("已选择素材目录，直接读取音频，无需上传素材库。");}

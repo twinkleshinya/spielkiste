@@ -80,7 +80,7 @@ export async function testBrowserFolderSelectionExplainsSystemPathLimit() {
     if(url==='/api/pick-folder'){calls.push(JSON.parse(options.body));return {ok:true,json:async()=>({id:'picker-1'})};}
     pollCount++;
     return {ok:true,json:async()=>pollCount===1?{status:'success',path:'\\\\server\\共享\\素材'}:{status:'success',path:'\\\\server\\共享\\素材'}};
-  },setTimeout});
+  },setTimeout,AbortSignal});
   vm.runInContext(source.replaceAll('export const ', 'const ').replaceAll('export function ', 'function '),context);
   const result=await vm.runInContext('chooseLocalFolder("D:\\\\素材库")',context);
   assert.equal(result,'\\\\server\\共享\\素材','browser mode returns the absolute path from the local Windows picker service');
