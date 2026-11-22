@@ -10,6 +10,8 @@ import {SfxRunStore,exportTimeline} from '../src/sfx/SfxRunStore.js';
 import {GeminiAudioSelector,type SelectionTask} from '../src/sfx/GeminiAudioSelector.js';
 import {SfxService} from '../src/sfx/SfxService.js';
 import vm from 'node:vm';
+import http from 'node:http';
+import {handleSfxRequest} from '../src/ui/sfx-routes.js';
 import {editorHarness} from './sfx-edit-preview-ui.test.js';
 import {collectStyleReferences} from '../src/sfx/StyleResearch.js';
 
@@ -84,4 +86,59 @@ export async function testReferenceStyleKeywordUi(){
   assert.deepEqual(editor.getRun().placements,legacy.placements,'migration must preserve saved audio');
   editor.$('reference-works').value='';await editor.$('reanalyze-brief').onclick({preventDefault(){}});assert.deepEqual(editor.calls.find(c=>c.url.endsWith('/reanalyze'))!.body.referenceWorks,[],'clearing works must be sent explicitly');
   const remembered=await editorHarness(new Map([['sfx-last-input',JSON.stringify({keywordPreferences:[rule]})]]));remembered.exec('resetToNewProject({preserveLibraryInputs:true})');assert.equal(remembered.$('reference-works').value,'卡赞');
+}
+
+
+export async function testStyleConflictNeedsUserClarification(){
+  const module=await import('../src/sfx/StyleResearch.js') as any;
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-style-conflict-'));
+  let checks=0;const brief={style:'修仙',referenceWorks:['卡赞'],styleProfile:{...profile,style:'修仙'},referenceStyles:[{keyword:'卡赞',profile}]};
+  try{
+    const researcher=new module.StyleResearcher(root,async()=>profile.references,async(prompt:string)=>{
+      checks++;assert.match(prompt,/不.*方案/);assert.match(prompt,/用户.*声音要求/);
+      const clarified=prompt.includes('以卡赞为整体风格，只参考修仙的空灵感');
+      return {conflicts:[{left:'修仙',right:'卡赞',aspect:'timbre',resolvedByRequirements:clarified}],suggestions:['不允许显示的自动方案']};
+    });
+    assert.equal(typeof researcher.checkCompatibility,'function','style conflict gate must exist');
+    const first=await researcher.checkCompatibility(brief,'gemini-test','high');assert.equal(first.conflicts[0].resolvedByRequirements,false);assert.equal(first.suggestions,undefined);
+    await researcher.checkCompatibility(brief,'gemini-test','high');assert.equal(checks,1,'identical check must reuse cache');
+    const vague=await researcher.checkCompatibility({...brief,soundRequirements:'大声一点'},'gemini-test','high');assert.equal(vague.conflicts[0].resolvedByRequirements,false);
+    const resolved=await researcher.checkCompatibility({...brief,soundRequirements:'以卡赞为整体风格，只参考修仙的空灵感'},'gemini-test','high');assert.equal(resolved.conflicts[0].resolvedByRequirements,true);assert.equal(checks,3);
+    await researcher.checkCompatibility({...brief,styleProfile:{...profile,style:'修仙',summary:'更新后的风格'}},'gemini-test','high');assert.equal(checks,4,'changed research invalidates compatibility cache');
+    const alone=await researcher.checkCompatibility({styleProfile:profile},'gemini-test','high');assert.deepEqual(alone.conflicts,[]);assert.equal(checks,4);
+    const duplicate=await researcher.checkCompatibility({styleProfile:profile,referenceStyles:[{keyword:'卡赞',profile}]},'gemini-test','high');assert.deepEqual(duplicate.conflicts,[]);assert.equal(checks,4,'same reference entered twice cannot conflict with itself');
+    const failed=new module.StyleResearcher(path.join(root,'failed'),async()=>profile.references,async()=>{throw new Error('gateway failed')});
+    await assert.rejects(failed.checkCompatibility(brief,'gemini-test','high'),/gateway failed/,'failed check cannot silently pass');
+    const service=new SfxService(path.join(root,'output'));let submitted=0;
+    service.styles=researcher;(service.store as any).createRun=async()=>{submitted++;throw new Error('must not create run')};
+    const video=path.join(root,'test.mp4'),library=path.join(root,'library');await fs.writeFile(video,'fake video');await fs.mkdir(library);
+    (researcher as any).research=async(name:string)=>({...profile,style:name});
+    const check=service.checkStyleDirection.bind(service);(service as any).checkStyleDirection=(input:any)=>check(input,{model:'gemini-test'});
+    await assert.rejects(check(brief,{model:'gemini-test'}),(e:any)=>e.code==='STYLE_CONFLICT'&&!/方案|推荐|建议/.test(e.message));
+    const approved=await check({...brief,soundRequirements:'以卡赞为整体风格，只参考修仙的空灵感'},{model:'gemini-test'});assert.equal(approved.styleCompatibility!.conflicts[0].resolvedByRequirements,true);
+    await assert.rejects(service.create({videoPath:video,libraryPath:library,style:'修仙',referenceWorks:['卡赞'],workflowPreset:'custom',analysisMode:'scene',reusePreserved:false}),/冲突/);assert.equal(submitted,0,'conflicts must stop before creating/scanning a run');
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
+export async function testStyleConflictBrowserClarification(){
+  const ui=await editorHarness();ui.$('sound-style').value='修仙';ui.$('reference-works').value='卡赞';
+  ui.context.fetch=async()=>({ok:false,status:409,json:async()=>({error:'声音风格与参考作品存在冲突。请在“声音要求”中补充具体要求后重试。',code:'STYLE_CONFLICT',conflicts:[{left:'修仙',right:'卡赞',aspect:'timbre',resolvedByRequirements:false}]})});
+  await ui.$('analyze').onclick({preventDefault(){}});
+  assert.equal(ui.$('style-conflict').hidden,false);assert.match(ui.$('style-conflict').textContent,/冲突/);assert.match(ui.$('style-conflict').textContent,/声音要求/);
+  assert.doesNotMatch(ui.$('style-conflict').textContent,/推荐|方案|建议采用/);
+  assert.equal(ui.$('workspace').hidden,false,'existing preview is retained');
+}
+
+export async function testStyleConflictApiResponse(){
+  const service={checkStyleDirection:async(input:any)=>{
+    assert.equal(input.soundRequirements,'音量大一点');
+    const e:any=new Error('「修仙」与「卡赞」的音色存在冲突。请在“声音要求”中补充具体要求后重试。');
+    const {SfxError}=await import('../src/sfx/models.js');throw Object.assign(new SfxError(e.message,409),{code:'STYLE_CONFLICT',conflicts:[{left:'修仙',right:'卡赞',aspect:'timbre',resolvedByRequirements:false}]});
+  }};
+  const server=http.createServer((req,res)=>{void handleSfxRequest(req,res,new URL(req.url!,'http://localhost'),service as any);});
+  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try{
+    const response=await fetch(`http://127.0.0.1:${(server.address() as any).port}/api/sfx/styles/check`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({style:'修仙',referenceWorks:['卡赞'],soundRequirements:'音量大一点',approved:true})});
+    assert.equal(response.status,409);const body=await response.json() as any;assert.equal(body.code,'STYLE_CONFLICT');assert.equal(body.conflicts.length,1);assert.equal(body.suggestions,undefined);
+  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 }

@@ -1,4 +1,4 @@
-import {testReferenceStyleResearchAndPropagation,testReferenceStyleReanalysisInput,testReferenceStyleTitleResolution,testReferenceStyleKeywordUi} from "./sfx-reference-style.test.js";
+import {testStyleConflictApiResponse,testStyleConflictNeedsUserClarification,testStyleConflictBrowserClarification,testReferenceStyleResearchAndPropagation,testReferenceStyleReanalysisInput,testReferenceStyleTitleResolution,testReferenceStyleKeywordUi} from "./sfx-reference-style.test.js";
 import {testKeywordRanking,testKeywordPlannerScope,testKeywordPersistence,testGeminiReceivesKeywordPreference} from "./sfx-keyword-preferences.test.js";
 import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBoundaries,testExclusionsPersistenceAndManualSelection,testExclusionsHttpRoutes} from "./sfx-library-exclusions.test.js";
 import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute} from "./sfx-edit-preview-ui.test.js";
@@ -324,3 +324,6 @@ await testCreativeBriefPersistence();await testReanalysisUsesNewBriefAndPreserve
 await testReferenceStyleResearchAndPropagation();await testReferenceStyleReanalysisInput();
 await testReferenceStyleTitleResolution();await testReferenceStyleKeywordUi();
 console.log('Style, creative brief, path search and explicit generation passed');
+
+await testStyleConflictNeedsUserClarification();await testStyleConflictBrowserClarification();
+await testStyleConflictApiResponse();

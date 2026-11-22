@@ -1,5 +1,5 @@
 import { z } from "zod";
-import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema,referenceWorksFrom} from "./CreativeBrief.js";
+import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema,StyleCompatibilitySchema,referenceWorksFrom} from "./CreativeBrief.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
 export const CategorySchema = z.enum(["foley", "impact", "whoosh", "ambience", "music", "other"]);
@@ -22,7 +22,7 @@ export const ExclusionFields = {
   excludedLibraryPaths:z.array(z.string().trim().min(1).max(2000).refine(value=>Boolean(value.replace(/^"|"$/g,"").trim()),"排除目录不能为空")).max(12).optional(),
   excludedKeywords:z.array(z.string().trim().min(1).max(120)).max(50).optional()
 };
-export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
+export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),styleCompatibility:StyleCompatibilitySchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
 export type AudioLibraryIndex = z.infer<typeof IndexSchema>;
 export const CandidateSchema = z.object({ assetId: z.string(), score: z.number(), reason: z.string() });
 export const LayerRoleSchema = z.enum(["ambience", "music", "foley", "impact", "whoosh", "texture", "tail"]);
@@ -67,7 +67,7 @@ export const SelectionReportSchema = z.object({
   decisions: z.array(z.object({ eventIds: z.array(z.string()), taskId: z.string(), assetId: z.string().nullable(), reason: z.string(), basis: z.enum(["audio-context", "fallback"]) })),
   audio: z.array(z.object({ assetId: z.string(), summary: z.string(), tags: z.array(z.string()), energy: z.number(), hasMusic: z.boolean(), hasSpeech: z.boolean() }))
 });
-export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(),
+export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),styleCompatibility:StyleCompatibilitySchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(),
   ...ExclusionFields,
   version: z.literal(1), id: z.string(), projectId: z.string().uuid().optional(), name: z.string(), createdAt: z.string(), revision: z.number().int().nonnegative(),
   status: z.enum(["analyzing", "ready", "rendering", "failed"]), progress: z.string(), error: z.string().optional(),

@@ -12,8 +12,15 @@ const num = id => Number($(id).value);
 const time = value => { const n = Math.max(0, Number(value) || 0); return `${String(Math.floor(n / 60)).padStart(2, "0")}:${(n % 60).toFixed(3).padStart(6, "0")}`; };
 const api = async (url, body) => {
   const response = await fetch(url, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  const data = await response.json(); if (!response.ok) throw new Error(data.error || `请求失败：${response.status}`); return data;
+  const data = await response.json(); if (!response.ok) throw Object.assign(new Error(data.error || `请求失败：${response.status}`),{code:data.code,conflicts:data.conflicts}); return data;
 };
+function handleRequestError(error){
+  status(error.message,true);
+  if(error.code==='STYLE_CONFLICT'){
+    $('style-conflict').hidden=false;$('style-conflict').textContent=error.message;
+    $('sound-requirements').focus();$('sound-requirements').scrollIntoView({block:'center',behavior:'smooth'});
+  }
+}
 function status(message, error = false) { $("status").textContent = message; $("status").classList.toggle("error", error); }
 function persistDraft() {
   if (!run || !dirty) return true;
@@ -353,6 +360,7 @@ async function projectAction(action, body) {
   if(!run||busy)return;
   setBusy(true); try { const result=await api(`/api/sfx/projects/${run.projectId}/${action}`,body); if(result.project) project=result.project; if(result.runId){await poll(result.runId,true,{time:$('video').currentTime||0,playing:false});} else {await refreshHistory();renderWorkspace(true);} return result; } finally {setBusy(false);} }
 function loadProjectInputs() {
+  $("style-conflict").hidden=true;
   $("name").value=project?.name || run.name;$("video-path").value=run.videoPath;$("library-path").value=run.libraryPath;$("music-library-path").value=run.musicLibraryPath||"";libraryPreferences.load(run.libraryPreferences||[]);keywordPreferences.load((run.keywordPreferences||[]).filter(p=>p.purpose!=="reference"));
   loadExclusions(run);
   $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";
@@ -362,6 +370,7 @@ function loadProjectInputs() {
 async function reanalyzeProject(mode) {
   if (!run || busy) return;
   requireUpdatedPreview();
+  $("style-conflict").hidden=true;
   const description = mode === "visual" ? "" : $("video-description").value.trim();
   const soundRequirements = $("sound-requirements").value.trim();
   const style = selectedStyle();
@@ -478,7 +487,7 @@ async function quickEdit(target,targetId,action) {
   selectEvent(run.events.some(e=>e.id===selectedId)?selectedId:run.events[0]?.id);
   status(`${{mute:"静音",unmute:"恢复",delete:"删除"}[action]}已暂存，点击“更新视频预览”后应用。`);
 }
-function guard(action) { return async event => { event?.preventDefault(); try { await action(event); } catch (e) { status(e.message, true); } }; }
+function guard(action) { return async event => { event?.preventDefault(); try { await action(event); } catch (e) { handleRequestError(e); } }; }
 const libraryPreferences=createLibraryPreferences($("library-preferences"),{chooseFolder:browseLocalFolder,isBusy:()=>busy,onChange:error=>{if(error)status(error.message,true);else rememberLibrarySettings();}});
 const keywordPreferences=createKeywordPreferences($("keyword-preferences"),{isBusy:()=>busy,onChange:()=>{rememberLibrarySettings();if(run)markDirty();}});
 const libraryExclusions=createLibraryExclusions($("excluded-library-paths"),{chooseFolder:browseLocalFolder,isBusy:()=>busy,onChange:exclusionsChanged});
@@ -514,7 +523,7 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   $("reanalyze-brief").hidden = true;
   $("history").value = "";
   $("name").value = "";
-  for(const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;
+  for(const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works"])$(id).value="";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;$("style-conflict").hidden=true;
   $("video-path").value = "";
   $("library-path").value = preserveLibraryInputs ? (previous?.libraryPath || "") : "";
   $("music-library-path").value = preserveLibraryInputs ? (previous?.musicLibraryPath || "") : "";
@@ -539,11 +548,16 @@ function showStyleProfile(profile,append=false){
 }
 $("sound-style").onchange=()=>{$("custom-style-label").hidden=$("sound-style").value!=="custom";$("style-profile-panel").hidden=true;const style=selectedStyle();if(style)void api("/api/sfx/styles").then(result=>{if(style!==selectedStyle())return;const profile=result.profiles?.find(p=>p.style===style);if(profile)showStyleProfile(profile);}).catch(()=>{});};
 async function researchSelectedStyle(refresh=false){
-  const style=selectedStyle();
-  const targets=[...(style?[{style,targetType:"style"}]:[]),...selectedReferenceWorks().map(name=>({style:name,targetType:"work"}))];
-  if(!targets.length)throw new Error("请选择风格，或在声音风格区填写参考作品");if(busy)return;setBusy(true);
-  status(refresh?"正在重新研究风格与参考作品…":"正在读取或分析声音风格与参考作品…");
-  try{let count=0;for(const target of targets){const result=await api("/api/sfx/styles/research",{...target,refresh});showStyleProfile(result,count++>0);}status("风格与参考作品档案已保存，生成时将结合声音风格参与画面分析与声音选材。");}finally{setBusy(false);}
+  const style=selectedStyle(),works=selectedReferenceWorks();
+  if(!style&&!works.length)throw new Error("请选择风格，或在声音方向区填写参考作品");if(busy)return;setBusy(true);
+  $("style-conflict").hidden=true;status(refresh?"正在重新研究并检查声音方向…":"正在分析并检查声音方向…");
+  try{
+    const result=await api('/api/sfx/styles/check',{style,referenceWorks:works,soundRequirements:$("sound-requirements").value.trim(),refresh});
+    let count=0;if(result.styleProfile)showStyleProfile(result.styleProfile,count++>0);
+    for(const reference of result.referenceStyles||[])showStyleProfile(reference.profile,count++>0);
+    status('声音方向检查通过，档案已保存。');
+  }finally{setBusy(false);}
+
 }
 $("research-style").onclick=guard(()=>researchSelectedStyle());$("refresh-style").onclick=guard(()=>researchSelectedStyle(true));
 $("search-library-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("library-path").value.trim());if(value){$("library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
@@ -554,6 +568,7 @@ $("analyze").onclick = guard(async () => {
   if(!$("create-form").reportValidity())return;
   if($("sound-style").value==="custom"&&!selectedStyle())throw new Error("请输入自定义风格名称");
   keepDraftBeforeLeaving();
+  $("style-conflict").hidden=true;status("正在检查声音方向…");
   const input = { videoDescription:$("video-description").value.trim(),soundRequirements:$("sound-requirements").value.trim(),style:selectedStyle(),name: $("name").value, workflowPreset:"reference-v6",reusePreserved:true,videoPath: $("video-path").value.trim().replace(/^"|"$/g, ""), libraryPath: $("library-path").value.trim().replace(/^"|"$/g, ""),referenceWorks:selectedReferenceWorks(),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings(), musicLibraryPath: $("music-library-path").value.trim().replace(/^"|"$/g, "") };
   setBusy(true);
   try {

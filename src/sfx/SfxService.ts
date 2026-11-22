@@ -45,7 +45,7 @@ import { ProjectGit } from "./ProjectGit.js";
 import { ReaperExporter } from "./ReaperExporter.js";
 import { AiConfigService, type AiReasoningEffort } from "./SfxAiConfig.js";
 
-function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,referenceWorks:input.referenceWorks,styleProfile:input.styleProfile,referenceStyles:input.referenceStyles};}
+function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,referenceWorks:input.referenceWorks,styleProfile:input.styleProfile,styleCompatibility:input.styleCompatibility,referenceStyles:input.referenceStyles};}
 
 type PreviewRenderer = { renderPreview(run: SfxRun, outputDir: string, options?: { preserveSavedMix?: boolean; preserveSourceEdits?: boolean; videoSource?: string; preservePlacementIds?: ReadonlySet<string> }): Promise<{ video: string; audio: string; revision: number }> };
 
@@ -144,6 +144,23 @@ export class SfxService {
     }
     return run;
   }
+  async checkStyleDirection(body:unknown,requested?:{model:string;reasoningEffort?:AiReasoningEffort},refresh=false):Promise<CreativeBrief>{
+    const input=z.object({style:z.string().trim().max(120).optional(),referenceWorks:z.array(z.string().trim().min(1).max(120)).max(12).optional(),soundRequirements:z.string().trim().max(4000).optional()}).parse(body);
+    if(!input.style&&!input.referenceWorks?.length)return {};
+    const config=requested||await new AiConfigService().resolve(),effort=config.reasoningEffort||'high';
+    const styleProfile=input.style?await this.styles.research(input.style,config.model,effort,undefined,refresh):undefined;
+    const referenceStyles=[];
+    for(const name of input.referenceWorks||[])referenceStyles.push({keyword:name,profile:await this.styles.research(name,config.model,effort,undefined,refresh,'work')});
+    const brief:CreativeBrief={...input,styleProfile,referenceStyles};
+    const compatibility=await this.styles.checkCompatibility(brief,config.model,effort);
+    const unresolved=compatibility.conflicts.filter(c=>!c.resolvedByRequirements);
+    if(unresolved.length){
+      const aspects={timbre:'音色',material:'材质',dynamics:'动态',space:'空间',music:'音乐',rhythm:'节奏',other:'声音方向'};
+      const details=unresolved.map(c=>`「${c.left}」与「${c.right}」的${aspects[c.aspect]}存在冲突`).join('；');
+      throw Object.assign(new SfxError(`${details}。请在“声音要求”中补充具体要求后重试。`,409),{code:'STYLE_CONFLICT',conflicts:unresolved});
+    }
+    return {...brief,styleCompatibility:compatibility};
+  }
   async create(input: unknown) {
     const parsed = CreateRunSchema.parse(input);
     parsed.projectId = parsed.projectId || randomUUID();
@@ -179,7 +196,9 @@ export class SfxService {
     // Fail before creating a run or scanning a large library. A preserved
     // accepted version above remains usable without a live model connection.
     const requestedModel = await assertAutomaticAiReady(parsed);
+    const direction=await this.checkStyleDirection(parsed,requestedModel);
     const run = await this.store.createRun({ ...parsed, videoPath: video, libraryPath: library });
+    Object.assign(run,{styleProfile:direction.styleProfile,referenceStyles:direction.referenceStyles,styleCompatibility:direction.styleCompatibility});
     if (parsed.parentRunId) {
       run.parentRunId = parsed.parentRunId;
       if (run.workflow) {
@@ -238,14 +257,6 @@ export class SfxService {
         index.warnings.push(...musicIndex.warnings);
       }
       if (!index.assets.some(a => a.usable)) run.warnings.push("素材库没有可用音效，可先编辑事件，再补充素材重新分析。");
-      if(run.style) {
-        run.progress=`研究声音风格：${run.style}（已有档案将直接复用）`;await this.store.save(run);
-        run.styleProfile=await usagePhase("style-research",()=>this.styles.research(run.style!,run.workflow?.requestedModel||"gemini-4-argon",run.workflow?.reasoningEffort||"high",controller.signal));
-      }
-      if(run.referenceWorks?.length) {
-        run.progress='分析参考作品声音风格（已有档案将直接复用）';await this.store.save(run);
-        run.referenceStyles=await usagePhase('style-research',()=>this.styles.researchWorks(run.referenceWorks,run.workflow?.requestedModel||'gemini-4-argon',run.workflow?.reasoningEffort||'high',controller.signal));
-      }
       Object.assign(index,creativeFields(run));
       run.progress = parsed.analysisMode === "scene" ? "检测镜头边界并生成复核清单" : "分析画面动作、物体、环境和声音意图";
       await this.store.save(run);

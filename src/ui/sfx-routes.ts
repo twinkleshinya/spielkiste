@@ -71,7 +71,10 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
     const parts = url.pathname.slice("/api/sfx/".length).split("/");
     if(parts[0]==='styles') {
       if(req.method==='GET'&&!parts[1])json(res,{presets:STYLE_PRESETS.map(({style,works})=>({style,works})),profiles:await service.styles.list()});
-      else if(req.method==='POST'&&parts[1]==='research'){
+      else if(req.method==='POST'&&parts[1]==='check'){
+        const body=z.object({style:z.string().trim().max(120).optional(),referenceWorks:z.array(z.string().trim().min(1).max(120)).max(12).optional(),soundRequirements:z.string().trim().max(4000).optional(),refresh:z.boolean().default(false)}).parse(await readJson(req));
+        json(res,await service.checkStyleDirection(body,undefined,body.refresh));
+      }else if(req.method==='POST'&&parts[1]==='research'){
         const body=z.object({style:z.string().trim().min(1).max(120),targetType:z.enum(['style','work']).default('style'),refresh:z.boolean().default(false)}).parse(await readJson(req));
         const config=await new AiConfigService().resolve();
         json(res,await service.styles.research(body.style,config.model,config.reasoningEffort||'high',undefined,body.refresh,body.targetType));
@@ -182,7 +185,7 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
     } else throw new SfxError("接口不存在", 404);
   } catch (e) {
     if (res.headersSent) res.destroy();
-    else json(res, { error: e instanceof z.ZodError ? e.issues.map(i => `${i.path.join(".")}：${i.message}`).join("；") : e instanceof Error ? e.message : String(e) }, e instanceof SfxError ? e.status : e instanceof z.ZodError ? 400 : (e as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500);
+    else json(res, { ...((e as any).code==='STYLE_CONFLICT'?{code:'STYLE_CONFLICT',conflicts:(e as any).conflicts}:{}),error: e instanceof z.ZodError ? e.issues.map(i => `${i.path.join(".")}：${i.message}`).join("；") : e instanceof Error ? e.message : String(e) }, e instanceof SfxError ? e.status : e instanceof z.ZodError ? 400 : (e as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500);
   }
   return true;
 }

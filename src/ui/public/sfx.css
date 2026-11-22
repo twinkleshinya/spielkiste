@@ -38,3 +38,5 @@
 #git-settings-form>label,#git-settings-form .inputs-grid{margin:14px 0}#git-projects>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}#git-settings-form input[type=checkbox]{width:auto;margin-right:6px}.topbar{gap:18px}#git-message{white-space:pre-wrap;overflow-wrap:anywhere}
 
 .style-setup{padding:18px;border:1px solid var(--line);border-radius:9px;background:#f5f4ee}.style-setup .quick-actions{margin:12px 0}.style-setup details{margin-top:12px;font-size:12px;line-height:1.8}.style-setup details p{margin:9px 0}.style-setup select{max-width:340px}.folder-picker form{display:grid;gap:12px}.folder-entry{overflow-wrap:anywhere;text-align:left}
+
+.style-direction-fields{display:grid;grid-template-columns:1fr 1fr;gap:20px}.style-direction-fields>div{min-width:0}.style-direction-fields select{max-width:none}.style-setup h3{margin:0 0 16px}#style-conflict{padding:12px;border:1px solid currentColor;border-radius:6px;line-height:1.7}@media(max-width:720px){.style-direction-fields{grid-template-columns:1fr}}
