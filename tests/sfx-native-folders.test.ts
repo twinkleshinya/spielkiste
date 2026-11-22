@@ -95,10 +95,11 @@ export async function testFolderPickerReportsHelperExit() {
   const functions=source.slice(source.indexOf('async function startFolderPicker('),source.indexOf('async function openFolder('));
   const child=new EventEmitter() as EventEmitter & {unref:()=>void};child.unref=()=>{};
   let script='';
+  let launchOptions:any;
   const context=vm.createContext({process:{platform:'win32',cwd:()=>process.cwd(),env:process.env},path,Date,Math,
     folderPickers:new Map(),Buffer,setTimeout,clearTimeout,appResource:(...parts:string[])=>path.resolve(...parts),
     fs:{mkdir:async()=>{},writeFile:async(_file:string,content:string)=>{script=content;},readFile:async()=>{throw new Error('ENOENT');}},
-    spawn:()=>{setTimeout(()=>child.emit('spawn'),0);return child;}
+    spawn:(_command:any,_args:any,options:any)=>{launchOptions=options;setTimeout(()=>child.emit('spawn'),0);return child;}
   });
   vm.runInContext(ts.transpile(functions,{target:ts.ScriptTarget.ES2022}),context);
   const started=await vm.runInContext('startFolderPicker({initialPath:"C:\\\\",description:"选择素材"})',context);
@@ -107,4 +108,5 @@ export async function testFolderPickerReportsHelperExit() {
   assert.equal(result.status,'failed','a crashed helper must fail immediately, not leave the whole page waiting for two minutes');
   assert.match(result.error,/1|退出|启动/);
   assert.ok(script);
+  assert.notEqual(launchOptions.detached,true,'the interactive helper must remain attached until it returns a selection');
 }
