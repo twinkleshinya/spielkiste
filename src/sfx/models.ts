@@ -1,5 +1,5 @@
 import { z } from "zod";
-import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema} from "./CreativeBrief.js";
+import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema,referenceWorksFrom} from "./CreativeBrief.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
 export const CategorySchema = z.enum(["foley", "impact", "whoosh", "ambience", "music", "other"]);
@@ -98,6 +98,7 @@ export const CreateRunSchema = z.object({...CreativeFields,
   workflowPreset:z.enum(["reference-v6","custom"]).optional(),originalGainDb:z.number().min(-60).max(6).default(0),reusePreserved:z.boolean().default(true),
   parentRunId:z.string().optional(), reanalysisMode:z.enum(["visual","brief"]).optional()
 }).transform(input=>{
+  input={...input,referenceWorks:referenceWorksFrom(input),keywordPreferences:input.keywordPreferences?.filter(p=>p.purpose!=="reference")};
   const workflowPreset=input.workflowPreset||(input.analysisMode==="auto"?"reference-v6":"custom");
   return workflowPreset==="reference-v6"?{...input,workflowPreset,analysisMode:"auto" as const,autoRender:true,aiSelection:true,autoMix:true,musicEnabled:true,selectionScope:"selective" as const,originalGainDb:SFX_WORKFLOW.mix.originalGainDb}:{...input,workflowPreset};
 });

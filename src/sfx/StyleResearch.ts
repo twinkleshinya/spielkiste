@@ -7,7 +7,6 @@ import {readConfig} from './CcSwitchVisionProvider.js';
 import {modelJson} from './ModelUsage.js';
 import {appResource} from './RuntimePaths.js';
 import type {AiReasoningEffort} from './SfxAiConfig.js';
-import type {KeywordPreference} from './models.js';
 import type {ReferenceStyle} from './CreativeBrief.js';
 
 // Curated well-known reference works, not a live popularity ranking.
@@ -89,11 +88,11 @@ export class StyleResearcher {
     }
     return profiles;
   }
-  async researchKeywords(preferences:KeywordPreference[]=[],model:string,effort:AiReasoningEffort='high',signal?:AbortSignal):Promise<ReferenceStyle[]> {
+  async researchWorks(works:string[]=[],model:string,effort:AiReasoningEffort='high',signal?:AbortSignal):Promise<ReferenceStyle[]> {
     const result:ReferenceStyle[]=[];
-    for(const entry of preferences.filter(p=>p.purpose==='reference')) {
+    for(const name of works) {
       signal?.throwIfAborted();
-      result.push({keyword:entry.keyword,weight:entry.weight,scope:entry.scope,profile:await this.research(entry.keyword,model,effort,signal,false,'work')});
+      result.push({keyword:name,profile:await this.research(name,model,effort,signal,false,'work')});
     }
     return result;
   }

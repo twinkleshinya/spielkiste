@@ -69,8 +69,7 @@ export function keywordPreferencesFor(context:PreferenceContext|undefined,prefer
   return preferences.filter(p=>p.purpose!=='reference'&&p.weight>1&&(p.scope==="all"||p.scope===scope));
 }
 export function referenceStylesFor(context:PreferenceContext|undefined,references:ReferenceStyle[]=[]) {
-  const scope=contextScope(context);
-  return references.filter(p=>p.scope==='all'||p.scope===scope);
+  return references.map(({keyword,profile})=>({keyword,profile}));
 }
 /** Remove only the historical auto prefix when the event's own intent did not request it. */
 export function preferredSearchQuery(query:string,context:PreferenceContext|undefined,preferences:KeywordPreference[]=[]) {
