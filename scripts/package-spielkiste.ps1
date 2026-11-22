@@ -14,7 +14,7 @@ foreach ($name in @("package.json", "package-lock.json", "tsconfig.json", ".env.
 }
 $stageScripts = Join-Path $stageRoot "scripts"
 New-Item -ItemType Directory -Path $stageScripts -Force | Out-Null
-foreach ($name in @("start-sfx.mjs", "start-web.mjs", "tool-git.mjs", "create-sfx-demo.mjs", "create-desktop-shortcut.ps1", "stamp-sfx-frames.ps1", "pick-folder.ps1", "package-spielkiste.ps1")) {
+foreach ($name in @("start-sfx.mjs", "start-web.mjs", "tool-git.mjs", "create-sfx-demo.mjs", "create-desktop-shortcut.ps1", "stamp-sfx-frames.ps1", "pick-folder.ps1", "Spielkiste.FolderPicker.cs", "package-spielkiste.ps1")) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $stageScripts -Force
 }
 $stageSkills = Join-Path $stageRoot ".agents\skills"

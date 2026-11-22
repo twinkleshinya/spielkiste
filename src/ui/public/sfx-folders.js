@@ -6,7 +6,7 @@ export function chooseLocalFolder(initialPath="",description="选择文件夹") 
 }
 
 /**
- * The local web server can launch the Windows FolderBrowserDialog and return
+ * The local web server launches the Windows Common Item Dialog and returns
  * the selected absolute path. This is the browser-mode equivalent of the
  * Electron bridge; it never uploads or crawls the directory in the page.
  */
@@ -26,7 +26,8 @@ async function pickFolderViaLocalServer(initialPath,description) {
     }
     throw new Error("系统文件夹选择窗口等待超时，请直接从资源管理器复制完整路径并粘贴到输入框。");
   }catch(error) {
-    throw new Error(`系统文件夹选择未完成：${error?.message||error}。可从资源管理器复制完整路径后粘贴到输入框。`);
+    const reason=String(error?.message||error).replace(/[。；;]+$/,'');
+    throw new Error(`系统文件夹选择未完成：${reason}。可从资源管理器复制完整路径后粘贴到输入框。`);
   }
 }
 

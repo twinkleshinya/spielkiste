@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const exec=promisify(execFile);
 export const sourceDirectories=['src','tests','templates','desktop','examples'];
 const rootFiles=['package.json','package-lock.json','tsconfig.json','.env.example','.gitignore','.gitattributes','README.md','Spielkiste.bat','start-sfx.bat','start-ui.bat','electron-builder.cjs','tool-git.json'];
-const scriptNames=['start-sfx.mjs','start-web.mjs','create-sfx-demo.mjs','create-desktop-shortcut.ps1','stamp-sfx-frames.ps1','pick-folder.ps1','package-spielkiste.ps1','prepare-desktop.mjs','tool-git.mjs','release-desktop.mjs','verify-desktop.mjs','build-user-guide.mjs'];
+const scriptNames=['start-sfx.mjs','start-web.mjs','create-sfx-demo.mjs','create-desktop-shortcut.ps1','stamp-sfx-frames.ps1','pick-folder.ps1','Spielkiste.FolderPicker.cs','package-spielkiste.ps1','prepare-desktop.mjs','tool-git.mjs','release-desktop.mjs','verify-desktop.mjs','build-user-guide.mjs'];
 const guideFiles=['docs/Spielkiste-团队使用说明.md','docs/Spielkiste-使用指南.html'];
 const guideAssets='docs/spielkiste-guide-assets';
 const skillNames=['video-sfx-workflow','video-sfx-timing','video-sfx-selection','video-sfx-mix-review'];
