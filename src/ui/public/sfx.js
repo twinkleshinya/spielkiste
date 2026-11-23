@@ -1,5 +1,5 @@
 import { planSourceEdit, edgeFades } from "/sfx-clip-edit.js";
-import {chooseLocalFolder,searchFolderPaths} from "/sfx-folders.js";
+import {chooseLocalFolder,searchFolderPaths} from "/sfx-folders.js?v=20261124-native-picker";
 import {createKeywordPreferences,createLibraryPreferences,createLibraryExclusions,createKeywordExclusions} from "/sfx-library-preferences.js";
 import {assetExclusionReasonResolver} from "/sfx-asset-exclusions.js";
 const $ = id => document.getElementById(id);
