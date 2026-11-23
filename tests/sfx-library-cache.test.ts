@@ -41,6 +41,23 @@ export async function testLibraryIndexRefreshApi(){
   }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));await fs.rm(root,{recursive:true,force:true});}
 }
 
+export async function testGenerationReusesAllLibraryIndexes(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-all-indexes-"));
+  try{
+    const directories=["sfx","priority","music"].map(name=>path.join(root,name));for(const directory of directories)await fs.mkdir(directory);
+    const video=path.join(root,"test.mp4");await fs.writeFile(video,"invalid video fixture: stops after indexing");
+    const service=new SfxService(path.join(root,"output"));let scans=0;
+    service.libraryCache=new AudioLibraryCache(path.join(root,"output/indexes"),async directory=>{
+      scans++;const fileName=path.basename(directory)+"_cast.wav";return {version:1,root:directory,generatedAt:new Date().toISOString(),warnings:[],assets:[{id:fileName,path:path.join(directory,fileName),fileName,relativePath:fileName,size:1,mtimeMs:1,tags:[],usable:true}]};
+    });
+    const input={videoPath:video,libraryPath:directories[0],libraryPreferences:[{path:directories[1],weight:3}],musicLibraryPath:directories[2],musicEnabled:true,analysisMode:"scene",workflowPreset:"custom",autoRender:false,aiSelection:false,reusePreserved:false};
+    const first=await service.waitForIdle((await service.create(input)).runId);assert.equal(scans,3);assert.equal(first.assets.length,3);assert.equal(first.assets.filter(a=>a.musicOnly).length,1);
+    service.libraryCache=new AudioLibraryCache(path.join(root,"output/indexes"),async()=>{throw new Error("must not scan cached directories");});
+    const second=await service.waitForIdle((await service.create(input)).runId);assert.equal(second.assets.length,3);assert.ok(!second.error?.includes("must not scan"));
+    const raw=await service.libraryCache.get(directories[0]);assert.equal(raw.index.assets.length,1);assert.equal(raw.index.libraryPreferences,undefined);
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
 export async function testLibraryCacheReuseAndRefresh() {
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-index-")),library=path.join(root,"素材库"),cacheRoot=path.join(root,"indexes");
   await fs.mkdir(library);let calls=0,fail=false,names=["impact.wav"];
