@@ -18,7 +18,7 @@ import { testDistanceMixHierarchy, testDistanceAnalysisAndPersistence, testDista
 import { testSfxUsageIsolation } from "./sfx-usage.test.js";
 import { testSoundAwareSourceLengths, testCroppedEdgeFades, testMeaningfulFilenameAlternatives, testMeasuredCandidateSimilarity } from "./sfx-editing.test.js";
 import { testGeminiSourceEditBoundaries } from "./sfx-source-review.test.js";
-import {testStandardWorkflowDefaults,testWorkflowExportEvidence,testWorkflowForkProvenance,testWorkflowApiResources,testAiConfigCore} from "./sfx-workflow.test.js";
+import {testStandardWorkflowDefaults,testAudioOutputModes,testWorkflowExportEvidence,testWorkflowForkProvenance,testWorkflowApiResources,testAiConfigCore} from "./sfx-workflow.test.js";
 import {testPreservedVersionReuse,testRemixPreservesSourceRanges,testSavedPreviewRetainsMix} from "./sfx-preservation.test.js";
 import {testPreservedEditCreatesChild,testPreservedNoOpAndReadOnlySearch,testRetainedFadesSurviveMix,testSelectionReceivesSoundIntent,testOlderAcceptedVersionStaysProtected} from "./sfx-workflow-corrections.test.js";
 import {testQuickEditApi} from "./sfx-quick-edit.test.js";

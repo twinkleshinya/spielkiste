@@ -11,6 +11,19 @@ import { writeJson } from "./SfxRunStore.js";
 import { edgeFades } from "./ClipEdit.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
+export function placementsForOutputMode<T extends { enabled: boolean; category: string }>(
+  run: Pick<SfxRun, "audioOutputMode" | "musicEnabled">,
+  placements: T[]
+): T[] {
+  const mode = run.audioOutputMode || "all";
+  return placements.filter(p => {
+    if (!p.enabled) return false;
+    if (mode === "sfx") return p.category !== "music";
+    if (mode === "music") return p.category === "music";
+    return p.category !== "music" || run.musicEnabled !== false;
+  });
+}
+
 export class SfxRenderer {
   async renderPreview(run: SfxRun, outputDir: string,options:{preserveSavedMix?:boolean;preserveSourceEdits?:boolean;videoSource?:string;preservePlacementIds?:ReadonlySet<string>}={}) {
     const preserveSourceEdits=options.preserveSourceEdits ?? (options.preserveSavedMix||run.workflow?.operation==="automix"&&run.workflow.source==="reused");
@@ -25,7 +38,7 @@ export class SfxRenderer {
     const metadata = await new MediaTools().inspect(run.videoPath);
     await fs.mkdir(outputDir, { recursive: true });
     const mutedEvents = new Set(run.events.filter(e=>e.muted).map(e=>e.id));
-    const active = run.placements.filter(p => p.enabled && !mutedEvents.has(p.eventId) && (p.category !== "music" || run.musicEnabled !== false));
+    const active = placementsForOutputMode(run, run.placements).filter(p => !mutedEvents.has(p.eventId));
     const output=SFX_WORKFLOW.output,rate=String(output.sampleRate),channels=String(output.channels);
     const sampleCount = Math.round(run.duration * output.sampleRate);
     const temp = path.join(outputDir, `.render-${randomUUID()}`);

@@ -49,7 +49,7 @@ function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescript
 
 type PreviewRenderer = { renderPreview(run: SfxRun, outputDir: string, options?: { preserveSavedMix?: boolean; preserveSourceEdits?: boolean; videoSource?: string; preservePlacementIds?: ReadonlySet<string> }): Promise<{ video: string; audio: string; revision: number }> };
 
-const EditSchema = z.object({ revision: z.number().int().nonnegative(), events: z.array(EventSchema).max(1000), placements: z.array(PlacementSchema).max(1000), originalGainDb: z.number().finite().min(-60).max(6), originalMuted:z.boolean().optional(), musicEnabled: z.boolean().optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
+const EditSchema = z.object({ revision: z.number().int().nonnegative(), events: z.array(EventSchema).max(1000), placements: z.array(PlacementSchema).max(1000), originalGainDb: z.number().finite().min(-60).max(6), originalMuted:z.boolean().optional(), audioOutputMode:z.enum(["all","sfx","music"]).optional(), musicEnabled: z.boolean().optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
 const QuickEditSchema = z.object({revision:z.number().int().nonnegative(),target:z.enum(["event","placement"]),targetId:z.string().min(1),action:z.enum(["mute","unmute","delete"])});
 const ReaperExportSchema = z.object({ templatePath: z.string().trim().min(1).optional(), outputPath: z.string().trim().min(1).optional(), channelMode: z.enum(["preserve", "mono", "stereo"]).default("preserve"),audioFormat:z.enum(["preserve","wav16","wav24","wav32f","wav64f"]).default("preserve"),sampleRate:z.union([z.literal(0),z.literal(44100),z.literal(48000),z.literal(88200),z.literal(96000),z.literal(192000)]).default(0),dither:z.enum(["auto","on","off"]).default("auto"),noiseShaping:z.boolean().default(false) });
 const ANALYSIS_TIMEOUT_MS = 30 * 60 * 1000;
@@ -323,6 +323,7 @@ export class SfxService {
       videoPath: source.videoPath,
       libraryPath: source.libraryPath,
       musicLibraryPath: source.musicLibraryPath,
+      audioOutputMode: source.audioOutputMode || "all",
       musicEnabled: source.musicEnabled !== false,
       aiSelection: true,
       autoMix: source.autoMix !== false,
@@ -523,7 +524,7 @@ export class SfxService {
       const source = await this.readRun(id);
       if (input.revision !== source.revision) throw new SfxError("任务已更新，请重新打开后再选材", 409);
       if (!source.duration || !source.events.length) throw new SfxError("请先完成视频动作分析");
-      const run = await this.store.createRun({ projectId: source.projectId, name: `${source.name} · Gemini选材`.slice(0, 120), videoPath: source.videoPath, libraryPath: source.libraryPath, libraryPreferences:source.libraryPreferences,keywordPreferences:source.keywordPreferences,excludedLibraryPaths:source.excludedLibraryPaths,excludedKeywords:source.excludedKeywords,workflowPreset:"custom",musicLibraryPath: source.musicLibraryPath, musicEnabled: source.musicEnabled !== false, aiSelection: true, autoMix:source.autoMix,originalGainDb:source.originalGainDb,selectionScope: input.selectionScope });
+      const run = await this.store.createRun({ projectId: source.projectId, name: `${source.name} · Gemini选材`.slice(0, 120), videoPath: source.videoPath, libraryPath: source.libraryPath, libraryPreferences:source.libraryPreferences,keywordPreferences:source.keywordPreferences,excludedLibraryPaths:source.excludedLibraryPaths,excludedKeywords:source.excludedKeywords,workflowPreset:"custom",musicLibraryPath: source.musicLibraryPath, audioOutputMode: source.audioOutputMode || "all", musicEnabled: source.musicEnabled !== false, aiSelection: true, autoMix:source.autoMix,originalGainDb:source.originalGainDb,selectionScope: input.selectionScope });
       Object.assign(run, structuredClone({ ...creativeFields(source),duration: source.duration, originalGainDb: source.originalGainDb, originalMuted:source.originalMuted===true,assets: source.assets, events: source.events, placements: source.placements, scenes: source.scenes, analysisReport: source.analysisReport, analysisMode: source.analysisMode }));
       run.workflow=structuredClone(source.workflow||workflowSnapshot("custom",{analysisMode:source.analysisMode,selectionScope:input.selectionScope,musicEnabled:source.musicEnabled!==false,aiSelection:true,autoMix:source.autoMix===true,originalGainDb:source.originalGainDb}));
       if(input.selectionScope!=="selective") {run.workflow.presetId="custom";run.workflow.name="自定义流程";}
@@ -733,7 +734,7 @@ export class SfxService {
       const source = await this.readRun(id);
       if (source.revision !== input.revision) throw new SfxError("任务已更新，请重新打开后再混音", 409);
       if (!source.placements.length) throw new SfxError("请先完成点位分析并选用音效");
-      const run = await this.store.createRun({ projectId: source.projectId, name: `${source.name} · 自动混音`.slice(0, 120), videoPath: source.videoPath, libraryPath: source.libraryPath, libraryPreferences:source.libraryPreferences,keywordPreferences:source.keywordPreferences,excludedLibraryPaths:source.excludedLibraryPaths,excludedKeywords:source.excludedKeywords,workflowPreset:"custom",musicLibraryPath: source.musicLibraryPath, musicEnabled: source.musicEnabled !== false, aiSelection: source.aiSelection,originalGainDb:source.originalGainDb,autoMix: true });
+      const run = await this.store.createRun({ projectId: source.projectId, name: `${source.name} · 自动混音`.slice(0, 120), videoPath: source.videoPath, libraryPath: source.libraryPath, libraryPreferences:source.libraryPreferences,keywordPreferences:source.keywordPreferences,excludedLibraryPaths:source.excludedLibraryPaths,excludedKeywords:source.excludedKeywords,workflowPreset:"custom",musicLibraryPath: source.musicLibraryPath, audioOutputMode: source.audioOutputMode || "all", musicEnabled: source.musicEnabled !== false, aiSelection: source.aiSelection,originalGainDb:source.originalGainDb,autoMix: true });
       Object.assign(run, structuredClone({ ...creativeFields(source),duration: source.duration, originalGainDb: source.originalGainDb,originalMuted:source.originalMuted===true,assets: source.assets, events: source.events, placements: source.placements, scenes: source.scenes, analysisMode: source.analysisMode, analysisReport: source.analysisReport, selectionReport: source.selectionReport,selectionScope: source.selectionScope,sourceReview:source.sourceReview }));
       run.workflow=structuredClone(source.workflow||workflowSnapshot("custom",{analysisMode:source.analysisMode,selectionScope:source.selectionScope||"full",musicEnabled:source.musicEnabled!==false,aiSelection:source.aiSelection===true,autoMix:true,originalGainDb:source.originalGainDb}));
       Object.assign(run.workflow,{operation:"automix",timing:"reused",selection:"reused",source:input.reviewSource?"fresh":"reused"});
@@ -1017,6 +1018,7 @@ export class SfxService {
       if(edit.excludedKeywords!==undefined)edit.excludedKeywords=excludedKeywords;
       const unchanged=isDeepStrictEqual(edit.events,run.events)&&isDeepStrictEqual(edit.placements,run.placements)
         &&edit.originalGainDb===run.originalGainDb&&originalMuted===(run.originalMuted===true)
+        &&(edit.audioOutputMode ?? run.audioOutputMode ?? "all")===(run.audioOutputMode || "all")
         &&isDeepStrictEqual(keywordPreferences,normalizeKeywordPreferences(run.keywordPreferences))
         &&isDeepStrictEqual(excludedLibraryPaths,normalizeExcludedLibraryPaths(run.excludedLibraryPaths))
         &&isDeepStrictEqual(excludedKeywords,normalizeExcludedKeywords(run.excludedKeywords))
@@ -1067,7 +1069,7 @@ export class SfxService {
         for(const file of ["analysis-review.json","source-edit-report.json","name-stage-review.json"])
           try{await fs.copyFile(path.join(this.store.directory(id),file),path.join(this.store.directory(run.id),file));}catch(e){if((e as NodeJS.ErrnoException).code!=="ENOENT")throw e;}
       }
-      Object.assign(run, edit, { originalMuted,revision: run.revision + 1, status: "ready", progress: "修改已保存，请重新生成预览" });
+      Object.assign(run, edit, { audioOutputMode:(edit.audioOutputMode ?? run.audioOutputMode ?? "all"), originalMuted,revision: run.revision + 1, status: "ready", progress: "修改已保存，请重新生成预览" });
       run.referenceStyles=referenceStyles;
       if(run.workflow)Object.assign(run.workflow.options,{keywordPreferences:run.keywordPreferences||[],excludedLibraryPaths:run.excludedLibraryPaths||[],excludedKeywords:run.excludedKeywords||[]});
       delete run.error;delete run.mixReport;

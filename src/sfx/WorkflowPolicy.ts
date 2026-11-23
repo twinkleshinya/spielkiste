@@ -26,8 +26,8 @@ export const WORKFLOW_STAGES = [
   {id:"delivery",name:"生成与检查",detail:"带音效视频、可编辑清单、实际配置、处理依据与检查报告"}
 ] as const;
 
-export function workflowSnapshot(presetId:"reference-v6"|"custom",options:{analysisMode:string;selectionScope:string;musicEnabled:boolean;aiSelection:boolean;autoMix:boolean;originalGainDb:number}) {
+export function workflowSnapshot(presetId:"reference-v6"|"custom",options:{analysisMode:string;selectionScope:string;musicEnabled:boolean;aiSelection:boolean;autoMix:boolean;originalGainDb:number;audioOutputMode?:"all"|"sfx"|"music"}) {
   return {presetId,version:SFX_WORKFLOW.version,name:presetId==="reference-v6"?SFX_WORKFLOW.name:"自定义流程",requestedModel:presetId==="reference-v6"?SFX_WORKFLOW.model:(process.env.SFX_CCSWITCH_MODEL?.trim()||SFX_WORKFLOW.model),
     operation:"create" as "create"|"reselect"|"automix"|"edit"|"reidentify"|"augment"|"reanalyze",timing:"fresh" as "fresh"|"reused",selection:"fresh" as "fresh"|"reused",source:"fresh" as "fresh"|"reused",referenceRunId:SFX_WORKFLOW.referenceRunId,
-    config:structuredClone(SFX_WORKFLOW),options};
+    config:structuredClone(SFX_WORKFLOW),options:{...options,audioOutputMode:options.audioOutputMode||"all"}};
 }

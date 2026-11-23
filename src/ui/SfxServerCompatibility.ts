@@ -19,7 +19,8 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "style-conflict-options",
   "folder-keyword-search",
   "creative-brief",
-  "project-git-export"
+  "project-git-export",
+  "audio-output-mode"
 ] as const;
 
 type HealthPayload = {
@@ -41,3 +42,4 @@ export function isCurrentSfxHealth(value: unknown): boolean {
   const capabilities = payload.capabilities as unknown[];
   return SFX_REQUIRED_CAPABILITIES.every(capability => capabilities.includes(capability));
 }
+

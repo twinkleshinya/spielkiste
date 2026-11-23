@@ -6,6 +6,7 @@ import {SfxRunStore,exportTimeline} from "../src/sfx/SfxRunStore.js";
 import {CreateRunSchema,EventSchema,PlacementSchema} from "../src/sfx/models.js";
 import {readConfig} from "../src/sfx/CcSwitchVisionProvider.js";
 import {SfxService} from "../src/sfx/SfxService.js";
+import {placementsForOutputMode} from "../src/sfx/SfxRenderer.js";
 import {buildWorkflowReport} from "../src/sfx/WorkflowReport.js";
 import http from "node:http";
 import {handleSfxRequest} from "../src/ui/sfx-routes.js";
@@ -14,6 +15,22 @@ import {testAiConfigApi} from "./sfx-ai-config-api.test.js";
 import {testAiConfigUi,testAiConfigDialogSavesTestsAndReopens,testAiConfigModelSwitchPersistsAndReopens} from "./sfx-ai-config-ui.test.js";
 import * as onboarding from "./sfx-onboarding.test.js";
 import {testOnboardingFfmpegUsesCurrentUserInstallation} from "./sfx-onboarding-media.test.js";
+
+
+export async function testAudioOutputModes() {
+  const base={videoPath:"video.mp4",libraryPath:"library"};
+  const all=CreateRunSchema.parse(base) as any;
+  assert.equal(all.audioOutputMode,"all");assert.equal(all.musicEnabled,true);
+  const sfx=CreateRunSchema.parse({...base,audioOutputMode:"sfx"}) as any;
+  assert.equal(sfx.audioOutputMode,"sfx");assert.equal(sfx.musicEnabled,true);
+  const music=CreateRunSchema.parse({...base,audioOutputMode:"music"}) as any;
+  assert.equal(music.audioOutputMode,"music");assert.equal(music.musicEnabled,true);
+  const run:any={musicEnabled:true,audioOutputMode:"all"};
+  const placements=[{id:"s",category:"foley",enabled:true},{id:"m",category:"music",enabled:true},{id:"off",category:"impact",enabled:false}];
+  assert.deepEqual(placementsForOutputMode({...run,audioOutputMode:"all"},placements).map((p:any)=>p.id),["s","m"]);
+  assert.deepEqual(placementsForOutputMode({...run,audioOutputMode:"sfx"},placements).map((p:any)=>p.id),["s"]);
+  assert.deepEqual(placementsForOutputMode({...run,audioOutputMode:"music"},placements).map((p:any)=>p.id),["m"]);
+}
 
 export async function testAiConfigCore() {
   await testAiConfigDiscoveryAndPrecedence();

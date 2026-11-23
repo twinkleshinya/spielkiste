@@ -73,10 +73,10 @@ export async function testGenerateRequiresExplicitClick() {
   assert.equal(prevented,true);
   assert.equal(ui.calls.some(c=>c.url==='/api/sfx/runs'),false,'Enter submit must never start generation');
   assert.equal(typeof ui.$('analyze').onclick,'function');
-  ui.$('video-description').value='角色释放剑气';ui.$('sound-requirements').value='重点是蓄力';ui.$('sound-style').value='修仙';
+  ui.$('video-description').value='角色释放剑气';ui.$('sound-requirements').value='重点是蓄力';ui.$('sound-style').value='修仙';ui.$('audio-output-mode').value='music';
   await ui.$('analyze').onclick({preventDefault(){}});
   const sent=ui.calls.find(c=>c.url==='/api/sfx/runs');
-  assert.ok(sent);assert.equal(sent.body.videoDescription,'角色释放剑气');assert.equal(sent.body.style,'修仙');
+  assert.ok(sent);assert.equal(sent.body.videoDescription,'角色释放剑气');assert.equal(sent.body.style,'修仙');assert.equal(sent.body.audioOutputMode,'music','generation mode must be sent explicitly');
 }
 
 export async function testSfxExclusionsStageRestoreAndGuard() {

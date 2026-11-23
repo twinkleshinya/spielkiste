@@ -74,6 +74,7 @@ export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSc
   videoPath: z.string(), libraryPath: z.string(), libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),duration: z.number().nonnegative(), originalGainDb: z.number().min(-60).max(6),
   analysisMode: z.enum(["auto", "scene", "ollama", "gemini", "ccswitch"]), warnings: z.array(z.string()), scenes: z.array(SceneSchema),
   assets: z.array(AssetSchema), events: z.array(EventSchema), placements: z.array(PlacementSchema),
+  audioOutputMode: z.enum(["all", "sfx", "music"]).optional(),
   musicEnabled: z.boolean().optional(), musicLibraryPath: z.string().optional(), aiSelection: z.boolean().optional(), selectionReport: SelectionReportSchema.optional(),
   autoMix: z.boolean().optional(),
   selectionScope: z.enum(["selective", "full"]).optional(),
@@ -94,13 +95,15 @@ export const CreateRunSchema = z.object({...CreativeFields,
   videoPath: z.string().trim().min(1), libraryPath: z.string().trim().min(1),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),
   projectId: z.string().uuid().optional(),
   name: z.string().trim().max(120).default("视频音效贴片"), analysisMode: z.enum(["auto", "scene", "ollama"]).default("auto"), autoRender: z.boolean().default(true),
+  audioOutputMode: z.enum(["all", "sfx", "music"]).default("all"),
   musicEnabled: z.boolean().default(true), musicLibraryPath: z.string().trim().optional(), aiSelection: z.boolean().default(true), autoMix: z.boolean().default(true), selectionScope: z.enum(["selective", "full"]).default("selective"),
   workflowPreset:z.enum(["reference-v6","custom"]).optional(),originalGainDb:z.number().min(-60).max(6).default(0),reusePreserved:z.boolean().default(true),
   parentRunId:z.string().optional(), reanalysisMode:z.enum(["visual","brief"]).optional()
 }).transform(input=>{
   input={...input,referenceWorks:referenceWorksFrom(input),keywordPreferences:input.keywordPreferences?.filter(p=>p.purpose!=="reference")};
   const workflowPreset=input.workflowPreset||(input.analysisMode==="auto"?"reference-v6":"custom");
-  return workflowPreset==="reference-v6"?{...input,workflowPreset,analysisMode:"auto" as const,autoRender:true,aiSelection:true,autoMix:true,musicEnabled:true,selectionScope:"selective" as const,originalGainDb:SFX_WORKFLOW.mix.originalGainDb}:{...input,workflowPreset};
+  const audioOutputMode = input.audioOutputMode || "all";
+  return workflowPreset==="reference-v6"?{...input,workflowPreset,analysisMode:"auto" as const,autoRender:true,aiSelection:true,autoMix:true,audioOutputMode,musicEnabled:true,selectionScope:"selective" as const,originalGainDb:SFX_WORKFLOW.mix.originalGainDb}:{...input,workflowPreset,audioOutputMode};
 });
 export class SfxError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export const round = (n: number) => Math.round(n * 1000) / 1000;
