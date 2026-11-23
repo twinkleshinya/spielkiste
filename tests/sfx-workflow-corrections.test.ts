@@ -36,7 +36,7 @@ export async function testPreservedEditCreatesChild() {
     assert.equal(updated.render,undefined,"a child cannot claim the parent preview matches its new edits");
     assert.equal(await fs.readFile(path.join(dir,"run.json"),"utf8"),before);
     assert.equal(await fs.readFile(run.render!.video,"utf8"),"accepted video");
-    assert.equal((await service.create({videoPath:run.videoPath,libraryPath:run.libraryPath})).runId,run.id);
+    assert.equal((await service.create({videoPath:run.videoPath,libraryPath:run.libraryPath,analysisMode:"scene",workflowPreset:"custom"})).runId,run.id);
     const usage=JSON.parse(await fs.readFile(path.join(service.store.directory(updated.id),"usage-report.json"),"utf8"));
     assert.equal(usage.requests.length,0,"editing retained results must not call the model or inherit old token charges");
     // Protection is by run identity: it must survive an unavailable input video.
@@ -56,7 +56,7 @@ export async function testPreservedNoOpAndReadOnlySearch() {
     assert.equal(same.id,run.id);assert.equal(same.revision,0,"unchanged saves must be no-ops");
     await service.search(run.id,"there is no matching sound");
     assert.equal(await fs.readFile(path.join(dir,"run.json"),"utf8"),before,"search cannot reconcile ranges or rewrite the accepted project");
-    assert.equal((await service.create({videoPath:run.videoPath,libraryPath:run.libraryPath})).runId,run.id);
+    assert.equal((await service.create({videoPath:run.videoPath,libraryPath:run.libraryPath,analysisMode:"scene",workflowPreset:"custom"})).runId,run.id);
     await fs.unlink(run.render!.audio);
     await assert.rejects(service.render(run.id),/预览.*缺失/,"a missing preserved preview requires explicit recovery, never in-place regeneration");
     assert.equal(await fs.readFile(path.join(dir,"run.json"),"utf8"),before);
@@ -75,7 +75,7 @@ export async function testOlderAcceptedVersionStaysProtected() {
     const alternate={...structuredClone(run),id:next.id,createdAt:next.createdAt,render:{video:path.join(nextDir,"preview.mp4"),audio:path.join(nextDir,"preview.wav"),revision:0}};
     await fs.writeFile(alternate.render.video,"new accepted video");await fs.writeFile(alternate.render.audio,"new accepted audio");await service.store.save(alternate);
     await service.preserve(alternate.id,{revision:0});
-    assert.equal((await service.create({videoPath:run.videoPath,libraryPath:run.libraryPath})).runId,alternate.id);
+    assert.equal((await service.create({videoPath:run.videoPath,libraryPath:run.libraryPath,analysisMode:"scene",workflowPreset:"custom"})).runId,alternate.id);
     const edited=await service.update(run.id,{...edit,placements:edit.placements.map(p=>({...p,gainDb:-10}))});
     assert.notEqual(edited.id,run.id,"choosing a new default must not unprotect an older accepted version");
     assert.equal(await fs.readFile(path.join(dir,"run.json"),"utf8"),original);
