@@ -144,6 +144,7 @@ export class AudioLibraryIndexer {
     return { version: 1, root, generatedAt: new Date().toISOString(), assets, warnings };
   }
   search(index: AudioLibraryIndex, query: string, limit = 3, context?:PreferenceContext) {
+    if(limit<=0)return [];
     const excluded=assetExclusionReasonResolver(index);
     query=preferredSearchQuery(query,context,index.keywordPreferences);
     const preferredPath=pathPreferenceResolver(index.libraryPreferences);
@@ -156,7 +157,11 @@ export class AudioLibraryIndexer {
     const groups = searchGroups.filter(group => group.some(w => contains(queryText, w)));
     const primary = groups.find(g => searchGroups.indexOf(g) < 12);
     const musicLibraryConfigured = index.musicLibraryConfigured;
-    return index.assets.filter(a => a.usable && !excluded(a) && (music ? musicLibraryConfigured === false ? a.musicOnly === true : musicLibraryConfigured === true ? a.musicOnly === true : isMusicAsset(a) : !a.musicOnly) ).map(asset => {
+    type Result={asset:AudioAsset;score:number;reason:string};
+    const results:Result[]=[];
+    const compare=(a:Result,b:Result)=>b.score-a.score||a.asset.relativePath.localeCompare(b.asset.relativePath);
+    for(const asset of index.assets) {
+      if(!asset.usable||excluded(asset)||!(music ? musicLibraryConfigured === false ? asset.musicOnly === true : musicLibraryConfigured === true ? asset.musicOnly === true : isMusicAsset(asset) : !asset.musicOnly))continue;
       const filename = asset.fileName.toLowerCase();
       const pathText = asset.relativePath.toLowerCase();
       const hits = words.filter(w => contains(filename, w));
@@ -175,6 +180,7 @@ export class AudioLibraryIndexer {
       const voicePenalty = !/roar|voice|vocal|pain|growl|咆哮|叫/.test(queryText) && /(?:^|[^a-z])vo_|\bvoice\b|吼叫/i.test(filename) ? 12 : 0;
       const combatMusicBoost = music && /boss|battle|combat/.test(queryText) && /(?:^|[_\s])(?:battle|boss|combat)(?:[_\s.]|$)/i.test(filename) ? 6 : 0;
       const relevant = hits.length || matchedGroups.length || pathHits.length || weakHits.length;
+      if(!relevant)continue;
       const relevance=relevant?Math.max(.01,score-voicePenalty-stagePenalty-uiPenalty+combatMusicBoost):0;
       const preference=preferredPath(asset.path);
       const keyword=preferredKeyword(asset);
@@ -184,8 +190,16 @@ export class AudioLibraryIndexer {
       const matches=profiles.map(p=>({...p,hits:[...new Set(p.profile.searchTerms.flatMap(term=>term.normalize('NFKC').toLowerCase().split(/[_\s/、,，]+/u)).filter(term=>term.length>1))].filter(term=>contains(text,term))}));
       const styleHits=[...new Set(matches.flatMap(p=>p.hits))];
       const styleBonus=relevance>0?Math.min(1.5,Math.max(0,...matches.map(p=>relevance*.12*p.hits.length))):0;
-      return { asset, score:relevance+preferenceBonus+styleBonus, reason: `${styleHits.length?`风格参考：${styleHits.join("、")}；`:""}名称/同义词：${hits.join("、") || matchedGroups.map(g => g[0]).join("、") || pathHits.join("、") || weakHits.join("、")}；${stagePenalty || uiPenalty ? "名称意图不完全一致，需听取判断" : "按声音意图优先排序"}${preference?`；路径优先 ×${preference.weight}：${preference.path}（相关性优先）`:""}${keyword?`；关键词优先 ×${keyword.weight}：${keyword.keyword}（${keyword.scope}，相关性优先）`:""}` };
-    }).filter(r => r.score > 0).sort((a, b) => b.score - a.score || a.asset.relativePath.localeCompare(b.asset.relativePath)).slice(0, limit);
+      const finalScore=relevance+preferenceBonus+styleBonus;
+      const rank={asset,score:finalScore};
+      if(finalScore<=0||results.length>=limit&&compare(rank as Result,results.at(-1)!)>=0)continue;
+      const result={...rank,reason: `${styleHits.length?`风格参考：${styleHits.join("、")}；`:""}名称/同义词：${hits.join("、") || matchedGroups.map(g => g[0]).join("、") || pathHits.join("、") || weakHits.join("、")}；${stagePenalty || uiPenalty ? "名称意图不完全一致，需听取判断" : "按声音意图优先排序"}${preference?`；路径优先 ×${preference.weight}：${preference.path}（相关性优先）`:""}${keyword?`；关键词优先 ×${keyword.weight}：${keyword.keyword}（${keyword.scope}，相关性优先）`:""}`};
+      // Keep only the best requested matches; never allocate/sort an entire SMB library.
+      let low=0,high=results.length;
+      while(low<high){const middle=(low+high)>>>1;if(compare(result,results[middle])<0)high=middle;else low=middle+1;}
+      results.splice(low,0,result);if(results.length>limit)results.pop();
+    }
+    return results;
   }
 }
 
