@@ -2,12 +2,16 @@
 
 export function chooseLocalFolder(initialPath="",description="选择文件夹") {
   if(typeof window!=="undefined"&&typeof window.spielkisteDesktop?.chooseFolder==="function")return window.spielkisteDesktop.chooseFolder({initialPath,description});
-  // Browser mode used to launch a hidden PowerShell/COM helper. On some
-  // Windows shells the helper stays alive without a visible dialog, leaving
-  // the page polling forever. Use the local directory API directly instead:
-  // it never uploads or scans audio and works for drives and reachable UNC
-  // shares while keeping the interaction inside the workbench.
-  return typeof document!=="undefined" ? browseLocalFoldersInPage(initialPath,description) : pickFolderViaLocalServer(initialPath,description);
+  // The browser workbench is local-only, so use the same Windows shell folder
+  // dialog as the desktop build. The in-page directory browser is retained as
+  // an explicit fallback only when the local picker endpoint is unavailable;
+  // it must never replace the native Windows dialog during normal use.
+  return pickFolderViaLocalServer(initialPath,description).catch(error=>{
+    if(typeof document!=="undefined" && /接口不可用|系统文件夹选择未完成/.test(String(error?.message||error))) {
+      return browseLocalFoldersInPage(initialPath,description);
+    }
+    throw error;
+  });
 }
 
 async function browseLocalFoldersInPage(initialPath,description) {
