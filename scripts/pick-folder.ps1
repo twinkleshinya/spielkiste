@@ -2,28 +2,26 @@ param([Parameter(Mandatory=$true)][string]$RequestPath)
 $ErrorActionPreference = 'Stop'
 $request = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 try {
-  # A GUI executable owns the interactive window. PowerShell only compiles and
-  # waits for it; hosting the dialog inside a hidden PowerShell process is unreliable.
-  $source = Join-Path $PSScriptRoot 'Spielkiste.FolderPicker.cs'
-  $cache = Split-Path -Parent $request.resultPath
-  $sha = [System.Security.Cryptography.SHA256]::Create()
-  try { $hash = [BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($source))).Replace('-','').Substring(0,16) }
-  finally { $sha.Dispose() }
-  $helper = Join-Path $cache ('Spielkiste.FolderPicker-' + $hash + '.exe')
-  if (!(Test-Path -LiteralPath $helper)) {
-    $temporary = Join-Path $cache ('picker-build-' + [Guid]::NewGuid().ToString('N') + '.exe')
-    try {
-      Add-Type -Path $source -ReferencedAssemblies 'System.Web.Extensions','System.Windows.Forms','System.Drawing' -OutputAssembly $temporary -OutputType WindowsApplication
-      if (!(Test-Path -LiteralPath $helper)) { Move-Item -LiteralPath $temporary -Destination $helper }
-    } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary } }
+  # Run the WinForms dialog in this interactive STA PowerShell process. A
+  # separately compiled helper can land in a different Windows desktop/session
+  # and has repeatedly produced an invisible process with MainWindowHandle=0.
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  $owner = New-Object System.Windows.Forms.Form
+  $owner.Text = [string]$request.description
+  $owner.StartPosition = 'CenterScreen'
+  $owner.Width = 1; $owner.Height = 1
+  $owner.ShowInTaskbar = $false
+  $owner.TopMost = $true
+  $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+  $dialog.Description = [string]$request.description
+  $dialog.ShowNewFolderButton = $false
+  if ($request.initialPath -and (Test-Path -LiteralPath ([string]$request.initialPath) -PathType Container)) {
+    $dialog.SelectedPath = [string]$request.initialPath
   }
-  # Only the PowerShell compiler/launcher is hidden. The GUI process must use
-  # a normal startup state: SW_HIDE can override the dialog's first ShowWindow.
-  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Normal -PassThru
-  if (!$process.WaitForExit(115000)) {
-    $process.Kill()
-    throw 'Windows folder selection timed out. Please try again.'
-  }
+  $owner.Add_Shown({ $owner.Activate(); $owner.BringToFront(); $result = $dialog.ShowDialog($owner); if ($result -eq [System.Windows.Forms.DialogResult]::OK) { @{status='success';path=$dialog.SelectedPath} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8 } else { @{status='cancelled'} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8 }; $owner.Close() })
+  $owner.ShowDialog() | Out-Null
+  $owner.Dispose(); $dialog.Dispose()
   if (!(Test-Path -LiteralPath $request.resultPath)) { throw 'Windows folder picker exited without returning a result.' }
 } catch {
   @{status='failed';error=$_.Exception.Message} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8
