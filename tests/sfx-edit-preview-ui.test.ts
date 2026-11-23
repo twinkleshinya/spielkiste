@@ -80,6 +80,18 @@ export async function testGenerateRequiresExplicitClick() {
   assert.ok(sent);assert.equal(sent.body.videoDescription,'角色释放剑气');assert.equal(sent.body.style,'修仙');assert.equal(sent.body.audioOutputMode,'music','generation mode must be sent explicitly');
 }
 
+export async function testFailedGenerationShowsCauseAndAllowsRetry() {
+  const ui=await editorHarness();
+  ui.exec('run.status="failed";run.error="文件扫描超过 10 分钟";run.render=undefined;');
+  ui.context.fetch=async()=>({ok:true,json:async()=>({runStatus:'failed',error:'文件扫描超过 10 分钟',quality:{status:'failed',checks:[]},profile:{name:'标准流程',version:'1.0.7'},effective:{},stages:[]})});
+  await ui.exec('renderWorkflowReport()');
+  assert.match(ui.$('workflow-run-title').textContent,/生成失败/);
+  assert.match(ui.$('workflow-run-note').textContent,/文件扫描超过/);
+  ui.exec('renderWorkspace()');
+  assert.equal(ui.$('reanalyze-visual').hidden,false);
+  assert.equal(ui.$('reanalyze-brief').hidden,false);
+}
+
 export async function testSfxExclusionsStageRestoreAndGuard() {
   const storage=new Map<string,string>(),ui=await editorHarness(storage),before=ui.getRun();
   const excludedDirectory=path.dirname(before.assets[0].path);
