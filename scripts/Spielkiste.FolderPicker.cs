@@ -122,15 +122,24 @@ namespace Spielkiste {
       StagePath=stagePath;
       System.IO.File.WriteAllText(stagePath, "creating Windows dialog");
       try {
-        System.IO.File.WriteAllText(stagePath, "showing Windows folder dialog");
-        var selected = ChooseWinForms(title, initialPath);
+        // Prefer the Windows Common Item Dialog. It is owned by the current
+        // desktop window station and reliably exposes local, mapped and UNC
+        // folders when launched from a browser-backed local server.
+        var selected = ChooseCom(title, initialPath, stagePath);
         System.IO.File.WriteAllText(stagePath, selected == null ? "cancelled" : "selected folder");
         return selected;
       } catch {
-        // Keep the existing shell-item implementation as a fallback for
-        // environments where the WinForms shell dialog is unavailable.
+        try {
+          System.IO.File.WriteAllText(stagePath, "showing Windows folder dialog");
+          var selected = ChooseWinForms(title, initialPath);
+          System.IO.File.WriteAllText(stagePath, selected == null ? "cancelled" : "selected folder");
+          return selected;
+        } catch {
+          // Both native dialog implementations failed; let the caller report
+          // the concrete error through the result JSON.
+        }
       }
-      return ChooseCom(title, initialPath, stagePath);
+      throw new InvalidOperationException("无法打开 Windows 文件夹选择窗口。");
     }
     static string ChooseCom(string title, string initialPath, string stagePath) {
       var dialog = (IFileOpenDialog)new FileOpenDialogClass();
