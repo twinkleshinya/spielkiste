@@ -22,6 +22,15 @@ export function testLegacyMetadataNeverBecomesAudio() {
   assert.deepEqual(createPlacements([ev],lib.assets,3).map(p=>p.assetId),[good.id]);
 }
 
+export function testBoundedSearchPreservesRanking() {
+  const assets=Array.from({length:250},(_,i)=>({...asset(String(i)),fileName:`hit_${i%7===0?"metal":"wood"}_${250-i}.wav`,relativePath:`folder_${i%4}/hit_${250-i}.wav`}));
+  const lib=index(assets),indexer=new AudioLibraryIndexer();
+  const all=indexer.search(lib,"hit metal",assets.length);
+  for(const size of [1,3,5,40])assert.deepEqual(indexer.search(lib,"hit metal",size),all.slice(0,size));
+  const untouched=index([new Proxy(asset("hit"),{get(){throw new Error("zero results must not scan the library");}})]);
+  assert.deepEqual(indexer.search(untouched,"hit",0),[]);
+}
+
 export async function testFailedClipCannotSurviveFallback() {
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"sfx-bad-clip-"));
   try {
