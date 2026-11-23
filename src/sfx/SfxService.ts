@@ -19,7 +19,7 @@ import { SfxRenderer } from "./SfxRenderer.js";
 import { probeAudio } from "./AudioLibraryIndexer.js";
 import { hydratePlacements } from "./HydratePlacements.js";
 import { buildEventTimeline } from "./EventTimelineBuilder.js";
-import { planAllEventCandidates, repairEventCandidates } from "./CandidatePlanner.js";
+import { planAllEventCandidatesResponsive, repairEventCandidates } from "./CandidatePlanner.js";
 import { assetNameAdvice } from "./AssetIntent.js";
 import { planAutoMix } from "./AutoMix.js";
 import { usagePhase, withModelUsage } from "./ModelUsage.js";
@@ -283,7 +283,7 @@ export class SfxService {
       run.analysisReport = result.report; run.musicEnabled = parsed.musicEnabled; run.musicLibraryPath = musicLibrary;
       if (!parsed.musicEnabled) run.events = run.events.filter(e => e.category !== "music");
       if (parsed.analysisMode === "scene" || result.mode === "scene") run.events = buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
-      planAllEventCandidates(run.events, index);
+      await planAllEventCandidatesResponsive(run.events,index,controller.signal,message=>{run.progress=message;});
       await prepareCandidates(run.events, index, message => { run.progress = message; }, controller.signal);
       await usagePhase("candidate-diversity",()=>prepareDiverseCandidates(run.events,index,this.store.directory(run.id),controller.signal,message=>{run.progress=message;}));
       if (parsed.aiSelection && parsed.analysisMode === "auto") await this.selectAudio(run, controller.signal);
@@ -693,7 +693,7 @@ export class SfxService {
           if (!addedEvents.length) throw new SfxError(`Gemini 未能确认“${input.description}”的有效动作点位`);
           child.events = [...source.events, ...addedEvents].sort((a, b) => a.start - b.start);
           const index = this.runIndex(child);
-          planAllEventCandidates(addedEvents, index);
+          await planAllEventCandidatesResponsive(addedEvents,index,controller.signal,message=>{child.progress=message;});
           await prepareCandidates(addedEvents, index, message => { child.progress = message; }, controller.signal);
           await this.selectAudioForEvents(child, addedEvents, controller.signal);
           const uncovered = addedEvents.filter(event => !(event.layers || []).some(layer => layer.candidates.length) && event.candidates.length === 0);

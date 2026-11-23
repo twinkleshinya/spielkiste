@@ -56,6 +56,21 @@ export function planEventCandidates(event: SoundEvent, index: AudioLibraryIndex)
 
 export function planAllEventCandidates(events: SoundEvent[], index: AudioLibraryIndex) {
   const planned = events.map(event => planEventCandidates(event, index));
+  return applyDensityBudget(planned);
+}
+
+/** Yield between events so large-library ranking cannot freeze status requests. */
+export async function planAllEventCandidatesResponsive(events:SoundEvent[],index:AudioLibraryIndex,signal?:AbortSignal,progress?:(message:string)=>void) {
+  for(let i=0;i<events.length;i++) {
+    signal?.throwIfAborted();
+    progress?.(`匹配本地素材：${i+1}/${events.length} · ${events[i].description}`);
+    await new Promise<void>(resolve=>setImmediate(resolve));
+    planEventCandidates(events[i],index);
+  }
+  return applyDensityBudget(events);
+}
+
+function applyDensityBudget(planned:SoundEvent[]) {
   const denseBossContacts = planned.filter(event => {
     const text = `${event.actor || ""} ${event.type} ${event.description} ${event.query}`;
     return event.category === "impact" && (event.actor === "boss" || /ape|gorilla|猩猩|巨猿|boss/i.test(text)) && (event.phase === "contact" || /impact|slam|pound|hit|砸|捶|命中/i.test(text));
