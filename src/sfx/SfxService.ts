@@ -550,6 +550,8 @@ export class SfxService {
         try {
           const index = this.runIndex(run);
           for (const event of run.events.filter(e => !e.locked)) {
+            run.progress=`匹配本地素材：${event.start.toFixed(2)} 秒 ${event.type}`;
+            await new Promise<void>(resolve=>setImmediate(resolve));
             repairEventCandidates(event, index);
           }
           const candidateIds = new Set(run.events.filter(e => !e.locked).flatMap(e => [...e.candidates, ...(e.layers || []).flatMap(l => l.candidates)].map(c => c.assetId)));
