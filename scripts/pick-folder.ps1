@@ -18,12 +18,17 @@ try {
       if (!(Test-Path -LiteralPath $helper)) { Move-Item -LiteralPath $temporary -Destination $helper }
     } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }
   }
-  # Start in the current interactive desktop and keep the GUI process visible.
-  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Normal -WorkingDirectory $cache -PassThru
-  if (!$process.WaitForExit(115000)) {
-    $process.Kill()
+  # Run it directly in this interactive PowerShell desktop. Start-Process can
+  # detach the GUI into a different window station under browser launches.
+  $job = Start-Job -ScriptBlock { param($exe,$arg) & $exe $arg } -ArgumentList $helper,$RequestPath
+  if (!(Wait-Job -Job $job -Timeout 115)) {
+    Stop-Job -Job $job -Force -ErrorAction SilentlyContinue
+    Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
     throw 'Windows folder selection timed out. Please try again.'
   }
+  $job | Receive-Job -ErrorAction SilentlyContinue | Out-Null
+  $exitCode = $job.ChildJobs[0].JobStateInfo.State
+  Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
   if (!(Test-Path -LiteralPath $request.resultPath)) { throw 'Windows folder picker exited without returning a result.' }
 } catch {
   @{status='failed';error=$_.Exception.Message} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8
