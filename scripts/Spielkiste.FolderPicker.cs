@@ -84,9 +84,39 @@ namespace Spielkiste {
     }
     [DllImport("shell32.dll", CharSet=CharSet.Unicode, PreserveSig=false)]
     static extern void SHCreateItemFromParsingName(string name, IntPtr bind, ref Guid iid, out IShellItem item);
+    // The WinForms picker is the primary path for the web launcher. It is a
+    // normal interactive Windows dialog and does not depend on a hidden
+    // PowerShell host or COM dialog callbacks being delivered to the foreground.
+    // It supports local drives and UNC/shared folders through the same shell
+    // namespace exposed by Windows Explorer.
+    static string ChooseWinForms(string title, string initialPath) {
+      using (var dialog = new System.Windows.Forms.FolderBrowserDialog()) {
+        dialog.Description = title;
+        dialog.ShowNewFolderButton = false;
+        if (!String.IsNullOrEmpty(initialPath) && System.IO.Directory.Exists(initialPath)) {
+          dialog.SelectedPath = initialPath;
+        }
+        var result = dialog.ShowDialog();
+        return result == System.Windows.Forms.DialogResult.OK && !String.IsNullOrEmpty(dialog.SelectedPath)
+          ? dialog.SelectedPath
+          : null;
+      }
+    }
     public static string Choose(string title, string initialPath, string stagePath) {
       StagePath=stagePath;
       System.IO.File.WriteAllText(stagePath, "creating Windows dialog");
+      try {
+        System.IO.File.WriteAllText(stagePath, "showing Windows folder dialog");
+        var selected = ChooseWinForms(title, initialPath);
+        System.IO.File.WriteAllText(stagePath, selected == null ? "cancelled" : "selected folder");
+        return selected;
+      } catch {
+        // Keep the existing shell-item implementation as a fallback for
+        // environments where the WinForms shell dialog is unavailable.
+      }
+      return ChooseCom(title, initialPath, stagePath);
+    }
+    static string ChooseCom(string title, string initialPath, string stagePath) {
       var dialog = (IFileOpenDialog)new FileOpenDialogClass();
       System.IO.File.WriteAllText(stagePath, "setting Windows dialog options");
       try {
