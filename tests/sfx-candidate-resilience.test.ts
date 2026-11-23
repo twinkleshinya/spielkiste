@@ -10,7 +10,7 @@ import {EventSchema,type AudioAsset,type AudioLibraryIndex} from "../src/sfx/mod
 import {createPlacements} from "../src/sfx/PlacementEngine.js";
 
 const asset=(id:string):AudioAsset=>({id,path:`E:/library/${id}.wav`,relativePath:`${id}.wav`,fileName:`${id}.wav`,size:10,mtimeMs:1,tags:["hit"],usable:true,duration:1,onset:0,rmsDb:-20,peakDb:-3});
-const event=(ids:string[])=>EventSchema.parse({id:"e",start:0,end:1,type:"hit",description:"接触",query:"hit",category:"impact",source:"vision",confidence:.9,candidates:ids.map(assetId=>({assetId,score:1,reason:"name"})),layers:[{id:"hit",role:"impact",query:"hit",offset:0,candidates:ids.map(assetId=>({assetId,score:1,reason:"name"}))}]});
+const event=(ids:string[])=>EventSchema.parse({id:"e",start:0,end:1,type:"hit",description:"接触",query:"hit",category:"impact",source:"vision",confidence:.9,requiresHumanReview:false,candidates:ids.map(assetId=>({assetId,score:1,reason:"name"})),layers:[{id:"hit",role:"impact",query:"hit",offset:0,candidates:ids.map(assetId=>({assetId,score:1,reason:"name"}))}]});
 const index=(assets:AudioAsset[]):AudioLibraryIndex=>({version:1,root:"E:/library",generatedAt:"now",warnings:[],assets});
 const describe:AudioSelectionModel["describe"]=async samples=>({assets:samples.map(s=>({assetId:s.assetId,summary:"短接触",tags:["hit"],energy:.6,hasMusic:false,hasSpeech:false}))});
 
@@ -60,3 +60,4 @@ export async function testMeasurementInvalidationAndReplacement() {
     assert.ok(ev.candidates.every(c=>lib.assets.find(a=>a.id===c.assetId)?.usable));
   } finally {await fs.rm(root,{recursive:true,force:true});}
 }
+
