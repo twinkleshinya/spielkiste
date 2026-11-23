@@ -2,25 +2,27 @@ param([Parameter(Mandatory=$true)][string]$RequestPath)
 $ErrorActionPreference = 'Stop'
 $request = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 try {
-  # Run the WinForms dialog in this interactive STA PowerShell process. A
-  # separately compiled helper can land in a different Windows desktop/session
-  # and has repeatedly produced an invisible process with MainWindowHandle=0.
-  Add-Type -AssemblyName System.Windows.Forms
-  Add-Type -AssemblyName System.Drawing
-  [System.Windows.Forms.Application]::EnableVisualStyles()
-  $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-  $dialog.Description = [string]$request.description
-  $dialog.ShowNewFolderButton = $false
-  if ($request.initialPath -and (Test-Path -LiteralPath ([string]$request.initialPath) -PathType Container)) {
-    $dialog.SelectedPath = [string]$request.initialPath
+  # PowerShell is only the launcher. The dialog itself runs in a normal
+  # Windows GUI process; hosting WinForms inside the server's PowerShell
+  # process can inherit SW_HIDE and leave the browser polling forever.
+  $source = Join-Path $PSScriptRoot 'Spielkiste.FolderPicker.cs'
+  $cache = Split-Path -Parent $request.resultPath
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try { $hash = [BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($source))).Replace('-','').Substring(0,16) }
+  finally { $sha.Dispose() }
+  $helper = Join-Path $cache ('Spielkiste.FolderPicker-' + $hash + '.exe')
+  if (!(Test-Path -LiteralPath $helper)) {
+    $temporary = Join-Path $cache ('picker-build-' + [Guid]::NewGuid().ToString('N') + '.exe')
+    try {
+      Add-Type -Path $source -ReferencedAssemblies 'System.Web.Extensions','System.Windows.Forms','System.Drawing' -OutputAssembly $temporary -OutputType WindowsApplication
+      if (!(Test-Path -LiteralPath $helper)) { Move-Item -LiteralPath $temporary -Destination $helper }
+    } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }
   }
-  $result = $dialog.ShowDialog()
-  if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-    @{status='success';path=$dialog.SelectedPath} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8
-  } else {
-    @{status='cancelled'} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8
+  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Normal -PassThru
+  if (!$process.WaitForExit(115000)) {
+    $process.Kill()
+    throw 'Windows folder selection timed out. Please try again.'
   }
-  $dialog.Dispose()
   if (!(Test-Path -LiteralPath $request.resultPath)) { throw 'Windows folder picker exited without returning a result.' }
 } catch {
   @{status='failed';error=$_.Exception.Message} | ConvertTo-Json -Compress | Set-Content -LiteralPath $request.resultPath -Encoding UTF8
