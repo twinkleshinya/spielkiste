@@ -70,6 +70,12 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
       return true;
     }
     const parts = url.pathname.slice("/api/sfx/".length).split("/");
+    if(parts[0]==="library-index"){
+      if(req.method==="POST"&&!parts[1])json(res,service.refreshLibraryIndexes(await readJson(req)),202);
+      else if(req.method==="GET"&&parts[1]&&!parts[2])json(res,service.libraryIndexStatus(parts[1]));
+      else throw new SfxError("接口不存在",404);
+      return true;
+    }
     if(parts[0]==='styles') {
       if(req.method==='GET'&&!parts[1])json(res,{presets:STYLE_PRESETS.map(({style,works})=>({style,works})),profiles:await service.styles.list()});
       else if(req.method==='POST'&&parts[1]==='check'){

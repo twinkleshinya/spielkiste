@@ -39,7 +39,7 @@ export async function testLibraryCacheLegacyCorruptAndConcurrent() {
   try {
     const legacy=await cache.get(library);assert.equal(legacy.source,"cache");assert.equal(calls,0);assert.equal(legacy.index.assets.length,0,"legacy AppleDouble pseudo-audio must not be reused");
     for(const file of await fs.readdir(cacheRoot))await fs.writeFile(path.join(cacheRoot,file),"broken");
-    const results=await Promise.all([cache.get(library),cache.get(library)]);assert.equal(calls,1,"concurrent requests scan once");assert.equal(results[1].source,"cache");
+    const results=await Promise.all([cache.get(library),cache.get(library)]);assert.equal(calls,1,"concurrent requests scan once");assert.deepEqual(results.map(r=>r.source).sort(),["cache","scan"]);
     assert.notEqual(results[0].index,results[1].index);
     await fs.rename(library,library+"-offline");await assert.rejects(cache.get(library),/不存在|无法/);
   } finally {await fs.rm(root,{recursive:true,force:true});}

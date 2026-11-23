@@ -3,10 +3,11 @@ import {StyleResearcher} from "./StyleResearch.js";
 import {creativeContext,type CreativeBrief} from "./CreativeBrief.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { CreateRunSchema, EventSchema, ExclusionFields, IndexSchema, KeywordPreferencesSchema, PlacementSchema, SfxError, SfxRun, round, validateTimeline,type KeywordPreference } from "./models.js";
+import { CreateRunSchema, EventSchema, ExclusionFields, KeywordPreferencesSchema, PlacementSchema, SfxError, SfxRun, round, validateTimeline,type KeywordPreference } from "./models.js";
+import {AudioLibraryCache} from "./AudioLibraryCache.js";
 import { SfxRunStore, exportTimeline, writeJson } from "./SfxRunStore.js";
 import { AudioLibraryIndexer } from "./AudioLibraryIndexer.js";
 import { SfxVideoAnalyzer } from "./SfxVideoAnalyzer.js";
@@ -36,7 +37,7 @@ import { edgeFades } from "./ClipEdit.js";
 import { SFX_WORKFLOW, workflowSnapshot } from "./WorkflowPolicy.js";
 import {buildWorkflowReport} from "./WorkflowReport.js";
 import {PreservedSounds} from "./PreservedSounds.js";
-import {additionalLibraryRoots,normalizeExcludedLibraryPaths,normalizeKeywordPreferences,normalizeLibraryPreferences} from "./LibraryPreferences.js";
+import {additionalLibraryRoots,preferenceKey,normalizeExcludedLibraryPaths,normalizeKeywordPreferences,normalizeLibraryPreferences} from "./LibraryPreferences.js";
 import {assetExclusionReasonResolver,normalizeExcludedKeywords,type AssetExclusions} from "./AssetExclusions.js";
 import { applyEventTiming, DescribedEventResultSchema, DescribedEventsResultSchema, EventTimingResultSchema, type EventTimingProvider } from "./EventTiming.js";
 import { SfxProjectStore } from "./SfxProjectStore.js";
@@ -53,7 +54,6 @@ const EditSchema = z.object({ revision: z.number().int().nonnegative(), events: 
 const QuickEditSchema = z.object({revision:z.number().int().nonnegative(),target:z.enum(["event","placement"]),targetId:z.string().min(1),action:z.enum(["mute","unmute","delete"])});
 const ReaperExportSchema = z.object({ templatePath: z.string().trim().min(1).optional(), outputPath: z.string().trim().min(1).optional(), channelMode: z.enum(["preserve", "mono", "stereo"]).default("preserve"),audioFormat:z.enum(["preserve","wav16","wav24","wav32f","wav64f"]).default("preserve"),sampleRate:z.union([z.literal(0),z.literal(44100),z.literal(48000),z.literal(88200),z.literal(96000),z.literal(192000)]).default(0),dither:z.enum(["auto","on","off"]).default("auto"),noiseShaping:z.boolean().default(false) });
 const ANALYSIS_TIMEOUT_MS = 30 * 60 * 1000;
-const INDEX_TIMEOUT_MS = 10 * 60 * 1000;
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   return new Promise<T>((resolve, reject) => {
@@ -80,6 +80,8 @@ async function assertAutomaticAiReady(parsed: z.infer<typeof CreateRunSchema>): 
 }
 
 export class SfxService {
+  public libraryCache:AudioLibraryCache;
+  private indexJobs=new Map<string,{id:string;status:"indexing"|"ready"|"failed";progress:string;error?:string;libraries:Array<{path:string;count:number;generatedAt:string}>}>();
   public store: SfxRunStore;
   public styles: StyleResearcher;
   public projects: SfxProjectStore;
@@ -95,12 +97,31 @@ export class SfxService {
     private mediaFactory = (): MediaSource => new MediaTools(),
     private rendererFactory = (): PreviewRenderer => new SfxRenderer()
   ) {
+    this.libraryCache=new AudioLibraryCache(path.join(root,"indexes"));
     this.styles = new StyleResearcher(path.join(root,"style-profiles"));
     this.store = new SfxRunStore(path.join(root, "runs"));
     this.projectGit = new ProjectGit(path.join(root,'project-git'));
     const metadataRoot = path.resolve(root) === path.resolve(".output/sfx") ? path.resolve("projects") : path.join(root, "projects");
     this.projects = new SfxProjectStore(metadataRoot, this.store, new SfxGitStore(path.resolve(".")));
   }
+  refreshLibraryIndexes(input:unknown){
+    const {paths}=z.object({paths:z.array(z.string().trim().min(1).max(2000)).min(1).max(14)}).parse(input);
+    for(const [id,old]of this.indexJobs)if(old.status!=="indexing")this.indexJobs.delete(id);
+    if(this.indexJobs.size>=4)throw new SfxError("正在更新素材库索引，请等待当前任务完成",409);
+    const job={id:randomUUID(),status:"indexing" as "indexing"|"ready"|"failed",progress:"准备更新素材库索引",libraries:[] as Array<{path:string;count:number;generatedAt:string}>,error:undefined as string|undefined};
+    this.indexJobs.set(job.id,job);
+    void(async()=>{try{
+      const unique=new Map(paths.map(p=>[preferenceKey(p),p]));
+      for(const directory of unique.values()){
+        job.progress=`更新索引：${directory}`;
+        const {index}=await this.libraryCache.get(directory,{refresh:true,progress:count=>{job.progress=`更新索引：${directory} · ${count.toLocaleString()} 个音频`;}});
+        job.libraries.push({path:index.root,count:index.assets.length,generatedAt:index.generatedAt});
+      }
+      job.status="ready";job.progress=`索引已更新 · ${job.libraries.reduce((n,l)=>n+l.count,0).toLocaleString()} 个音频`;
+    }catch(error){job.status="failed";job.error=error instanceof Error?error.message:String(error);job.progress="索引更新失败，已保留上次成功记录";}})();
+    return {id:job.id};
+  }
+  libraryIndexStatus(id:string){const job=this.indexJobs.get(id);if(!job)throw new SfxError("索引更新任务不存在或服务已重启，请重新更新",404);return job;}
   private async saveProjectVersion(run: SfxRun, operation = run.workflow?.operation || "save") {
     run.projectId = this.projects.deriveProjectId(run);
     await this.store.save(run);
@@ -218,46 +239,31 @@ export class SfxService {
     const controller = new AbortController();
     const taskTimer = setTimeout(() => controller.abort(new Error("分析超过 30 分钟，请查看当前处理阶段后重试。")), ANALYSIS_TIMEOUT_MS);
     this.launch(run, async () => { try { await withTimeout((async () => {
-      run.progress = "建立或更新本地音效索引"; await this.store.save(run);
-      const scanController = new AbortController();
-      const scanSignal = AbortSignal.any([controller.signal, scanController.signal]);
-      let scanTimer:NodeJS.Timeout|undefined;
-      const scanHeartbeat=()=>{
-        clearTimeout(scanTimer);
-        scanTimer=setTimeout(()=>scanController.abort(new Error("素材库扫描连续 10 分钟没有进展，已停止。请检查共享盘连接与访问权限。")),INDEX_TIMEOUT_MS);
+      run.progress = "读取已保存的素材库索引"; await this.store.save(run);
+      let lastProgress=0;
+      const scan=async(directory:string)=>{
+        const result=await this.libraryCache.get(directory,{signal:controller.signal,progress:count=>{
+          if(Date.now()-lastProgress>300){lastProgress=Date.now();run.progress=`首次建立索引：${directory} · 已扫描 ${count.toLocaleString()} 个音频`;}
+        }});
+        run.progress=result.source==="cache"?`使用已保存索引：${result.index.assets.length.toLocaleString()} 个音频 · ${result.index.generatedAt}`:`素材库索引已保存：${result.index.assets.length.toLocaleString()} 个音频`;
+        return result.index;
       };
-      scanHeartbeat();
-      let lastProgress = 0;
-      let index;
-      try {
-        const scan=async(directory:string)=>{
-          const key=createHash("sha256").update(directory).digest("hex"),file=path.join(this.root,"indexes",`${key}.json`);
-          let previous;
-          try {previous=IndexSchema.parse(JSON.parse(await fs.readFile(file,"utf8")));}catch { /* first run or invalid cache */ }
-          const result=await new AudioLibraryIndexer().indexDirectory(directory,previous,count=>{
-            scanHeartbeat();
-            if(Date.now()-lastProgress>300){lastProgress=Date.now();run.progress=`建立文件索引：${directory} · 已扫描 ${count.toLocaleString()} 个音频（不逐条解码）`;}
-          },scanSignal);
-          scanSignal.throwIfAborted();await writeJson(file,result);return result;
-        };
-        index=await scan(library);
-        for(const directory of additionalLibraryRoots(library,run.libraryPreferences)) {
-          run.progress=`索引优先素材目录：${directory}`;
-          const extra=await scan(directory),existing=new Set(index.assets.map(a=>a.id));
-          index.assets.push(...extra.assets.filter(a=>!existing.has(a.id)).map(a=>({...a,relativePath:`[优先目录 ${path.basename(directory)}] ${a.relativePath}`})));
-          index.warnings.push(...extra.warnings);
-        }
-        index.libraryPreferences=run.libraryPreferences;
-        index.keywordPreferences=run.keywordPreferences;
-        index.excludedLibraryPaths=run.excludedLibraryPaths;
-        index.excludedKeywords=run.excludedKeywords;
-      } finally { clearTimeout(scanTimer); }
+      const index=await scan(library);
+      for(const directory of additionalLibraryRoots(library,run.libraryPreferences)){
+        const extra=await scan(directory),existing=new Set(index.assets.map(a=>a.id));
+        for(const asset of extra.assets)if(!existing.has(asset.id))index.assets.push({...asset,relativePath:`[优先目录 ${path.basename(directory)}] ${asset.relativePath}`});
+        index.warnings.push(...extra.warnings);
+      }
+      index.libraryPreferences=run.libraryPreferences;
+      index.keywordPreferences=run.keywordPreferences;
+      index.excludedLibraryPaths=run.excludedLibraryPaths;
+      index.excludedKeywords=run.excludedKeywords;
       controller.signal.throwIfAborted();
       index.musicLibraryConfigured = Boolean(musicLibrary && musicLibrary !== library && parsed.musicEnabled);
       run.assets = index.assets; run.warnings = index.warnings;
       if (musicLibrary && musicLibrary !== library && parsed.musicEnabled) {
         run.progress = "索引单独选择的背景音乐目录";
-        const musicIndex = await new AudioLibraryIndexer().indexDirectory(musicLibrary, undefined, undefined, controller.signal);
+        const musicIndex = await scan(musicLibrary);
         const existing = new Set(index.assets.map(a => a.id));
         index.assets.push(...musicIndex.assets.filter(a => !existing.has(a.id)).map(a => ({ ...a, musicOnly: true, relativePath: `[music] ${a.relativePath}` })));
         index.warnings.push(...musicIndex.warnings);
