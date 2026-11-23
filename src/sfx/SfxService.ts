@@ -53,15 +53,6 @@ type PreviewRenderer = { renderPreview(run: SfxRun, outputDir: string, options?:
 const EditSchema = z.object({ revision: z.number().int().nonnegative(), events: z.array(EventSchema).max(1000), placements: z.array(PlacementSchema).max(1000), originalGainDb: z.number().finite().min(-60).max(6), originalMuted:z.boolean().optional(), audioOutputMode:z.enum(["all","sfx","music"]).optional(), musicEnabled: z.boolean().optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
 const QuickEditSchema = z.object({revision:z.number().int().nonnegative(),target:z.enum(["event","placement"]),targetId:z.string().min(1),action:z.enum(["mute","unmute","delete"])});
 const ReaperExportSchema = z.object({ templatePath: z.string().trim().min(1).optional(), outputPath: z.string().trim().min(1).optional(), channelMode: z.enum(["preserve", "mono", "stereo"]).default("preserve"),audioFormat:z.enum(["preserve","wav16","wav24","wav32f","wav64f"]).default("preserve"),sampleRate:z.union([z.literal(0),z.literal(44100),z.literal(48000),z.literal(88200),z.literal(96000),z.literal(192000)]).default(0),dither:z.enum(["auto","on","off"]).default("auto"),noiseShaping:z.boolean().default(false) });
-const ANALYSIS_TIMEOUT_MS = 30 * 60 * 1000;
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  return new Promise<T>((resolve, reject) => {
-    timer = setTimeout(() => reject(new SfxError(message, 408)), timeoutMs);
-    promise.then(value => { if (timer) clearTimeout(timer); resolve(value); }, error => { if (timer) clearTimeout(timer); reject(error); });
-  });
-}
-
 async function assertAutomaticAiReady(parsed: z.infer<typeof CreateRunSchema>): Promise<{ model: string; reasoningEffort?: AiReasoningEffort } | undefined> {
   if (parsed.analysisMode !== "auto") return undefined;
 
@@ -237,7 +228,6 @@ export class SfxService {
       await this.store.save(run);
     }
     const controller = new AbortController();
-    let taskTimer:NodeJS.Timeout|undefined;
     this.launch(run, async () => { try {
       run.progress = "读取已保存的素材库索引"; await this.store.save(run);
       let lastProgress=0;
@@ -270,9 +260,8 @@ export class SfxService {
       }
       if (!index.assets.some(a => a.usable)) run.warnings.push("素材库没有可用音效，可先编辑事件，再补充素材重新分析。");
       Object.assign(index,creativeFields(run));
-      // Start the model/production budget only after ALL libraries are indexed.
-      taskTimer=setTimeout(()=>controller.abort(new Error("分析超过 30 分钟，请查看当前处理阶段后重试。")),ANALYSIS_TIMEOUT_MS);
-      await withTimeout((async()=>{
+      // Many individually bounded model calls can legitimately take over 30
+      // minutes. Providers and media tools enforce their own request deadlines.
       run.progress = parsed.analysisMode === "scene" ? "检测镜头边界并生成复核清单" : "分析画面动作、物体、环境和声音意图";
       await this.store.save(run);
       const useVision = parsed.analysisMode === "auto" || parsed.analysisMode === "ollama";
@@ -313,7 +302,7 @@ export class SfxService {
         run.render = await usagePhase("render-and-mix", () => new SfxRenderer().renderPreview(run, this.store.directory(run.id)));
       }
       run.status = "ready"; run.progress = "分析完成，请复核事件与贴片"; await exportTimeline(run, this.store.directory(run.id)); await this.saveProjectVersion(run, "create");
-    })(), ANALYSIS_TIMEOUT_MS, "视频分析超过 30 分钟，已停止。请检查当前处理阶段。"); } finally { controller.abort(); clearTimeout(taskTimer); } });
+    } finally { controller.abort(); } });
     return { runId: run.id };
   }
 
@@ -554,7 +543,6 @@ export class SfxService {
       try { await fs.copyFile(path.join(this.store.directory(source.id), "analysis-review.json"), path.join(this.store.directory(run.id), "analysis-review.json")); } catch { /* legacy run */ }
       await this.store.save(run);
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(new Error("Gemini 选材超过30分钟，已停止；已分析的音频片段已缓存，可重新选材继续")), ANALYSIS_TIMEOUT_MS);
       this.launch(run, async () => {
         try {
           const index = this.runIndex(run);
@@ -586,7 +574,7 @@ export class SfxService {
           if (input.autoRender && run.placements.length) { run.progress = "Gemini 选材完成，正在自动混音并生成新的视频预览"; run.render = await usagePhase("render-and-mix", () => new SfxRenderer().renderPreview(run, this.store.directory(run.id))); }
           run.status = "ready"; run.progress = "Gemini 选材及预览已完成，请试听复核";
           await exportTimeline(run, this.store.directory(run.id)); await this.saveProjectVersion(run, "reselect");
-        } finally { clearTimeout(timer); controller.abort(); }
+        } finally { controller.abort(); }
       }, "reselect-reused-timing");
       return { runId: run.id };
     } finally { this.locks.delete(id); }
@@ -797,7 +785,8 @@ export class SfxService {
   private launch(run: SfxRun, work: () => Promise<void>, operation = "analyze-and-render") {
     this.active.set(run.id, run);
     const task = withModelUsage(run.id, this.store.directory(run.id), operation, work).catch(async e => {
-      run.status = "failed"; run.progress = "处理失败，可查看原因后重试"; run.error = String(e instanceof Error ? e.message : e).slice(0, 1500);
+      const lastStage=run.progress;
+      run.status = "failed"; run.progress = "处理失败，可查看原因后重试"; run.error = `${String(e instanceof Error ? e.message : e)}${lastStage?`；中断阶段：${lastStage}`:""}`.slice(0, 1500);
       try { await this.store.save(run); }
       catch (storageError) {
         run.error += `；错误状态无法写盘：${String(storageError instanceof Error ? storageError.message : storageError).slice(0, 300)}`;
