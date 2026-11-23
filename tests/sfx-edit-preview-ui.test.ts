@@ -23,6 +23,7 @@ export async function editorHarness(storage = new Map<string, string>()) {
   let failUpdate = false;
   let failRender = false;
   const keywords = { values: [] as any[], read() { return this.values; }, load(values: any[] = []) { this.values = values; }, setBusy() {} };
+  const directories = { values: [] as any[], read() { return this.values; }, load(values: any[] = []) { this.values = values; }, setBusy() {} };
   const exclusions:Record<string,any>={};
   const createExclusions=(container:any,options:any)=>{const key=container===$("excluded-library-paths")?"paths":"keywords";return exclusions[key]={values:[] as string[],read(){return this.values;},load(values:string[]=[]){this.values=values;},setBusy(){},change(values:string[]){this.values=values;options.onChange();}};};
   const context = vm.createContext({
@@ -30,7 +31,7 @@ export async function editorHarness(storage = new Map<string, string>()) {
     window: { addEventListener() {}, confirm: () => true }, localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
     location: { href: "http://localhost/sfx", search: "" }, history: { replaceState() {} }, URL, URLSearchParams, structuredClone, crypto,
     Option: function(value: string, id: string) { return { textContent: value, value: id }; }, setTimeout, clearTimeout, planSourceEdit, edgeFades,
-    chooseLocalFolder: async () => null, createKeywordPreferences: () => keywords, createLibraryPreferences: () => ({ read: () => [], load() {}, setBusy() {} }),
+    chooseLocalFolder: async () => null, createKeywordPreferences: () => keywords, createLibraryPreferences: () => directories,
     createLibraryExclusions:createExclusions,createKeywordExclusions:createExclusions,assetExclusionReasonResolver,
     fetch: async (url: string, options?: any) => {
       const body = options?.body ? JSON.parse(options.body) : undefined;

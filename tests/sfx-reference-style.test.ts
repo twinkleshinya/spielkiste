@@ -86,7 +86,7 @@ export async function testReferenceStyleKeywordUi(){
   assert.equal(editor.exec('keywordPreferences.read().length'),1);
   assert.deepEqual(editor.getRun().placements,legacy.placements,'migration must preserve saved audio');
   editor.$('reference-works').value='';await editor.$('reanalyze-brief').onclick({preventDefault(){}});assert.deepEqual(editor.calls.find(c=>c.url.endsWith('/reanalyze'))!.body.referenceWorks,[],'clearing works must be sent explicitly');
-  const remembered=await editorHarness(new Map([['sfx-last-input',JSON.stringify({keywordPreferences:[rule]})]]));remembered.exec('resetToNewProject({preserveLibraryInputs:true})');assert.equal(remembered.$('reference-works').value,'卡赞');
+  const remembered=await editorHarness(new Map([['sfx-last-input',JSON.stringify({keywordPreferences:[rule]})]]));remembered.exec('resetToNewProject()');assert.equal(remembered.$('reference-works').value,'','new projects never inherit legacy references');
 }
 
 
