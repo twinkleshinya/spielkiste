@@ -67,7 +67,13 @@ const searchGroups = [
   ["boss", "battle", "combat", "战斗"], ["tension", "suspense", "紧张"], ["open", "opening", "开门"], ["close", "closing", "关门"]
 ];
 const rawWords = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 1 && !/^\d+$|^[a-f0-9]{8,}$|^(wav|wem|mp3|ogg|flac|m4a|aiff|sfx|efx|com|sound|effect)$/.test(w));
-const contains = (text: string, word: string) => /[\u4e00-\u9fff]/.test(word) ? text.includes(word) : new RegExp(`(?:^|[^a-z])${word}(?:[^a-z]|$)`, "i").test(text) || word.length > 5 && text.includes(word);
+const wordPatterns=new Map<string,RegExp>();
+const contains = (text: string, word: string) => {
+  if(/[\u4e00-\u9fff]/.test(word))return text.includes(word);
+  let pattern=wordPatterns.get(word);
+  if(!pattern){if(wordPatterns.size>=2048)wordPatterns.clear();pattern=new RegExp(`(?:^|[^a-z])${word}(?:[^a-z]|$)`,"i");wordPatterns.set(word,pattern);}
+  return pattern.test(text)||word.length>5&&text.includes(word);
+};
 export class AudioLibraryIndexer {
   constructor(private probe = probeAudio, private options: { probeMetadata?: boolean; ioConcurrency?: number; fileSystem?: Pick<typeof fs, "stat" | "readdir"> } = {}) {}
   async indexDirectory(directory: string, previous?: AudioLibraryIndex, progress?: (count: number) => void, signal?: AbortSignal): Promise<AudioLibraryIndex> {
