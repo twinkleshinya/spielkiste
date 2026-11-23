@@ -31,6 +31,7 @@ namespace Spielkiste {
     public int OnFolderChanging(IFileOpenDialog dialog, IShellItem folder) { return 0; }
     public void OnFolderChange(IFileOpenDialog dialog) {
       System.IO.File.WriteAllText(FolderPicker.StagePath, "folder loaded");
+      FolderPicker.EnsureVisible(dialog);
     }
     public void OnSelectionChange(IFileOpenDialog dialog) {}
     public void OnShareViolation(IFileOpenDialog dialog, IShellItem item, out uint response) { response=0; }
@@ -68,6 +69,19 @@ namespace Spielkiste {
   }
   public static class FolderPicker {
     internal static string StagePath;
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+    internal static void EnsureVisible(IFileOpenDialog dialog) {
+      try {
+        IntPtr window;
+        ((IOleWindow)dialog).GetWindow(out window);
+        if(window != IntPtr.Zero) {
+          // Restore our own dialog after a hidden launcher suppresses its first show.
+          ShowWindow(window, 1);
+          SetForegroundWindow(window);
+        }
+      } catch { /* The shell may not expose its window until the next event. */ }
+    }
     [DllImport("shell32.dll", CharSet=CharSet.Unicode, PreserveSig=false)]
     static extern void SHCreateItemFromParsingName(string name, IntPtr bind, ref Guid iid, out IShellItem item);
     public static string Choose(string title, string initialPath, string stagePath) {
