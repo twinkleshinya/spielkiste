@@ -3,15 +3,10 @@
 export function chooseLocalFolder(initialPath="",description="选择文件夹") {
   if(typeof window!=="undefined"&&typeof window.spielkisteDesktop?.chooseFolder==="function")return window.spielkisteDesktop.chooseFolder({initialPath,description});
   // The browser workbench is local-only, so use the same Windows shell folder
-  // dialog as the desktop build. The in-page directory browser is retained as
-  // an explicit fallback only when the local picker endpoint is unavailable;
-  // it must never replace the native Windows dialog during normal use.
-  return pickFolderViaLocalServer(initialPath,description).catch(error=>{
-    if(typeof document!=="undefined" && /接口不可用|系统文件夹选择未完成/.test(String(error?.message||error))) {
-      return browseLocalFoldersInPage(initialPath,description);
-    }
-    throw error;
-  });
+  // dialog as the desktop build. Never silently fall back to an in-page
+  // directory browser: that is not the current computer's file window and can
+  // make a selection appear to succeed while returning the wrong path.
+  return pickFolderViaLocalServer(initialPath,description);
 }
 
 async function browseLocalFoldersInPage(initialPath,description) {
