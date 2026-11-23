@@ -18,7 +18,8 @@ try {
       if (!(Test-Path -LiteralPath $helper)) { Move-Item -LiteralPath $temporary -Destination $helper }
     } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }
   }
-  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Normal -PassThru
+  # Start in the current interactive desktop and keep the GUI process visible.
+  $process = Start-Process -FilePath $helper -ArgumentList ('"' + $RequestPath + '"') -WindowStyle Normal -WorkingDirectory $cache -PassThru
   if (!$process.WaitForExit(115000)) {
     $process.Kill()
     throw 'Windows folder selection timed out. Please try again.'

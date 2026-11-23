@@ -90,16 +90,33 @@ namespace Spielkiste {
     // It supports local drives and UNC/shared folders through the same shell
     // namespace exposed by Windows Explorer.
     static string ChooseWinForms(string title, string initialPath) {
+      System.Windows.Forms.Application.EnableVisualStyles();
+      System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
       using (var dialog = new System.Windows.Forms.FolderBrowserDialog()) {
         dialog.Description = title;
         dialog.ShowNewFolderButton = false;
+        dialog.UseDescriptionForTitle = true;
         if (!String.IsNullOrEmpty(initialPath) && System.IO.Directory.Exists(initialPath)) {
           dialog.SelectedPath = initialPath;
         }
-        var result = dialog.ShowDialog();
-        return result == System.Windows.Forms.DialogResult.OK && !String.IsNullOrEmpty(dialog.SelectedPath)
-          ? dialog.SelectedPath
-          : null;
+        // Give the common dialog a real interactive owner. A dialog opened
+        // directly from a hidden launcher can inherit SW_HIDE and never
+        // appear, even though the helper process remains alive.
+        using (var owner = new System.Windows.Forms.Form()) {
+          owner.Text = title;
+          owner.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+          owner.Size = new System.Drawing.Size(1, 1);
+          owner.ShowInTaskbar = false;
+          owner.TopMost = true;
+          owner.Opacity = 0;
+          owner.Show();
+          owner.Activate();
+          var result = dialog.ShowDialog(owner);
+          owner.Close();
+          return result == System.Windows.Forms.DialogResult.OK && !String.IsNullOrEmpty(dialog.SelectedPath)
+            ? dialog.SelectedPath
+            : null;
+        }
       }
     }
     public static string Choose(string title, string initialPath, string stagePath) {
