@@ -514,11 +514,7 @@ function exclusionsChanged(error) {
 function rememberLibrarySettings() {
   try {const previous=JSON.parse(localStorage.getItem("sfx-last-input")||"{}");localStorage.setItem("sfx-last-input",JSON.stringify({...previous,libraryPath:$("library-path").value,musicLibraryPath:$("music-library-path").value,referenceWorks:selectedReferenceWorks(),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings()}));}catch { /* optional preference storage */ }
 }
-function resetToNewProject({ preserveLibraryInputs = false } = {}) {
-  let previous = null;
-  if (preserveLibraryInputs) {
-    try { previous = JSON.parse(localStorage.getItem("sfx-last-input") || "null"); } catch { /* optional preference storage */ }
-  }
+function resetToNewProject() {
   $("video").pause();
   $("video").removeAttribute("src");
   $("video").load();
@@ -540,11 +536,10 @@ function resetToNewProject({ preserveLibraryInputs = false } = {}) {
   for(const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works"])$(id).value="";$("audio-output-mode").value="all";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;appliedConflictRequirements="";hideStyleConflict();
   $("video-path").value = "";
   $("library-path").value = "";
-  $("music-library-path").value = preserveLibraryInputs ? (previous?.musicLibraryPath || "") : "";
-  libraryPreferences.load(preserveLibraryInputs ? previous?.libraryPreferences : []);
-  keywordPreferences.load(preserveLibraryInputs ? previous?.keywordPreferences : []);
-  if(preserveLibraryInputs)$("reference-works").value=referenceWorksFrom(previous||{}).join("；");
-  loadExclusions(preserveLibraryInputs ? previous||{} : {});
+  $("music-library-path").value = "";
+  libraryPreferences.load([]);
+  keywordPreferences.load([]);
+  loadExclusions({});
   $("status").textContent = "可以选择视频和本机音效文件夹。已有项目仍在“已保存项目”中。";
   history.replaceState(null, "", "/sfx?new=1");
 }
@@ -802,7 +797,7 @@ $("new-project").onclick = guard(() => {
 });
 $("open-new-project").onclick = guard(() => {
   keepDraftBeforeLeaving();
-  resetToNewProject({preserveLibraryInputs:true});
+  resetToNewProject();
   $("new-project-setup").hidden=false;
   $("new-project-setup").scrollIntoView({behavior:"smooth",block:"start"});
 });
@@ -816,7 +811,7 @@ if(initialId) {
     await poll(initialId,true);loadProjectInputs();status("已打开本机保存的项目，可以直接播放或继续编辑。");
   }catch(e){status(`项目暂未打开：${e.message}。可以从“已保存项目”重新选择。`,true);}
   finally{setBusy(false);}
-}else resetToNewProject({preserveLibraryInputs:true});
+}else resetToNewProject();
 await historyLoad;
 await loadAiConfig();
 
