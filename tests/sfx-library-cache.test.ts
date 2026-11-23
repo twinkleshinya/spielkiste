@@ -16,16 +16,20 @@ export async function testLibraryScanHasNoDeadline(){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-long-index-"));
   mock.timers.enable({apis:["Date","setTimeout","setInterval"]});
   try{
+    const waiting:number[]=[];
     const cache=new AudioLibraryCache(path.join(root,"indexes"),async(directory,_previous,progress,signal)=>{
       // A slow network directory can take longer than the old inactivity limit
       // before returning its first audio file. Time alone must never cancel it.
+      await new Promise<void>(resolve=>setImmediate(resolve));
       mock.timers.tick(61*60*1000);
       assert.equal(signal?.aborted,false,"large scans must survive long waits without progress");
       progress?.(0);
       return {version:1,root:directory,generatedAt:new Date().toISOString(),assets:[],warnings:[]};
     });
-    assert.equal((await cache.get(root)).source,"scan");
+    assert.equal((await cache.get(root,{waiting:minutes=>waiting.push(minutes)})).source,"scan");
+    assert.ok(waiting.some(minutes=>minutes>=10),"long inactivity gives advice without stopping the scan");
     assert.equal((await cache.get(root)).source,"cache");
+    const notices=waiting.length;mock.timers.tick(61*60*1000);assert.equal(waiting.length,notices,"completed scans release advisory timers");
   }finally{mock.timers.reset();await fs.rm(root,{recursive:true,force:true});}
 }
 
