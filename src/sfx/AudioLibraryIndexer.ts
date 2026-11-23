@@ -68,40 +68,55 @@ const searchGroups = [
 const rawWords = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 1 && !/^\d+$|^[a-f0-9]{8,}$|^(wav|wem|mp3|ogg|flac|m4a|aiff|sfx|efx|com|sound|effect)$/.test(w));
 const contains = (text: string, word: string) => /[\u4e00-\u9fff]/.test(word) ? text.includes(word) : new RegExp(`(?:^|[^a-z])${word}(?:[^a-z]|$)`, "i").test(text) || word.length > 5 && text.includes(word);
 export class AudioLibraryIndexer {
-  constructor(private probe = probeAudio, private options: { probeMetadata?: boolean } = {}) {}
+  constructor(private probe = probeAudio, private options: { probeMetadata?: boolean; ioConcurrency?: number; fileSystem?: Pick<typeof fs, "stat" | "readdir"> } = {}) {}
   async indexDirectory(directory: string, previous?: AudioLibraryIndex, progress?: (count: number) => void, signal?: AbortSignal): Promise<AudioLibraryIndex> {
     signal?.throwIfAborted();
     const root = path.resolve(directory);
-    if (!(await fs.stat(root)).isDirectory()) throw new Error("音效库路径必须是文件夹");
+    const io=this.options.fileSystem || fs;
+    if (!(await io.stat(root)).isDirectory()) throw new Error("音效库路径必须是文件夹");
     const prior = new Map(previous?.root === root ? previous.assets.map(a => [a.path, a]) : []);
     const assets: AudioAsset[] = []; const warnings: string[] = [];
-    const walk = async (dir: string) => {
+    // Bound SMB metadata requests across both directories and files. A serial
+    // stat per recording can spend minutes waiting on a large shared library.
+    const concurrency=Math.max(1,Math.min(32,Math.floor(this.options.ioConcurrency || 16)));
+    const queue:Array<{file:string;directory:boolean}>=[{file:root,directory:true}];
+    let cursor=0;
+    const inspect=async(job:{file:string;directory:boolean})=>{
       signal?.throwIfAborted();
-      let entries;
-      try { entries = await fs.readdir(dir, { withFileTypes: true }); }
-      catch (error) { if (dir === root) throw error; warnings.push("无法读取目录：" + dir); return; }
-      for (const entry of entries) {
+      const file=job.file;
+      if(job.directory) {
+        let entries;
+        try {entries=await io.readdir(file,{withFileTypes:true});}
+        catch(error){if(file===root)throw error;warnings.push("无法读取目录："+file);return;}
         signal?.throwIfAborted();
-        const file = path.join(dir, entry.name);
-        if (entry.isSymbolicLink()) continue;
-        if (entry.isDirectory()) { await walk(file); continue; }
-        if (!entry.isFile() || !/\.(wav|mp3|flac|ogg|m4a|aif|aiff|opus)$/i.test(entry.name)) continue;
-        let stat;
-        try { stat = await fs.stat(file); } catch { warnings.push("无法读取文件：" + file); continue; }
-        const old = prior.get(file);
-        if (old?.usable && (!this.options.probeMetadata || old.duration !== undefined) && old.size === stat.size && old.mtimeMs === stat.mtimeMs) { assets.push(old); progress?.(assets.length); continue; }
-        const relativePath = path.relative(root, file);
-        const asset: AudioAsset = { id: createHash("sha256").update(file).digest("hex").slice(0, 20), path: file, relativePath, fileName: entry.name, size: stat.size, mtimeMs: stat.mtimeMs, tags: tokens(relativePath), usable: false };
-        if (this.options.probeMetadata) {
-          try { Object.assign(asset, await this.probe(file), { usable: true }); }
-          catch (err) { asset.warning = String(err instanceof Error ? err.message : err).slice(0, 240); warnings.push(`${relativePath}：${asset.warning}`); }
-        } else {
-          asset.usable = true;
+        for(const entry of entries) {
+          if(entry.isSymbolicLink())continue;
+          if(entry.isDirectory())queue.push({file:path.join(file,entry.name),directory:true});
+          else if(entry.isFile()&&/\.(wav|mp3|flac|ogg|m4a|aif|aiff|opus)$/i.test(entry.name))queue.push({file:path.join(file,entry.name),directory:false});
         }
-        assets.push(asset); progress?.(assets.length);
+        return;
       }
+      let stat;
+      try {stat=await io.stat(file);}catch{signal?.throwIfAborted();warnings.push("无法读取文件："+file);return;}
+      signal?.throwIfAborted();
+      const old=prior.get(file);
+      if(old?.usable&&(!this.options.probeMetadata||old.duration!==undefined)&&old.size===stat.size&&old.mtimeMs===stat.mtimeMs){assets.push(old);progress?.(assets.length);return;}
+      const relativePath=path.relative(root,file);
+      const asset:AudioAsset={id:createHash("sha256").update(file).digest("hex").slice(0,20),path:file,relativePath,fileName:path.basename(file),size:stat.size,mtimeMs:stat.mtimeMs,tags:tokens(relativePath),usable:false};
+      if(this.options.probeMetadata) {
+        try {Object.assign(asset,await this.probe(file),{usable:true});}
+        catch(err){asset.warning=String(err instanceof Error?err.message:err).slice(0,240);warnings.push(`${relativePath}：${asset.warning}`);}
+      }else asset.usable=true;
+      signal?.throwIfAborted();assets.push(asset);progress?.(assets.length);
     };
-    await walk(root);
+    while(cursor<queue.length) {
+      signal?.throwIfAborted();
+      const batch=queue.slice(cursor,cursor+concurrency);cursor+=batch.length;
+      const results=await Promise.allSettled(batch.map(inspect));
+      const failed=results.find((r):r is PromiseRejectedResult=>r.status==="rejected");
+      if(failed)throw failed.reason;
+    }
+    assets.sort((a,b)=>a.relativePath.localeCompare(b.relativePath));
     signal?.throwIfAborted();
     return { version: 1, root, generatedAt: new Date().toISOString(), assets, warnings };
   }

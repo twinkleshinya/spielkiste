@@ -56,11 +56,15 @@ export async function testWorkflowApiResources() {
     assert.equal(response.status,200,"workbench needs the same executable profile and published skill set");
     const data=await response.json() as {profile:{id:string;version:string;mix:{addedReverb:boolean}};skills:unknown[]};
     assert.equal(data.profile.id,"reference-v6");assert.equal(data.profile.version,"1.0.7");assert.equal(data.profile.mix.addedReverb,false);assert.equal(data.skills.length,4);
-    const run=await service.store.createRun({videoPath:"v.mp4",libraryPath:root});run.status="failed";await service.store.save(run);
+    const run=await service.store.createRun({videoPath:"v.mp4",libraryPath:root});run.status="failed";run.error="文件扫描超过 10 分钟，已取消扫描";await service.store.save(run);
     const before=await fs.readFile(path.join(service.store.directory(run.id),"run.json"),"utf8");
     const report=await fetch(base+`/api/sfx/runs/${run.id}/export/workflow`);
     assert.equal(report.status,200);
-    assert.equal((await report.json() as {quality:{status:string}}).quality.status,"needs-review");
+    const failedReport=await report.json() as ReturnType<typeof buildWorkflowReport>;
+    assert.equal(failedReport.quality.status,"failed");
+    assert.equal(failedReport.error,run.error);
+    assert.equal(failedReport.quality.checks[0].id,"execution");
+    assert.match(failedReport.quality.checks[0].detail,/文件扫描超过/);
     assert.equal(await fs.readFile(path.join(service.store.directory(run.id),"run.json"),"utf8"),before,"inspecting reports must not rewrite history");
     const zip=await fetch(base+"/api/sfx/workflow/bundle");assert.equal(zip.status,200);
     assert.equal(Buffer.from(await zip.arrayBuffer()).readUInt32LE(0),0x04034b50);

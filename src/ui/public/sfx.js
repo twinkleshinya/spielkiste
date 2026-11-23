@@ -130,8 +130,9 @@ async function renderWorkflowReport() {
   try {
     const report=await api(`/api/sfx/runs/${id}/export/workflow`);if(run?.id!==id)return;
     const names={complete:"完成",reused:"复用",partial:"部分完成",fallback:"规则回退",skipped:"无需执行",missing:"缺少依据",pending:"待生成"};
-    $("workflow-run-title").textContent=`${report.profile?.name||"历史版本流程复盘"} · ${{"checks-passed":"自动检查通过，待试听","needs-review":"有项目待复核",failed:"发现需要修正的问题"}[report.quality.status]}`;
+    $("workflow-run-title").textContent=`${report.profile?.name||"历史版本流程复盘"} · ${report.runStatus==="failed"?"生成失败":{"checks-passed":"自动检查通过，待试听","needs-review":"有项目待复核",failed:"发现需要修正的问题"}[report.quality.status]}`;
     $("workflow-run-note").textContent=report.legacy?"依据历史版本现存报告只读复盘；不代表已重新执行标准流程。":`配置 v${report.profile.version} · ${report.effective.timingModel||"点位模型未完成"}${report.effective.reasoningEffort ? ` / ${report.effective.reasoningEffort === "xhigh" ? "Extreme High" : "High"}` : ""} · ${report.effective.addedReverb?"额外混响开启":"无额外混响"} · ${report.effective.originalMuted?"原视频数字静音":`原视频 ${report.effective.originalGainDb} dB`}`;
+    if(report.runStatus==="failed")$("workflow-run-note").textContent=`生成失败：${report.error||report.progress||"任务未完成"}`;
     const stages=$("workflow-run-stages");stages.replaceChildren();
     for(const s of report.stages){const li=text("li",`${s.name}：${names[s.status]||s.status}`);li.dataset.state=s.status;li.title=s.detail;stages.append(li);}
     const checks=$("workflow-checks");checks.replaceChildren();

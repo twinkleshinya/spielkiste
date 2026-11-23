@@ -4,7 +4,7 @@ import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBo
 import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute} from "./sfx-edit-preview-ui.test.js";
 import assert from "node:assert/strict";
 import { testDirectorMusicSchema, testDirectorSemanticSafety, testMusicCandidatesRequireIndependentLibrary, testDirectorContinuousPlacements, testDirectorTemporalMerging, testDirectorWorkflow } from "./sfx-director.test.js";
-import { testSfxLibrary, testSfxLazyLibrary, testSfxAnalysis, testSfxRendering, testSfxApi } from "./sfx-tests.js";
+import { testSfxLibrary, testSfxLazyLibrary, testLibraryScanBoundedConcurrency, testSfxAnalysis, testSfxRendering, testSfxApi } from "./sfx-tests.js";
 import { testSfxImportPaths } from "./sfx-import.test.js";
 import { testSfxMultilayer, testSfxAutoModeSchema, testSfxActionCoverageAndSemanticMatching } from "./sfx-tests.js";
 import { AudioReferenceAnalysisAgent } from "../src/agents/AudioReferenceAnalysisAgent.js";
@@ -212,6 +212,7 @@ testSkillSheetParsing();
 await testAudioReferenceAnalysisAgentFallback();
 await testSfxLibrary();
 await testSfxLazyLibrary();
+await testLibraryScanBoundedConcurrency();
 await testSfxAnalysis();
 await testSfxRendering();
 await testSfxApi();

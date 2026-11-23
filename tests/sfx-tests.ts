@@ -86,6 +86,24 @@ export async function testSfxLazyLibrary() {
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 }
 
+export async function testLibraryScanBoundedConcurrency() {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-concurrent-scan-'));
+  let active=0,peak=0;
+  try {
+    for(let i=0;i<32;i++)await fs.writeFile(path.join(root,`impact_${i}.wav`),'fixture');
+    const fileSystem={readdir:fs.readdir,stat:async(...args:Parameters<typeof fs.stat>)=>{
+      active++;peak=Math.max(peak,active);
+      try {await new Promise(resolve=>setTimeout(resolve,4));return await fs.stat(...args);}finally{active--;}
+    }};
+    const index=await new AudioLibraryIndexer(undefined,{ioConcurrency:4,fileSystem} as any).indexDirectory(root);
+    assert.equal(index.assets.length,32);assert.ok(peak>1,'network file metadata must not be scanned serially');assert.ok(peak<=4,'scan concurrency must remain bounded');
+    assert.equal(new Set(index.assets.map(a=>a.id)).size,32);
+    const controller=new AbortController();
+    await assert.rejects(new AudioLibraryIndexer(undefined,{ioConcurrency:4,fileSystem} as any).indexDirectory(root,undefined,n=>{if(n===3)controller.abort(new Error('cancel concurrent scan'));},controller.signal),/cancel concurrent scan/);
+    assert.equal(active,0,'cancelled scans must drain in-flight reads before returning');
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
 export async function testSfxApi() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-api-"));
   const service = new SfxService(path.join(root, "output"));

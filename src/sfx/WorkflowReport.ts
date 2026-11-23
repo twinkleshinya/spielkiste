@@ -38,6 +38,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
   });
   const fallbackEvents=[...new Set(run.selectionReport?.decisions.filter(d=>d.basis==="fallback").flatMap(d=>d.eventIds)||[])].map(id=>events.get(id)).filter((e):e is NonNullable<typeof e>=>Boolean(e));
   const checks:Check[]=[
+    ...(run.status==="failed"?[{id:"execution",status:"fail" as const,detail:`生成失败：${run.error||run.progress||"任务未完成"}`}]:[]),
     {id:"sound-intent",status:soundConflicts.length?"review":"pass",count:soundConflicts.length,detail:soundConflicts.length?soundConflicts.join("；"):"已有音频描述中未发现持续蓄力的脉冲冲突；片段描述不能代替完整试听"},
     {id:"content",status:run.events.length&&enabled.length?"pass":"review",detail:run.events.length&&enabled.length?`${run.events.length} 个点位、${enabled.length} 个启用贴片`:"尚未生成有效点位与贴片，不能视为已完成音效制作"},
     {id:"timing",status:timingOk&&!timingIssues.length?"pass":"review",count:timingIssues.length,detail:timingOk?timingIssues.length?`有 Gemini 初次点位，${timingIssues.length} 项后续复核失败，需复核；不能视为全部完成`:"有 Gemini 动作点位依据；采样帧率不等于准确率保证":"缺少完整 Gemini 点位依据"},
@@ -61,7 +62,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
     :id==="selection"?run.selectionReport?run.workflow?.selection==="reused"||!run.workflow&&run.parentRunId?"reused":run.selectionReport.status:"missing"
     :id==="source"?run.sourceReview?run.workflow?.source==="reused"?"reused":run.sourceReview.status:(!vocal.length?"skipped":"missing")
     :id==="mix"?mix?"complete":"missing":id==="delivery"?run.render&&run.render.revision===run.revision?"complete":"pending":id==="diversity"?layers?unmeasured||duplicates?"partial":"complete":"missing":layers?"complete":"missing";
-  return {version:1,runId:run.id,revision:run.revision,runStatus:run.status,generatedAt:new Date().toISOString(),profile:run.workflow||null,
+  return {version:1,runId:run.id,revision:run.revision,runStatus:run.status,error:run.error||null,progress:run.progress,generatedAt:new Date().toISOString(),profile:run.workflow||null,
     legacy:!run.workflow,baseline:run.id===SFX_WORKFLOW.referenceRunId?{reference:true,configurationReconstructed:true,note:"历史⑥版的现有报告与代码复盘，不代表重新执行新标准流程"}:undefined,
     effective:{analysisMode:run.analysisMode,timingModel:run.analysisReport?.model||null,selectionModel:run.selectionReport?.model||null,sourceModel:run.sourceReview?.model||null,reasoningEffort:run.workflow?.reasoningEffort||null,
       style:run.style,referenceWorks:run.referenceWorks,styleProfile:run.styleProfile,styleCompatibility:run.styleCompatibility,referenceStyles:run.referenceStyles||[],libraryPath:run.libraryPath,libraryPreferences:run.libraryPreferences||[],keywordPreferences:run.keywordPreferences||[],excludedLibraryPaths:run.excludedLibraryPaths||[],excludedKeywords:run.excludedKeywords||[],originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,selectionScope:run.selectionReport?.scope||run.selectionScope||null,autoMix:run.autoMix===true,addedReverb:false,preservePitch:true,preserveSpeed:true},
