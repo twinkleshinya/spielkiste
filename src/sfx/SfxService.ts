@@ -114,7 +114,7 @@ export class SfxService {
       const unique=new Map(paths.map(p=>[preferenceKey(p),p]));
       for(const directory of unique.values()){
         job.progress=`更新索引：${directory}`;
-        const {index}=await this.libraryCache.get(directory,{refresh:true,progress:count=>{job.progress=`更新索引：${directory} · ${count.toLocaleString()} 个音频`;}});
+        const {index}=await this.libraryCache.get(directory,{refresh:true,progress:count=>{job.progress=`更新索引：${directory} · ${count.toLocaleString()} 个音频`;},waiting:minutes=>{job.progress=`仍在更新索引：${directory} · ${minutes} 分钟未收到新文件，扫描继续；可检查共享盘连接`;}});
         job.libraries.push({path:index.root,count:index.assets.length,generatedAt:index.generatedAt});
       }
       job.status="ready";job.progress=`索引已更新 · ${job.libraries.reduce((n,l)=>n+l.count,0).toLocaleString()} 个音频`;
@@ -237,14 +237,14 @@ export class SfxService {
       await this.store.save(run);
     }
     const controller = new AbortController();
-    const taskTimer = setTimeout(() => controller.abort(new Error("分析超过 30 分钟，请查看当前处理阶段后重试。")), ANALYSIS_TIMEOUT_MS);
-    this.launch(run, async () => { try { await withTimeout((async () => {
+    let taskTimer:NodeJS.Timeout|undefined;
+    this.launch(run, async () => { try {
       run.progress = "读取已保存的素材库索引"; await this.store.save(run);
       let lastProgress=0;
       const scan=async(directory:string)=>{
         const result=await this.libraryCache.get(directory,{signal:controller.signal,progress:count=>{
           if(Date.now()-lastProgress>300){lastProgress=Date.now();run.progress=`首次建立索引：${directory} · 已扫描 ${count.toLocaleString()} 个音频`;}
-        }});
+        },waiting:minutes=>{run.progress=`仍在扫描：${directory} · ${minutes} 分钟未收到新文件，扫描继续；可检查共享盘连接`;}});
         run.progress=result.source==="cache"?`使用已保存索引：${result.index.assets.length.toLocaleString()} 个音频 · ${result.index.generatedAt}`:`素材库索引已保存：${result.index.assets.length.toLocaleString()} 个音频`;
         return result.index;
       };
@@ -270,6 +270,9 @@ export class SfxService {
       }
       if (!index.assets.some(a => a.usable)) run.warnings.push("素材库没有可用音效，可先编辑事件，再补充素材重新分析。");
       Object.assign(index,creativeFields(run));
+      // Start the model/production budget only after ALL libraries are indexed.
+      taskTimer=setTimeout(()=>controller.abort(new Error("分析超过 30 分钟，请查看当前处理阶段后重试。")),ANALYSIS_TIMEOUT_MS);
+      await withTimeout((async()=>{
       run.progress = parsed.analysisMode === "scene" ? "检测镜头边界并生成复核清单" : "分析画面动作、物体、环境和声音意图";
       await this.store.save(run);
       const useVision = parsed.analysisMode === "auto" || parsed.analysisMode === "ollama";

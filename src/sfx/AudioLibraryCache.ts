@@ -5,9 +5,9 @@ import {AssetSchema,type AudioLibraryIndex,SfxError} from "./models.js";
 import {AudioLibraryIndexer} from "./AudioLibraryIndexer.js";
 import {preferenceKey,preferencePath} from "./LibraryPreferences.js";
 
-type Options={refresh?:boolean;signal?:AbortSignal;progress?:(count:number)=>void};
+type Options={refresh?:boolean;signal?:AbortSignal;progress?:(count:number)=>void;waiting?:(minutes:number)=>void};
 type Scan=(directory:string,previous?:AudioLibraryIndex,progress?:(count:number)=>void,signal?:AbortSignal)=>Promise<AudioLibraryIndex>;
-type Pending={promise:Promise<void>;controller:AbortController;listeners:Set<(count:number)=>void>;users:number};
+type Pending={promise:Promise<void>;controller:AbortController;listeners:Set<(count:number)=>void>;waitingListeners:Set<(minutes:number)=>void>;users:number};
 
 /** Raw, local-only directory snapshots. Project weights, styles and exclusions never enter this cache. */
 export class AudioLibraryCache {
@@ -41,20 +41,25 @@ export class AudioLibraryCache {
       if(!job&&!options.refresh&&previous)return {index:previous,source:"cache"};
       if(!job){
         const controller=new AbortController();
-        job={promise:Promise.resolve(),controller,listeners:new Set(),users:0};
+        job={promise:Promise.resolve(),controller,listeners:new Set(),waitingListeners:new Set(),users:0};
         const current=job;
         current.promise=(async()=>{
-          let timer:NodeJS.Timeout|undefined;
-          const heartbeat=()=>{clearTimeout(timer);timer=setTimeout(()=>controller.abort(new Error("素材库扫描连续 10 分钟没有进展，请检查共享盘连接。")),10*60*1000);};
+          // Large/network libraries have no scan deadline. Inactivity is only
+          // advisory: enumerating one huge directory may produce no files yet.
+          let lastProgress=Date.now();
+          const timer=setInterval(()=>{
+            const minutes=Math.floor((Date.now()-lastProgress)/60000);
+            if(minutes>=10)for(const listener of current.waitingListeners)listener(minutes);
+          },60000);
+          timer.unref();
           const temporary=this.file(directory)+"."+randomUUID()+".tmp";
           try{
-            heartbeat();
-            const index=await this.scan(directory,previous,count=>{heartbeat();for(const listener of current.listeners)listener(count);},controller.signal);
+            const index=await this.scan(directory,previous,count=>{lastProgress=Date.now();for(const listener of current.listeners)listener(count);},controller.signal);
             controller.signal.throwIfAborted();
             const raw={version:1,root:index.root,generatedAt:index.generatedAt,assets:index.assets,warnings:index.warnings};
             await fs.mkdir(this.root,{recursive:true});await fs.writeFile(temporary,JSON.stringify(raw));
             controller.signal.throwIfAborted();await fs.rename(temporary,this.file(directory));
-          }finally{clearTimeout(timer);await fs.rm(temporary,{force:true}).catch(()=>{});}
+          }finally{clearInterval(timer);await fs.rm(temporary,{force:true}).catch(()=>{});}
         })().finally(()=>{if(this.pending.get(key)===current)this.pending.delete(key);});
         this.pending.set(key,current);
         return this.wait(current,directory,options,"scan");
@@ -64,6 +69,7 @@ export class AudioLibraryCache {
   }
   private async wait(job:Pending,directory:string,options:Options,source:"cache"|"scan"){
     job.users++;if(options.progress)job.listeners.add(options.progress);
+    if(options.waiting)job.waitingListeners.add(options.waiting);
     let abort:()=>void=()=>{};
     try{
       await Promise.race([job.promise,new Promise<never>((_,reject)=>{
@@ -75,6 +81,7 @@ export class AudioLibraryCache {
       return {index,source};
     }finally{
       options.signal?.removeEventListener("abort",abort);if(options.progress)job.listeners.delete(options.progress);
+      if(options.waiting)job.waitingListeners.delete(options.waiting);
       if(--job.users===0)job.controller.abort(new Error("索引请求已取消"));
     }
   }
