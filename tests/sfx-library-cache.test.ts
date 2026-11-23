@@ -10,6 +10,43 @@ import {handleSfxRequest} from "../src/ui/sfx-routes.js";
 import http from "node:http";
 import {editorHarness} from "./sfx-edit-preview-ui.test.js";
 import {AudioLibraryIndexer} from "../src/sfx/AudioLibraryIndexer.js";
+import {mock} from "node:test";
+
+export async function testLibraryScanHasNoDeadline(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-long-index-"));
+  mock.timers.enable({apis:["Date","setTimeout","setInterval"]});
+  try{
+    const cache=new AudioLibraryCache(path.join(root,"indexes"),async(directory,_previous,progress,signal)=>{
+      // A slow network directory can take longer than the old inactivity limit
+      // before returning its first audio file. Time alone must never cancel it.
+      mock.timers.tick(61*60*1000);
+      assert.equal(signal?.aborted,false,"large scans must survive long waits without progress");
+      progress?.(0);
+      return {version:1,root:directory,generatedAt:new Date().toISOString(),assets:[],warnings:[]};
+    });
+    assert.equal((await cache.get(root)).source,"scan");
+    assert.equal((await cache.get(root)).source,"cache");
+  }finally{mock.timers.reset();await fs.rm(root,{recursive:true,force:true});}
+}
+
+export async function testGenerationDeadlineExcludesLibraryScan(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-long-generation-index-"));
+  await fs.writeFile(path.join(root,"test.mp4"),"invalid video: no model call");
+  mock.timers.enable({apis:["Date","setTimeout","setInterval"]});
+  try{
+    const service=new SfxService(path.join(root,"output"));let abortedDuringScan=false;
+    service.libraryCache=new AudioLibraryCache(path.join(root,"indexes"),async(directory,_previous,progress,signal)=>{
+      // Keep reporting audio files while the scan exceeds the analysis budget.
+      for(let n=1;n<=40;n++){mock.timers.tick(60*1000);progress?.(n);}
+      abortedDuringScan=!!signal?.aborted;mock.timers.reset();signal?.throwIfAborted();
+      return {version:1,root:directory,generatedAt:new Date().toISOString(),assets:[],warnings:[]};
+    });
+    const {runId}=await service.create({videoPath:path.join(root,"test.mp4"),libraryPath:root,analysisMode:"scene",workflowPreset:"custom",autoRender:false,aiSelection:false,reusePreserved:false});
+    const run=await service.waitForIdle(runId);
+    assert.equal(abortedDuringScan,false,"analysis deadline must start after indexing");
+    assert.doesNotMatch(run.error||"",/30 分钟|超过|已停止/);
+  }finally{mock.timers.reset();await fs.rm(root,{recursive:true,force:true});}
+}
 
 export async function testLibraryCacheRealFileChanges(){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-files-index-")),library=path.join(root,"library");await fs.mkdir(library);
