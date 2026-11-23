@@ -38,7 +38,7 @@ async function pickFolderViaLocalServer(initialPath,description) {
 export function searchFolderPaths(initialPath='') {
   return new Promise(resolve=>{
     const dialog=document.createElement('dialog');dialog.className='folder-picker';
-    dialog.innerHTML=`<div class="folder-heading"><h3>搜索素材路径</h3><button type="button" data-close class="text-button">关闭</button></div><form><label>搜索范围<input data-root required placeholder="本地或共享文件夹完整路径"></label><label>路径关键词<input data-query required maxlength="120" placeholder="例如 金属、法术、环境"></label><button type="submit">搜索路径</button></form><p class="subtle">仅搜索指定目录内的文件夹名称与路径，不读取音频。大目录可缩小范围后继续搜索。</p><p role="status"></p><div class="folder-list"></div>`;
+    dialog.innerHTML=`<div class="folder-heading"><h3>搜索素材路径</h3><button type="button" data-close class="text-button">关闭</button></div><form><label>搜索范围<input data-root required placeholder="文件夹完整路径"></label><label>路径关键词<input data-query required maxlength="120" placeholder="例如 金属、法术、环境"></label><button type="submit">搜索路径</button></form><p class="subtle">仅搜索指定目录内的文件夹名称与路径，不读取音频。大目录可缩小范围后继续搜索。</p><p role="status"></p><div class="folder-list"></div>`;
     const root=dialog.querySelector('[data-root]'),query=dialog.querySelector('[data-query]'),note=dialog.querySelector('[role=status]'),list=dialog.querySelector('.folder-list');
     root.value=initialPath;let controller,settled=false;
     const finish=value=>{if(settled)return;settled=true;controller?.abort();dialog.close();dialog.remove();resolve(value);};
