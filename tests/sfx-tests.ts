@@ -174,7 +174,7 @@ export async function testSfxApi() {
     const broken = badIndex.assets.find(a => a.fileName === "broken_unique.wav")!;
     brokenRun.assets.push(broken); await service.store.save(brokenRun);
     const unusable = await (await post(`/api/sfx/runs/${runId}/search`, { query: "broken_unique" })).json() as Array<{asset: {usable: boolean; warning?: string}}>;
-    assert.equal(unusable[0].asset.usable, false); assert.ok(unusable[0].asset.warning);
+    assert.deepEqual(unusable,[],"undecodable recordings must not be offered as replacement choices");
   } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); await fs.rm(root, { recursive: true, force: true }); }
 }
 
