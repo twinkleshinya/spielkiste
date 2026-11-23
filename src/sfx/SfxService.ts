@@ -221,7 +221,12 @@ export class SfxService {
       run.progress = "建立或更新本地音效索引"; await this.store.save(run);
       const scanController = new AbortController();
       const scanSignal = AbortSignal.any([controller.signal, scanController.signal]);
-      const scanTimer = setTimeout(() => scanController.abort(new Error("文件扫描超过 10 分钟，已取消扫描；其他任务可以继续。")), INDEX_TIMEOUT_MS);
+      let scanTimer:NodeJS.Timeout|undefined;
+      const scanHeartbeat=()=>{
+        clearTimeout(scanTimer);
+        scanTimer=setTimeout(()=>scanController.abort(new Error("素材库扫描连续 10 分钟没有进展，已停止。请检查共享盘连接与访问权限。")),INDEX_TIMEOUT_MS);
+      };
+      scanHeartbeat();
       let lastProgress = 0;
       let index;
       try {
@@ -230,6 +235,7 @@ export class SfxService {
           let previous;
           try {previous=IndexSchema.parse(JSON.parse(await fs.readFile(file,"utf8")));}catch { /* first run or invalid cache */ }
           const result=await new AudioLibraryIndexer().indexDirectory(directory,previous,count=>{
+            scanHeartbeat();
             if(Date.now()-lastProgress>300){lastProgress=Date.now();run.progress=`建立文件索引：${directory} · 已扫描 ${count.toLocaleString()} 个音频（不逐条解码）`;}
           },scanSignal);
           scanSignal.throwIfAborted();await writeJson(file,result);return result;
