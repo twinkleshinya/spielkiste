@@ -5,6 +5,41 @@ import path from "node:path";
 import {createHash} from "node:crypto";
 import {AudioLibraryCache} from "../src/sfx/AudioLibraryCache.js";
 import type {AudioLibraryIndex} from "../src/sfx/models.js";
+import {SfxService} from "../src/sfx/SfxService.js";
+import {handleSfxRequest} from "../src/ui/sfx-routes.js";
+import http from "node:http";
+import {editorHarness} from "./sfx-edit-preview-ui.test.js";
+
+export async function testLibraryIndexRefreshUi(){
+  const ui=await editorHarness();let sent:any;let statusReads=0;
+  ui.context.fetch=async(url:string,options:any)=>{
+    if(options?.body){sent=JSON.parse(options.body);return {ok:true,json:async()=>({id:"index-job"})};}
+    statusReads++;return {ok:true,json:async()=>({status:"ready",progress:"索引已更新 · 3 个音频"})};
+  };
+  ui.$("library-path").value="D:\\Library";ui.$("music-library-path").value="D:\\Music";
+  ui.exec('libraryPreferences.load([{path:"E:\\\\Priority",weight:3}])');
+  const before=ui.getRun();await ui.$("refresh-library-index").onclick();
+  assert.deepEqual(sent.paths,["D:\\Library","E:\\Priority","D:\\Music"]);assert.equal(statusReads,1);
+  assert.equal(ui.$("refresh-library-index").disabled,false);assert.deepEqual(ui.getRun(),before,"refresh never changes project sounds or renders video");
+  ui.exec("resetToNewProject()");assert.equal(ui.$("library-path").value,"");assert.match(ui.$("library-index-status").textContent,/首次/);
+}
+
+export async function testLibraryIndexRefreshApi(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-index-api-")),library=path.join(root,"library");await fs.mkdir(library);
+  const service=new SfxService(path.join(root,"output"));let scans=0;
+  service.libraryCache=new AudioLibraryCache(path.join(root,"indexes"),async directory=>{scans++;return {version:1,root:directory,generatedAt:new Date().toISOString(),assets:[],warnings:[]};});
+  const server=http.createServer((req,res)=>{void handleSfxRequest(req,res,new URL(req.url!,"http://localhost"),service);});
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  const base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
+  try{
+    const response=await fetch(base+"/api/sfx/library-index",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paths:[library,library+path.sep]})});assert.equal(response.status,202);
+    const {id}=await response.json() as {id:string};let result:any;
+    for(let n=0;n<100;n++){result=await (await fetch(base+"/api/sfx/library-index/"+id)).json();if(result.status!=="indexing")break;await new Promise(resolve=>setTimeout(resolve,10));}
+    assert.equal(result.status,"ready");assert.equal(scans,1);assert.equal(result.libraries.length,1);assert.equal(result.libraries[0].count,0);assert.ok(!JSON.stringify(result).includes('"assets"'));
+    await service.libraryCache.get(library);assert.equal(scans,1);
+    assert.equal((await fetch(base+"/api/sfx/library-index/missing")).status,404);
+  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));await fs.rm(root,{recursive:true,force:true});}
+}
 
 export async function testLibraryCacheReuseAndRefresh() {
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-index-")),library=path.join(root,"素材库"),cacheRoot=path.join(root,"indexes");

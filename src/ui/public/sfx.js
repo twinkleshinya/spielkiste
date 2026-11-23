@@ -65,7 +65,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","audio-output-mode","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "switch-project", "open-new-project", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open", "video-seek"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
+function setBusy(value) { busy = value; for (const id of ["refresh-library-index","style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","audio-output-mode","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "switch-project", "open-new-project", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open", "video-seek"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -536,6 +536,7 @@ function resetToNewProject() {
   $("name").value = "";
   for(const id of ["video-description","sound-requirements","sound-style","custom-style","reference-works"])$(id).value="";$("audio-output-mode").value="all";$("custom-style-label").hidden=true;$("style-profile-panel").hidden=true;appliedConflictRequirements="";hideStyleConflict();
   $("video-path").value = "";
+  $("library-index-status").textContent="首次扫描自动保存，之后使用相同目录直接读取记录；素材有增删或移动时，点击更新。包含音效、优先目录及音乐目录。";
   $("library-path").value = "";
   $("music-library-path").value = "";
   libraryPreferences.load([]);
@@ -585,6 +586,25 @@ $('apply-style-conflict').onclick=guard(async()=>{
   finally{setBusy(false);}
 });
 $("research-style").onclick=guard(()=>researchSelectedStyle());$("refresh-style").onclick=guard(()=>researchSelectedStyle(true));
+$("refresh-library-index").onclick=guard(async()=>{
+  if(busy)return;
+  const clean=value=>value.trim().replace(/^"|"$/g, "");
+  const paths=[clean($("library-path").value),...libraryPreferences.read().map(p=>clean(p.path)),clean($("music-library-path").value)].filter(Boolean);
+  if(!paths.length)throw new Error("请先选择素材库目录，再更新索引");
+  setBusy(true);const output=$("library-index-status");
+  try{
+    output.textContent="正在更新素材库索引…";
+    const {id}=await api("/api/sfx/library-index",{paths});
+    for(;;){
+      const result=await api(`/api/sfx/library-index/${id}`);
+      output.textContent=result.error?`${result.progress}：${result.error}`:result.progress;
+      if(result.status==="failed")throw new Error(output.textContent);
+      if(result.status==="ready"){status("素材库索引已更新，下次生成将直接读取记录；现有预览保持不变。");break;}
+      await new Promise(resolve=>setTimeout(resolve,1000));
+    }
+  }catch(error){output.textContent=error.message;throw error;}
+  finally{setBusy(false);}
+});
 $("search-library-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("library-path").value.trim());if(value){$("library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
 $("search-music-path").onclick=guard(async()=>{if(busy)return;setBusy(true);try{const value=await searchFolderPaths($("music-library-path").value.trim()||$("library-path").value.trim());if(value){$("music-library-path").value=value;rememberLibrarySettings();}}finally{setBusy(false);}});
 $("create-form").onsubmit = event => { event.preventDefault(); };

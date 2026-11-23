@@ -20,6 +20,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "folder-keyword-search",
   "creative-brief",
   "project-git-export",
+  "library-index-cache",
   "audio-output-mode"
 ] as const;
 
