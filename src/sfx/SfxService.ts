@@ -30,7 +30,7 @@ import { GeminiAudioSelector } from "./GeminiAudioSelector.js";
 import { CcSwitchAudioProvider } from "./CcSwitchAudioProvider.js";
 import { AudioCandidateClips } from "./AudioCandidateClips.js";
 import { compareRuns, type SfxComparison } from "./SfxComparison.js";
-import { prepareDiverseCandidates, measureShortlist } from "./CandidatePreparation.js";
+import { prepareDiverseCandidates, measureDiverseShortlist } from "./CandidatePreparation.js";
 import { diverseCandidates } from "./CandidateDiversity.js";
 import { reviewSourceEdits } from "./GeminiSourceEditor.js";
 import { edgeFades } from "./ClipEdit.js";
@@ -811,11 +811,7 @@ export class SfxService {
       if(exclusions.excludedKeywords!==undefined)index.excludedKeywords=normalizeExcludedKeywords(exclusions.excludedKeywords);
       if (category === "music" && index.musicLibraryConfigured !== true) return [];
       const initial = new AudioLibraryIndexer().search(index, category === "music" ? `music ${query}` : query, 40,context);
-      const shortlist=diverseCandidates(initial,8);
-      for(let i=0;i<shortlist.length;i+=3) {
-        const measured=await Promise.allSettled(shortlist.slice(i,i+3).map(r=>category==="music"?Promise.resolve():measureShortlist(r.asset,this.store.directory(run.id))));
-        for(const result of measured)if(result.status==="rejected"){ /* retain filename evidence if metadata inspection is unavailable */ }
-      }
+      const shortlist=category==="music"?diverseCandidates(initial,8):await measureDiverseShortlist(initial,this.store.directory(run.id));
       const results=diverseCandidates(shortlist.filter(r=>r.asset.usable),5);
       await Promise.all(results.map(async result => {
         if (result.asset.duration !== undefined) return;

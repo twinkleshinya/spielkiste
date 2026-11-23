@@ -4,6 +4,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {AssetSchema,type AudioLibraryIndex,SfxError} from "./models.js";
 import {AudioLibraryIndexer} from "./AudioLibraryIndexer.js";
 import {preferenceKey,preferencePath} from "./LibraryPreferences.js";
+import {eligibleAssets} from "./AssetExclusions.js";
 
 type Options={refresh?:boolean;signal?:AbortSignal;progress?:(count:number)=>void;waiting?:(minutes:number)=>void};
 type Scan=(directory:string,previous?:AudioLibraryIndex,progress?:(count:number)=>void,signal?:AbortSignal)=>Promise<AudioLibraryIndex>;
@@ -25,7 +26,7 @@ export class AudioLibraryCache {
         // Adopt earlier raw-path cache names without copying a huge JSON file.
         // Subsequent path spelling/case variants can then use the canonical key.
         if(file!==this.file(directory))await fs.link(file,this.file(directory)).catch(()=>{});
-        return {version:1,root:raw.root,generatedAt:raw.generatedAt,warnings:raw.warnings,assets:raw.assets.filter((a:{fileName:string})=>!a.fileName.startsWith("._"))};
+        return {version:1,root:raw.root,generatedAt:raw.generatedAt,warnings:raw.warnings,assets:eligibleAssets(raw.assets)};
       }catch{/* missing or invalid snapshot: scan again */}
     }
   }
