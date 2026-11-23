@@ -40,5 +40,9 @@ export async function testReanalysisUsesNewBriefAndPreservesParent() {
     const visual=await service.reanalyze(source.id,{mode:'visual',videoDescription:'这段不应作为约束',soundRequirements:'保留关键动作',style:'修仙'});
     assert.equal(visual.runId,'new-run');
     assert.equal(captured.videoDescription,undefined);
+    source.status='failed';source.error='文件扫描超过 10 分钟';await service.store.save(source);
+    await service.reanalyze(source.id,{mode:'brief'});
+    assert.equal(captured.parentRunId,source.id,'failed generation retries create a new version in the same project');
+    assert.equal((await service.store.readRun(source.id)).error,source.error,'retry preserves the original failure evidence');
   }finally{await fs.rm(root,{recursive:true,force:true});}
 }

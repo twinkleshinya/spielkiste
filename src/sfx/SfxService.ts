@@ -305,7 +305,7 @@ export class SfxService {
   async reanalyze(id: string, body: unknown) {
     if (this.pending.has(id) || this.locks.has(id)) throw new SfxError("任务处理中，请稍后重新分析", 409);
     const source = await this.readRun(id);
-    if (source.status !== "ready") throw new SfxError("请等待当前项目完成后再重新分析", 409);
+    if (!["ready","failed"].includes(source.status)) throw new SfxError("请等待当前项目完成后再重新分析", 409);
     const input = z.object({
       mode: z.enum(["visual", "brief"]),
       videoDescription: z.string().trim().max(4000).optional(),

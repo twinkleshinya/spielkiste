@@ -300,8 +300,8 @@ function renderWorkspace(keepVideo = false) {
   const projectUrl = new URL(location.href); projectUrl.searchParams.delete("new");projectUrl.searchParams.set("run", run.id); history.replaceState(null, "", projectUrl);
   $("new-project-setup").hidden = true;
   $("workspace").hidden = false; $("project-title").textContent = project?.name || run.name; $("run-id").textContent = run.id;
-  $("reanalyze-visual").hidden = !run || run.status !== "ready";
-  $("reanalyze-brief").hidden = !run || run.status !== "ready";
+  $("reanalyze-visual").hidden = !run || !["ready","failed"].includes(run.status);
+  $("reanalyze-brief").hidden = !run || !["ready","failed"].includes(run.status);
   $("duration-label").textContent = time(run.duration);void renderWorkflowReport();
   void loadVersionHistory();
   $("parent-version").hidden=!run.parentRunId;$("parent-version").href=run.parentRunId?`/sfx?run=${run.parentRunId}`:"#";
