@@ -9,6 +9,20 @@ import {SfxService} from "../src/sfx/SfxService.js";
 import {handleSfxRequest} from "../src/ui/sfx-routes.js";
 import http from "node:http";
 import {editorHarness} from "./sfx-edit-preview-ui.test.js";
+import {AudioLibraryIndexer} from "../src/sfx/AudioLibraryIndexer.js";
+
+export async function testLibraryCacheRealFileChanges(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-files-index-")),library=path.join(root,"library");await fs.mkdir(library);
+  const indexer=new AudioLibraryIndexer(undefined,{fileSystem:fs});let scans=0;
+  const cache=new AudioLibraryCache(path.join(root,"indexes"),(...args)=>{scans++;return indexer.indexDirectory(...args);});
+  try{
+    await fs.writeFile(path.join(library,"impact.wav"),"first");await fs.writeFile(path.join(library,"._metadata.wav"),"metadata");
+    assert.equal((await cache.get(library)).index.assets.length,1);
+    await fs.rename(path.join(library,"impact.wav"),path.join(library,"cast.wav"));await fs.writeFile(path.join(library,"roar.wav"),"second");
+    assert.deepEqual((await cache.get(library)).index.assets.map(a=>a.fileName),["impact.wav"]);assert.equal(scans,1);
+    assert.deepEqual((await cache.get(library,{refresh:true})).index.assets.map(a=>a.fileName),["cast.wav","roar.wav"]);assert.equal(scans,2);
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+}
 
 export async function testLibraryIndexRefreshUi(){
   const ui=await editorHarness();let sent:any;let statusReads=0;

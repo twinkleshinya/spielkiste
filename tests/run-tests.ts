@@ -330,5 +330,5 @@ console.log('Style, creative brief, path search and explicit generation passed')
 await testStyleConflictNeedsUserClarification();await testStyleConflictBrowserClarification();
 await testStyleConflictApiResponse();
 
-import {testLibraryCacheReuseAndRefresh,testLibraryCacheLegacyCorruptAndConcurrent,testLibraryCacheCancellationIsolation,testGenerationReusesAllLibraryIndexes,testLibraryIndexRefreshApi,testLibraryIndexRefreshUi} from "./sfx-library-cache.test.js";
-await testLibraryCacheReuseAndRefresh();await testLibraryCacheLegacyCorruptAndConcurrent();await testLibraryCacheCancellationIsolation();await testGenerationReusesAllLibraryIndexes();await testLibraryIndexRefreshApi();await testLibraryIndexRefreshUi();
+import {testLibraryCacheReuseAndRefresh,testLibraryCacheLegacyCorruptAndConcurrent,testLibraryCacheCancellationIsolation,testLibraryCacheRealFileChanges,testGenerationReusesAllLibraryIndexes,testLibraryIndexRefreshApi,testLibraryIndexRefreshUi} from "./sfx-library-cache.test.js";
+await testLibraryCacheReuseAndRefresh();await testLibraryCacheLegacyCorruptAndConcurrent();await testLibraryCacheCancellationIsolation();await testLibraryCacheRealFileChanges();await testGenerationReusesAllLibraryIndexes();await testLibraryIndexRefreshApi();await testLibraryIndexRefreshUi();
