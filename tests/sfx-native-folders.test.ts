@@ -33,6 +33,9 @@ export function testNetworkShareRootsParseNetUseOutput() {
 }
 
 export async function testNativeFolderSelection() {
+  const helper=await fs.readFile('scripts/Spielkiste.FolderPicker.cs','utf8');
+  assert.match(helper,/EnsureVisible\(dialog\)/,'the web helper must restore a dialog hidden by launcher startup flags');
+  assert.match(helper,/ShowWindow\(window,\s*1\)/,'restore the actual shell dialog, not just its owner');
   const source=await fs.readFile('src/ui/public/sfx-folders.js','utf8');
   const calls:any[]=[];
   let selected:string|null='\\\\server\\音频部\\素材库';
