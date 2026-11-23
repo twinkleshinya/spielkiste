@@ -2,7 +2,37 @@
 
 export function chooseLocalFolder(initialPath="",description="选择文件夹") {
   if(typeof window!=="undefined"&&typeof window.spielkisteDesktop?.chooseFolder==="function")return window.spielkisteDesktop.chooseFolder({initialPath,description});
-  return pickFolderViaLocalServer(initialPath,description);
+  // Browser mode used to launch a hidden PowerShell/COM helper. On some
+  // Windows shells the helper stays alive without a visible dialog, leaving
+  // the page polling forever. Use the local directory API directly instead:
+  // it never uploads or scans audio and works for drives and reachable UNC
+  // shares while keeping the interaction inside the workbench.
+  return typeof document!=="undefined" ? browseLocalFoldersInPage(initialPath,description) : pickFolderViaLocalServer(initialPath,description);
+}
+
+async function browseLocalFoldersInPage(initialPath,description) {
+  const dialog=document.createElement('dialog');dialog.className='folder-picker folder-browser';
+  dialog.innerHTML=`<div class="folder-heading"><h3></h3><button type="button" data-close class="text-button">关闭</button></div><div class="folder-toolbar"><button type="button" data-up class="secondary">上一级</button><code data-current></code></div><p class="subtle" data-status>正在读取可访问的磁盘和共享文件夹…</p><div class="folder-list" data-list></div><div class="folder-actions"><button type="button" data-cancel class="secondary">取消</button><button type="button" data-choose>选择当前文件夹</button></div>`;
+  dialog.querySelector('h3').textContent=description||'选择文件夹';
+  const current=dialog.querySelector('[data-current]'),status=dialog.querySelector('[data-status]'),list=dialog.querySelector('[data-list]'),up=dialog.querySelector('[data-up]');
+  let currentPath=(initialPath||'').trim().replace(/^"|"$/g,'');let settled=false,controller;
+  const finish=value=>{if(settled)return;settled=true;controller?.abort();dialog.close();dialog.remove();resolve(value);};
+  let resolve;
+  const promise=new Promise(r=>{resolve=r;});
+  const load=async(nextPath=currentPath)=>{
+    controller?.abort();controller=new AbortController();currentPath=nextPath;current.textContent=currentPath||'此电脑（所有可访问磁盘）';up.disabled=!currentPath;list.replaceChildren();status.textContent='正在读取文件夹…';
+    try{
+      const query=currentPath?`?path=${encodeURIComponent(currentPath)}`:'';
+      const response=await fetch(`/api/sfx/local-folders${query}`,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(15000)])});
+      const result=await response.json();if(!response.ok)throw new Error(result.error||'无法读取此目录');
+      for(const folder of result.folders||[]){const row=document.createElement('button');row.type='button';row.className='folder-entry secondary';row.textContent=folder.name||folder.path;row.title=folder.path;row.onclick=()=>load(folder.path);list.append(row);}
+      status.textContent=result.folders?.length?`找到 ${result.folders.length} 个可进入的文件夹`:'此目录没有可进入的子文件夹';
+    }catch(error){if(controller.signal.aborted||settled)return;status.textContent=`${error.message||error}。可以直接关闭并粘贴完整路径。`;}
+  };
+  dialog.querySelector('[data-close]').onclick=()=>finish(null);dialog.querySelector('[data-cancel]').onclick=()=>finish(null);dialog.addEventListener('cancel',e=>{e.preventDefault();finish(null);});dialog.addEventListener('close',()=>finish(null));
+  up.onclick=()=>{if(!currentPath)return;const trimmed=currentPath.replace(/[\\\/]$/,'');const parent=trimmed.includes('\\')?trimmed.slice(0,trimmed.lastIndexOf('\\')):trimmed.includes('/')?trimmed.slice(0,trimmed.lastIndexOf('/')):'';load(parent||'');};
+  dialog.querySelector('[data-choose]').onclick=()=>finish(currentPath||null);
+  document.body.append(dialog);dialog.showModal();await load();return promise;
 }
 
 /**
