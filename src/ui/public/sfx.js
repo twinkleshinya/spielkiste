@@ -811,7 +811,7 @@ async function browseLocalFolder(target,description) {
     else status("已取消选择，原路径保持不变。");
   }finally {setBusy(false);}
 }
-$("browse-library").onclick=guard(()=>browseLocalFolder("library-path","选择音效素材库文件夹（直接读取）"));
+$("browse-library").onclick=guard(()=>browseLocalFolder("library-path","选择音效素材库路径"));
 $("browse-music").onclick=guard(()=>browseLocalFolder("music-library-path","选择背景音乐素材库文件夹（可选）"));
 $("library-path").addEventListener("change",rememberLibrarySettings);$("music-library-path").addEventListener("change",rememberLibrarySettings);
 $("new-project").onclick = guard(() => {
