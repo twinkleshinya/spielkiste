@@ -18,7 +18,11 @@ export async function measureShortlist(asset: AudioAsset, outputDir: string, sig
   const file=path.resolve(outputDir,"..","..","candidate-acoustic-cache",createHash("sha256").update(JSON.stringify([1,asset.path,asset.size,asset.mtimeMs])).digest("hex")+".json");
   try { asset.acoustics=JSON.parse(await fs.readFile(file,"utf8")); return; } catch { /* first measurement */ }
   const copy=structuredClone(asset);
-  try { await clips.sample(copy,false,outputDir,signal); } catch(error) {signal?.throwIfAborted();throw error;}
+  try { await clips.sample(copy,false,outputDir,signal); } catch(error) {
+    signal?.throwIfAborted();
+    Object.assign(asset,copy,{usable:false,warning:copy.warning||"候选片段解码失败，本次选材已排除"});
+    throw error;
+  }
   Object.assign(asset,copy);
   if(asset.acoustics) { await fs.mkdir(path.dirname(file),{recursive:true}); await fs.writeFile(file,JSON.stringify(asset.acoustics)); }
 }
@@ -37,11 +41,15 @@ export async function prepareDiverseCandidates(events: SoundEvent[], index: Audi
       const query=layer.query||event.query;
       const ranked=indexer.search(index,event.category==="music"?`music ${query}`:query,SFX_WORKFLOW.candidates.searchLimit,event).map(r=>{const advice=assetNameAdvice(event,layer.role,r.asset);return {...r,score:Math.max(.001,r.score+advice.score),reason:r.reason};}).sort((a,b)=>b.score-a.score);
       ranked.forEach(r=>append({assetId:r.asset.id,score:r.score,reason:r.reason}));
-      const pool=diverseCandidates(source,SFX_WORKFLOW.candidates.measuredFamilies);
-      for(let i=0;i<pool.length;i+=3) {
+      const attempted=new Set<string>();
+      let pool=diverseCandidates(source.filter(r=>r.asset.usable),SFX_WORKFLOW.candidates.measuredFamilies);
+      while(pool.some(r=>!attempted.has(r.asset.id))) {
         signal?.throwIfAborted();
-        const measured=await Promise.allSettled(pool.slice(i,i+3).map(r=>measureShortlist(r.asset,outputDir,signal)));
+        const batch=pool.filter(r=>!attempted.has(r.asset.id)).slice(0,3);
+        batch.forEach(r=>attempted.add(r.asset.id));
+        const measured=await Promise.allSettled(batch.map(r=>measureShortlist(r.asset,outputDir,signal)));
         for(const result of measured) if(result.status==="rejected") signal?.throwIfAborted();
+        pool=diverseCandidates(source.filter(r=>r.asset.usable),SFX_WORKFLOW.candidates.measuredFamilies);
       }
       layer.candidates=diverseCandidates(pool.filter(r=>r.asset.usable),SFX_WORKFLOW.candidates.alternatives).map(r=>({assetId:r.asset.id,score:r.score,reason:r.reason}));
     }

@@ -26,6 +26,8 @@ export function assetExclusionReasonResolver(policy:AssetExclusions={}) {
   const directories=(policy.excludedLibraryPaths||[]).map(value=>({value,key:directoryKey(value)})).filter(item=>item.key);
   const keywords=normalizeExcludedKeywords(policy.excludedKeywords);
   return (asset:NamedAsset):string|undefined=>{
+    const names=[asset.fileName,asset.path,asset.relativePath].map(value=>value.replace(/\\/g,"/").split("/"));
+    if(names.some(parts=>parts.at(-1)?.startsWith("._")||parts.some(part=>part.toLowerCase()==="__macosx")))return "系统元数据，不是音频素材";
     if(directories.length) {
       const file=directoryKey(asset.path),directory=directories.find(d=>file===d.key||file.startsWith(d.key.endsWith("/")?d.key:d.key+"/"));
       if(directory)return `素材位于排除目录：${directory.value}`;

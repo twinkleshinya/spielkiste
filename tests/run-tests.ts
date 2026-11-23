@@ -193,6 +193,7 @@ async function testAudioReferenceAnalysisAgentFallback() {
 }
 
 const audioSelectionTests = await import("./sfx-audio-selection.test.js");
+for(const test of Object.values(await import("./sfx-candidate-resilience.test.js")))await test();
 audioSelectionTests.testChargeCandidateStages();
 await audioSelectionTests.testGeminiNameAdviceOverride();
 await audioSelectionTests.testSelectionKeepsCompatibleBaseline();

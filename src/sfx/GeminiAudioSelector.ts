@@ -66,13 +66,13 @@ export class GeminiAudioSelector {
       } catch { /* stale or missing cache */ }
     }
     const pending = wanted.filter(id => !descriptions.has(id));
-    let audioTransportFailed = false;
     for (let i = 0; i < pending.length; i += 3) {
       options.signal?.throwIfAborted();
       const samples: AudioSample[] = [];
       for (const id of pending.slice(i, i + 3)) {
+        if(!assets.get(id)?.usable)continue;
         try { samples.push(await this.clips.sample(assets.get(id)!, groups.some(g => g.taskId === "music:continuous" && g.ids.includes(id)), options.outputDir, options.signal)); }
-        catch { options.signal?.throwIfAborted(); report.warnings.push(`候选 ${assets.get(id)!.fileName} 无法制作音频片段，保留规则候选。`); }
+        catch { options.signal?.throwIfAborted();const asset=assets.get(id)!;asset.usable=false;asset.warning ||= "候选片段解码失败，本次选材已排除";report.warnings.push(`候选 ${asset.fileName} 无法制作音频片段，已排除并使用其余有效候选。`); }
       }
       if (!samples.length) continue;
       options.progress?.(`Gemini 分析本地候选声音：${Math.min(i + 3, pending.length)}/${pending.length}，另有 ${report.cachedAssets} 份缓存`);
@@ -83,9 +83,13 @@ export class GeminiAudioSelector {
           if (matching.length === 1) { descriptions.set(sample.assetId, matching[0]); await writeJson(keys.get(sample.assetId)!, matching[0]); }
           else report.warnings.push(`候选 ${assets.get(sample.assetId)!.fileName} 缺少有效音频分析。`);
         }
-      } catch { options.signal?.throwIfAborted(); audioTransportFailed = true; report.warnings.push("Gemini 音频分析失败，未完成的候选使用文件名规则回退，不能视为已经听取。"); break; }
+      } catch { options.signal?.throwIfAborted();report.warnings.push(`Gemini 第 ${Math.floor(i/3)+1} 批音频分析未完成，其余批次继续处理；本批未听取的有效候选仅保留规则匹配，需复核。`); }
     }
     report.audio = [...descriptions.values()]; report.analyzedAssets = descriptions.size;
+    for(const group of groups) {
+      group.ids=group.ids.filter(id=>assets.get(id)?.usable);
+      for(const layer of group.layers)layer.candidates=layer.candidates.filter(c=>assets.get(c.assetId)?.usable);
+    }
     for(const group of groups.filter(g=>g.taskId!=="music:continuous")) {
       const keep=diverseCandidates(group.ids.map(assetId=>({asset:assets.get(assetId)!,score:1,reason:"候选音色比较"})),4).map(r=>r.asset.id);
       group.ids=keep;
@@ -101,7 +105,7 @@ export class GeminiAudioSelector {
       options.signal?.throwIfAborted();
       const batch = tasks.slice(i, i + 8).filter(t => t.candidates.length);
       let choices: z.infer<typeof choicesSchema>["choices"] = [];
-      if (batch.length && !audioTransportFailed) {
+      if (batch.length) {
         options.progress?.(`Gemini 结合画面选择音效与音乐：${Math.min(i + 8, tasks.length)}/${tasks.length} 层`);
         try { choices = choicesSchema.parse(await this.model.choose(batch, options.signal)).choices; }
         catch { options.signal?.throwIfAborted(); report.warnings.push("Gemini 选材决策失败，本批候选保留文件名规则。" ); }

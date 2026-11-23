@@ -22,6 +22,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "project-git-export",
   "library-index-cache",
   "analysis-without-total-deadline",
+  "candidate-failure-isolation",
   "audio-output-mode"
 ] as const;
 

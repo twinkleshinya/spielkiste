@@ -486,8 +486,6 @@ export class SfxService {
     const reviewedIds = new Set(reviewed.map(e => e.id));
     run.selectionReport.ruleRetainedLayers = run.events.filter(e => !e.locked && !reviewedIds.has(e.id)).reduce((sum, e) => sum + (e.layers?.length || 1), 0);
     run.warnings.push(...run.selectionReport.warnings);
-    const r = run.selectionReport;
-    run.warnings.push(`Gemini 音频选材：分析 ${r.analyzedAssets} 份素材片段（缓存 ${r.cachedAssets}），选用 ${r.selectedLayers} 层，拒选 ${r.rejectedLayers} 层，规则回退 ${r.fallbackLayers} 层。只分析候选片段，不代表听过整首音乐或整个素材库。`);
   }
 
   /** Run candidate selection only for events introduced by a described-event operation. */
