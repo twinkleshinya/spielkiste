@@ -23,6 +23,7 @@ export async function testSfxLibrary() {
     await fs.writeFile(path.join(root, "doors", "wood_door_open.wav"), "fixture");
     await fs.writeFile(path.join(root, "rain.mp3"), "fixture");
     await fs.writeFile(path.join(root, "notes.txt"), "ignore");
+    await fs.writeFile(path.join(root,"._impact.wav"),"AppleDouble metadata, not audio");
     let probes = 0;
     const indexer = new AudioLibraryIndexer(async () => { probes++; return { duration: 2, channels: 2, sampleRate: 48000 }; }, { probeMetadata: true });
     const first = await indexer.indexDirectory(root);
@@ -70,6 +71,7 @@ export async function testSfxLazyLibrary() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-lazy-"));
   try {
     for (let i = 0; i < 80; i++) await fs.writeFile(path.join(root, "impact_" + String(i).padStart(3, "0") + ".wav"), "metadata deferred");
+    await fs.writeFile(path.join(root,"._impact.wav"),"AppleDouble metadata, not audio");
     let probes = 0;
     const index = await new AudioLibraryIndexer(async () => { probes++; return { duration: 2 }; }).indexDirectory(root);
     assert.equal(index.assets.length, 80);

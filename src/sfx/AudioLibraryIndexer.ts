@@ -115,7 +115,7 @@ export class AudioLibraryIndexer {
         for(const entry of entries) {
           if(entry.isSymbolicLink())continue;
           if(entry.isDirectory())queue.push({file:path.join(file,entry.name),directory:true});
-          else if(entry.isFile()&&/\.(wav|mp3|flac|ogg|m4a|aif|aiff|opus)$/i.test(entry.name))queue.push({file:path.join(file,entry.name),directory:false});
+          else if(entry.isFile()&&!entry.name.startsWith("._")&&/\.(wav|mp3|flac|ogg|m4a|aif|aiff|opus)$/i.test(entry.name))queue.push({file:path.join(file,entry.name),directory:false});
         }
         return;
       }

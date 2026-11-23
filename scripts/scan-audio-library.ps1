@@ -21,7 +21,7 @@ public static class SpielkisteLibraryScan {
           var folder=entry as DirectoryInfo;
           if(folder!=null) {pending.Push(folder);continue;}
           var file=entry as FileInfo;
-          if(file==null || !System.Text.RegularExpressions.Regex.IsMatch(file.Extension,@"^\.(wav|mp3|flac|ogg|m4a|aif|aiff|opus)$",System.Text.RegularExpressions.RegexOptions.IgnoreCase))continue;
+          if(file==null || file.Name.StartsWith("._") || !System.Text.RegularExpressions.Regex.IsMatch(file.Extension,@"^\.(wav|mp3|flac|ogg|m4a|aif|aiff|opus)$",System.Text.RegularExpressions.RegexOptions.IgnoreCase))continue;
           output.WriteLine(json.Serialize(new {path=file.FullName,size=file.Length,mtimeMs=(file.LastWriteTimeUtc-epoch).TotalMilliseconds}));
           if(++count%256==0)output.Flush();
         }
