@@ -594,6 +594,8 @@ $("refresh-library-index").onclick=guard(async()=>{
   setBusy(true);const output=$("library-index-status");
   try{
     output.textContent="正在更新素材库索引…";
+    const health=await api("/api/sfx/health");
+    if(!health.capabilities?.includes("library-index-cache"))throw new Error("当前服务尚未加载索引缓存功能，请等待正在生成的任务结束后，重新启动 Spielkiste。");
     const {id}=await api("/api/sfx/library-index",{paths});
     for(;;){
       const result=await api(`/api/sfx/library-index/${id}`);

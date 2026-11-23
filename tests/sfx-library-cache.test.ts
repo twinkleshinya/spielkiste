@@ -27,6 +27,7 @@ export async function testLibraryCacheRealFileChanges(){
 export async function testLibraryIndexRefreshUi(){
   const ui=await editorHarness();let sent:any;let statusReads=0;
   ui.context.fetch=async(url:string,options:any)=>{
+    if(url.endsWith("/health"))return {ok:true,json:async()=>({capabilities:["library-index-cache"]})};
     if(options?.body){sent=JSON.parse(options.body);return {ok:true,json:async()=>({id:"index-job"})};}
     statusReads++;return {ok:true,json:async()=>({status:"ready",progress:"索引已更新 · 3 个音频"})};
   };
@@ -36,6 +37,9 @@ export async function testLibraryIndexRefreshUi(){
   assert.deepEqual(sent.paths,["D:\\Library","E:\\Priority","D:\\Music"]);assert.equal(statusReads,1);
   assert.equal(ui.$("refresh-library-index").disabled,false);assert.deepEqual(ui.getRun(),before,"refresh never changes project sounds or renders video");
   ui.exec("resetToNewProject()");assert.equal(ui.$("library-path").value,"");assert.match(ui.$("library-index-status").textContent,/首次/);
+  ui.$("library-path").value="D:\\Library";let oldRequests=0;
+  ui.context.fetch=async()=>{oldRequests++;return {ok:true,json:async()=>({capabilities:[]})};};
+  await ui.$("refresh-library-index").onclick();assert.equal(oldRequests,1);assert.match(ui.$("library-index-status").textContent,/重新启动 Spielkiste/);assert.equal(ui.$("refresh-library-index").disabled,false);
 }
 
 export async function testLibraryIndexRefreshApi(){
