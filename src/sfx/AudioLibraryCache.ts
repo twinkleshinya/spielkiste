@@ -22,6 +22,9 @@ export class AudioLibraryCache {
         if(raw.version!==1||typeof raw.root!=="string"||preferenceKey(raw.root)!==preferenceKey(directory)||!Number.isFinite(Date.parse(raw.generatedAt))||!Array.isArray(raw.assets)||!Array.isArray(raw.warnings)||raw.warnings.some((w:unknown)=>typeof w!=="string"))continue;
         // Validate records without constructing a second full-library Zod clone.
         for(const asset of raw.assets)AssetSchema.parse(asset);
+        // Adopt earlier raw-path cache names without copying a huge JSON file.
+        // Subsequent path spelling/case variants can then use the canonical key.
+        if(file!==this.file(directory))await fs.link(file,this.file(directory)).catch(()=>{});
         return {version:1,root:raw.root,generatedAt:raw.generatedAt,warnings:raw.warnings,assets:raw.assets.filter((a:{fileName:string})=>!a.fileName.startsWith("._"))};
       }catch{/* missing or invalid snapshot: scan again */}
     }

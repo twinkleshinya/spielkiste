@@ -73,9 +73,25 @@ export async function testLibraryCacheLegacyCorruptAndConcurrent() {
   const cache=new AudioLibraryCache(cacheRoot,async()=>{calls++;await new Promise(resolve=>setTimeout(resolve,15));return {...index,assets:[]};});
   try {
     const legacy=await cache.get(library);assert.equal(legacy.source,"cache");assert.equal(calls,0);assert.equal(legacy.index.assets.length,0,"legacy AppleDouble pseudo-audio must not be reused");
+    if(process.platform==="win32"){await cache.get(library.toUpperCase());assert.equal(calls,0,"legacy snapshot is adopted under the normalized path key");}
     for(const file of await fs.readdir(cacheRoot))await fs.writeFile(path.join(cacheRoot,file),"broken");
     const results=await Promise.all([cache.get(library),cache.get(library)]);assert.equal(calls,1,"concurrent requests scan once");assert.deepEqual(results.map(r=>r.source).sort(),["cache","scan"]);
     assert.notEqual(results[0].index,results[1].index);
     await fs.rename(library,library+"-offline");await assert.rejects(cache.get(library),/不存在|无法/);
   } finally {await fs.rm(root,{recursive:true,force:true});}
+}
+
+export async function testLibraryCacheCancellationIsolation(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),"spielkiste-index-cancel-"));let scanning=false;
+  let complete!:()=>void;const gate=new Promise<void>(resolve=>{complete=resolve;});
+  const cache=new AudioLibraryCache(path.join(root,"indexes"),async(directory,_previous,_progress,signal)=>{
+    scanning=true;await gate;signal?.throwIfAborted();return {version:1,root:directory,generatedAt:new Date().toISOString(),assets:[],warnings:[]};
+  });
+  try{
+    const controller=new AbortController(),first=cache.get(root,{signal:controller.signal});
+    const rejected=assert.rejects(first);
+    for(let i=0;!scanning&&i<100;i++)await new Promise(resolve=>setTimeout(resolve,5));
+    const second=cache.get(root);await new Promise(resolve=>setTimeout(resolve,20));controller.abort();
+    await rejected;complete();assert.equal((await second).index.root,root,"cancelling one consumer must not cancel another consumer's scan");
+  }finally{complete();await fs.rm(root,{recursive:true,force:true});}
 }

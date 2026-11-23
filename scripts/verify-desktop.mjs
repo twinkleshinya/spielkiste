@@ -22,6 +22,10 @@ try{
  const library=path.join(root,'中文音效库');await fs.mkdir(library,{recursive:true});const video=path.join(root,'中文测试视频.mp4'),audio=path.join(library,'boss_charge_cast.wav');
  await exec(ffmpeg,['-y','-f','lavfi','-i','color=c=0x536353:s=640x360:r=24:d=3','-f','lavfi','-i','sine=frequency=220:duration=3','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac','-shortest',video],{windowsHide:true});
  await exec(ffmpeg,['-y','-f','lavfi','-i','sine=frequency=110:duration=1.4','-ac','2','-ar','48000','-c:a','pcm_s24le',audio],{windowsHide:true});
+ const indexJob=await api('/api/sfx/library-index',{paths:[library]});let indexStatus;
+ for(let i=0;i<90;i++){indexStatus=await api(`/api/sfx/library-index/${indexJob.id}`);if(indexStatus.status!=='indexing')break;await new Promise(resolve=>setTimeout(resolve,500));}
+ assert.equal(indexStatus.status,'ready',indexStatus.error);assert.equal(indexStatus.libraries[0].count,1);
+ const indexes=await fs.readdir(path.join(workspace,'.output/sfx/indexes'));assert.ok(indexes.some(file=>file.endsWith('.json')));report.checks.push('persistent library scan index and manual refresh API');
  const created=await api('/api/sfx/runs',{name:'安装包功能验收',videoPath:video,libraryPath:library,analysisMode:'scene',workflowPreset:'custom',aiSelection:false,autoMix:false,autoRender:false,musicEnabled:false,reusePreserved:false});
  await wait(created.runId);const run=JSON.parse(await fs.readFile(path.join(workspace,'.output/sfx/runs',created.runId,'run.json'),'utf8'));assert.equal(run.assets.length,1);report.checks.push('Unicode video path, lazy local library indexing, analysis API');
  const event={id:'charge',start:0.5,end:1.8,type:'charge',description:'Boss 蓄力',query:'charge cast',actor:'boss',category:'foley',confidence:1,source:'manual',candidates:[],requiresHumanReview:false};
