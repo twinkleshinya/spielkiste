@@ -95,7 +95,6 @@ namespace Spielkiste {
       using (var dialog = new System.Windows.Forms.FolderBrowserDialog()) {
         dialog.Description = title;
         dialog.ShowNewFolderButton = false;
-        dialog.UseDescriptionForTitle = true;
         if (!String.IsNullOrEmpty(initialPath) && System.IO.Directory.Exists(initialPath)) {
           dialog.SelectedPath = initialPath;
         }
