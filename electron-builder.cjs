@@ -2,7 +2,7 @@ module.exports = {
   appId:'com.spielkiste.desktop', productName:'Spielkiste', asar:false, npmRebuild:false,
   directories:{output:'.output/desktop-release'},
   files:['desktop/**','dist/src/**','src/ui/public/**','src/templates/**','templates/**',
-    '.agents/skills/video-sfx-*/**','scripts/stamp-sfx-frames.ps1','scripts/pick-folder.ps1','scripts/Spielkiste.FolderPicker.cs','package.json',
+    '.agents/skills/video-sfx-*/**','scripts/stamp-sfx-frames.ps1','scripts/pick-folder.ps1','scripts/scan-audio-library.ps1','scripts/Spielkiste.FolderPicker.cs','package.json',
     '!src/ui/public/spielkiste-design-preview.html'],
   extraFiles:[{from:'docs/Spielkiste-使用指南.html',to:'Spielkiste-使用指南.html'}],
   extraResources:[{from:'.output/desktop-runtime',to:'runtime'},

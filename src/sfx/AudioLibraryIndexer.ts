@@ -6,6 +6,7 @@ import { runFfmpeg } from "./FfmpegBinaries.js";
 import {keywordPreferenceResolver,pathPreferenceResolver,preferredSearchQuery,referenceStylesFor,type PreferenceContext} from "./LibraryPreferences.js";
 import {SFX_WORKFLOW} from "./WorkflowPolicy.js";
 import {assetExclusionReasonResolver} from "./AssetExclusions.js";
+import {scanWindowsLibrary} from "./WindowsLibraryScan.js";
 
 type AudioMetadata = { duration: number; channels?: number; sampleRate?: number };
 export async function probeAudio(file: string): Promise<AudioMetadata> {
@@ -76,6 +77,22 @@ export class AudioLibraryIndexer {
     if (!(await io.stat(root)).isDirectory()) throw new Error("音效库路径必须是文件夹");
     const prior = new Map(previous?.root === root ? previous.assets.map(a => [a.path, a]) : []);
     const assets: AudioAsset[] = []; const warnings: string[] = [];
+    if(process.platform==="win32"&&!this.options.fileSystem&&!this.options.probeMetadata) {
+      try {
+        await scanWindowsLibrary(root,file=>{
+          const old=prior.get(file.path);
+          if(old?.usable&&old.size===file.size&&Math.abs(old.mtimeMs-file.mtimeMs)<1)assets.push(old);
+          else {const relativePath=path.relative(root,file.path);assets.push({id:createHash("sha256").update(file.path).digest("hex").slice(0,20),...file,relativePath,fileName:path.basename(file.path),tags:tokens(relativePath),usable:true});}
+          progress?.(assets.length);
+        },warning=>warnings.push(warning),signal);
+        assets.sort((a,b)=>a.relativePath.localeCompare(b.relativePath));
+        return {version:1,root,generatedAt:new Date().toISOString(),assets,warnings};
+      }catch(error){
+        signal?.throwIfAborted();
+        if((error as NodeJS.ErrnoException).code!=="EPERM"&&(error as NodeJS.ErrnoException).code!=="ENOENT")throw error;
+        assets.length=0;warnings.length=0;
+      }
+    }
     // Bound SMB metadata requests across both directories and files. A serial
     // stat per recording can spend minutes waiting on a large shared library.
     const concurrency=Math.max(1,Math.min(32,Math.floor(this.options.ioConcurrency || 16)));
