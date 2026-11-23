@@ -404,7 +404,7 @@ async function startFolderPicker(input: { initialPath?: string; description?: st
   folderPickers.set(id, picker);
   const child = spawn(
     "powershell.exe",
-    ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", appResource('scripts','pick-folder.ps1'), "-RequestPath", requestPath],
+    ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", appResource('scripts','pick-folder.ps1'), "-RequestPath", requestPath],
     {
       // PowerShell only launches the helper. Hiding the process here can
       // propagate SW_HIDE to the WinForms dialog and leave the page polling
