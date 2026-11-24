@@ -4,6 +4,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "add-described-event",
   "described-event-inline-feedback",
   "generation-without-fixed-deadlines",
+  "completion-after-final-save",
   "locate-event",
   "quick-edit",
   "edit-preview",
