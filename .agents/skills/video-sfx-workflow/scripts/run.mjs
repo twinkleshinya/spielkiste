@@ -21,7 +21,7 @@ export function parseArgs(args) {
 
 export async function runWorkflow(options,output=console.log) {
   const request=async(route,body)=>{
-    const response=await fetch(options.base+route,{signal:AbortSignal.timeout(30000),...(body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{})});
+    const response=await fetch(options.base+route,{...(body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{})});
     const data=await response.json();if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data;
   };
   const profile=await request('/api/sfx/workflow');
