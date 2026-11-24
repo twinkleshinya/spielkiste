@@ -1,6 +1,7 @@
-export const SFX_API_VERSION = "2026-11-24";
+export const SFX_API_VERSION = "2026-11-25";
 
 export const SFX_REQUIRED_CAPABILITIES = [
+  "project-name-from-video",
   "add-described-event",
   "described-event-inline-feedback",
   "generation-without-fixed-deadlines",

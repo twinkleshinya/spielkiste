@@ -1,4 +1,5 @@
 import { z } from "zod";
+import path from "node:path";
 import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema,StyleCompatibilitySchema,referenceWorksFrom} from "./CreativeBrief.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
@@ -94,12 +95,14 @@ export const CreateRunSchema = z.object({...CreativeFields,
   ...ExclusionFields,
   videoPath: z.string().trim().min(1), libraryPath: z.string().trim().min(1),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),
   projectId: z.string().uuid().optional(),
-  name: z.string().trim().max(120).default("视频音效贴片"), analysisMode: z.enum(["auto", "scene", "ollama"]).default("auto"), autoRender: z.boolean().default(true),
+  name: z.string().trim().max(120).default(""), analysisMode: z.enum(["auto", "scene", "ollama"]).default("auto"), autoRender: z.boolean().default(true),
   audioOutputMode: z.enum(["all", "sfx", "music"]).default("all"),
   musicEnabled: z.boolean().default(true), musicLibraryPath: z.string().trim().optional(), aiSelection: z.boolean().default(true), autoMix: z.boolean().default(true), selectionScope: z.enum(["selective", "full"]).default("selective"),
   workflowPreset:z.enum(["reference-v6","custom"]).optional(),originalGainDb:z.number().min(-60).max(6).default(0),reusePreserved:z.boolean().default(true),
   parentRunId:z.string().optional(), reanalysisMode:z.enum(["visual","brief"]).optional()
 }).transform(input=>{
+  const videoName=path.win32.parse(input.videoPath).name.trim();
+  input={...input,name:input.name||(videoName||"视频音效贴片").slice(0,120)};
   input={...input,referenceWorks:referenceWorksFrom(input),keywordPreferences:input.keywordPreferences?.filter(p=>p.purpose!=="reference")};
   const workflowPreset=input.workflowPreset||(input.analysisMode==="auto"?"reference-v6":"custom");
   const audioOutputMode = input.audioOutputMode || "all";

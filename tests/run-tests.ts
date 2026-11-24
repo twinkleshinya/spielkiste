@@ -3,6 +3,8 @@ import {testKeywordRanking,testKeywordPlannerScope,testKeywordPersistence,testGe
 import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBoundaries,testExclusionsPersistenceAndManualSelection,testExclusionsHttpRoutes} from "./sfx-library-exclusions.test.js";
 import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute,testFailedGenerationShowsCauseAndAllowsRetry} from "./sfx-edit-preview-ui.test.js";
 import assert from "node:assert/strict";
+import {testBlankProjectNameUsesVideoFilename} from "./sfx-project-name.test.js";
+await testBlankProjectNameUsesVideoFilename();
 import {testAnalysisCanProgressPastThirtyMinutes,testAnalysisFailureIncludesLastStage,testReadyStatusWaitsForFinalSave,testDescribedAndReidentifyJobsHaveNoTotalDeadline} from "./sfx-analysis-lifetime.test.js";
 await testAnalysisCanProgressPastThirtyMinutes();await testAnalysisFailureIncludesLastStage();await testDescribedAndReidentifyJobsHaveNoTotalDeadline();await testReadyStatusWaitsForFinalSave();
 import { testDirectorMusicSchema, testDirectorSemanticSafety, testMusicCandidatesRequireIndependentLibrary, testDirectorContinuousPlacements, testDirectorTemporalMerging, testDirectorWorkflow } from "./sfx-director.test.js";
