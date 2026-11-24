@@ -157,22 +157,15 @@ namespace Spielkiste {
           dialog.SetFolder(folder);
         } catch { /* An unavailable initial path must not prevent selection. */ }
         finally { if(folder != null) Marshal.ReleaseComObject(folder); }
-        // Let Show initialize the shell window normally. A local owner keeps
-        // this modal above the browser without altering another app's window.
-        using(var owner = new System.Windows.Forms.Form()) {
-        owner.Text=title;
-        owner.StartPosition=System.Windows.Forms.FormStartPosition.CenterScreen;
-        owner.Size=new System.Drawing.Size(1,1);
-        owner.TopMost=true;
-        owner.ShowInTaskbar=true;
-        owner.Show();
-        owner.Activate();
+        // A standalone shell dialog must be the visible top-level window.
+        // A 1px owner becomes the taskbar/activation target and can strand
+        // the actual dialog behind other applications.
         var events = new DialogEvents();
         uint cookie;
         dialog.Advise(events, out cookie);
         System.IO.File.WriteAllText(stagePath, "showing Windows dialog");
         int result;
-        try { result = dialog.Show(owner.Handle); }
+        try { result = dialog.Show(IntPtr.Zero); }
         finally { dialog.Unadvise(cookie); GC.KeepAlive(events); }
         if(result == unchecked((int)0x800704C7)) return null;
         Marshal.ThrowExceptionForHR(result);
@@ -184,7 +177,6 @@ namespace Spielkiste {
           try { return Marshal.PtrToStringUni(name); }
           finally { Marshal.FreeCoTaskMem(name); }
         } finally { Marshal.ReleaseComObject(selected); }
-        }
       } finally { Marshal.ReleaseComObject(dialog); }
     }
   }
