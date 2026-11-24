@@ -62,9 +62,14 @@ export async function testDescribedEventButtonFeedbackAndRecovery() {
     if(url.endsWith('/runs/'+child.id))return response(child);
     return response({});
   };
+  let virtualNow = Date.now();
+  ui.context.Date = class extends Date { static now(){return virtualNow;} };
+  ui.context.setTimeout = (callback:()=>void) => {virtualNow += 65*60*1000; callback(); return 1;};
   const retry=click(); await started;
   assert.match(ui.$("described-event-status").textContent,/定位动作/);
-  resolveStatus({ok:true,json:async()=>({status:'ready',progress:'已补充啃咬音效'})});
+  resolveStatus({ok:true,json:async()=>({status:'analyzing',progress:'Gemini 正在精定位'})});
+  // The next status arrives after 65 virtual minutes; the browser must keep polling.
+  ui.context.fetch = async (url:string) => ({ok:true,json:async()=>url.endsWith('/status')?{status:'ready',progress:'已补充啃咬音效'}:url.endsWith('/runs/'+child.id)?child:{}});
   await retry;
   assert.equal(ui.getRun().id, child.id);
   assert.match(ui.$("described-event-status").textContent, /找到 1 个动作点位/);
