@@ -341,7 +341,6 @@ function renderWorkspace(keepVideo = false) {
 async function poll(id, afterRender = false, playback, {recoverDraft = true} = {}) {
   setBusy(true);
   try {
-    const started = Date.now();
     for (;;) {
       const next = await api(`/api/sfx/runs/${id}/status`); status(next.progress);
       if (!["analyzing", "rendering"].includes(next.status)) {
@@ -356,7 +355,6 @@ async function poll(id, afterRender = false, playback, {recoverDraft = true} = {
         if (run.error) throw new Error(run.error);
         break;
       }
-      if (Date.now() - started > 31 * 60 * 1000) throw new Error("任务超过 30 分钟仍未完成。请刷新页面查看具体处理阶段。");
       await new Promise(resolve => setTimeout(resolve, 400));
     }
   } finally { setBusy(false); }
@@ -466,13 +464,18 @@ async function addDescribedEvent() {
   requireUpdatedPreview();
   const input = $("described-event-description").value.trim();
   if (!input) throw new Error("请先描述需要补充的声音，例如“猩猩啃咬角色”");
+  const button = $("add-described-event");
+  const originalLabel = button?.textContent || "Gemini 查找动作并添加音效";
   const previousIds = new Set(run.events.map(event => event.id));
   const playback={time:$("video").currentTime||0,playing:!$("video").paused}; $("video").pause(); setBusy(true);
-  status("Gemini 正在全片查找描述的动作…"); $("preview-state").textContent="正在查找缺失动作并生成新预览…";
+  if (button) button.textContent = "正在提交补声分析…";
+  status("已提交补声分析请求，Gemini 正在全片查找描述的动作…"); $("preview-state").textContent="正在查找缺失动作并生成新预览…";
   let submitted = false;
   try {
     const result = await api(`/api/sfx/runs/${run.id}/add-described-event`, { revision: run.revision, description: input });
     submitted = true;
+    if (button) button.textContent = "正在定位动作并生成预览…";
+    status("补声分析已开始，正在定位动作、匹配素材并生成新预览…");
     await poll(result.runId, true, playback);
     const addedEvents = run.events.filter(event => !previousIds.has(event.id)).sort((a, b) => a.start - b.start);
     if (addedEvents.length) {
@@ -486,7 +489,7 @@ async function addDescribedEvent() {
     $("described-event-description").value = "";
     status(addedEvents.length ? `已根据“${input}”找到 ${addedEvents.length} 个动作点位，已选中第一个并生成新预览。` : `已根据“${input}”生成新预览，请试听确认。`);
   } catch (error) { if (!submitted) updatePreviewStatus(); throw error; }
-  finally { setBusy(false); }
+  finally { setBusy(false); if (button) button.textContent = originalLabel; }
 }
 async function quickEdit(target,targetId,action) {
   if(!run||busy)return;
