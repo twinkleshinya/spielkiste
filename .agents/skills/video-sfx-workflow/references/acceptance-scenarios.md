@@ -47,3 +47,6 @@ python -X utf8 C:/Users/jiangxy2/.codex/skills/.system/skill-creator/scripts/qui
 
 | 点击本机目录选择、取消或路径不可读 | 页面内列一级目录，取消恢复操作，失败可改路径；不会等待失效的后台系统弹窗。见testLocalFolderBrowserApi及library-priority-verification浏览器证据 |
 | 总库和优先子目录/外部目录 | 相关性优先、有界路径加分，重叠取max，外部目录懒索引、来源校验接受显式指定目录；配置进入保存/导出/Gemini依据。见testLibraryPathRanking、testLibraryPreferenceIndexAndFork、testGeminiReceivesLibraryPreference |
+
+| 描述栏或声音要求写“只要叫声” | Gemini提取同等约束，常规分析后逐窗复核，移除其他动作/环境/音乐，补定位遗漏发声；候选明确符合描述才启用，模型失败无规则兜底。见testDescriptionConstraints |
+| 普通描述“猩猩举手后吼叫一声” | 逐项关联举手和吼叫点位，允许其他真实动作；没有画面证据列缺口，已定位无素材也不能标覆盖完成；空描述不增加请求。见testDescriptionConstraints |

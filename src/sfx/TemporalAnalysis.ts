@@ -1,3 +1,4 @@
+import {extractDescriptionConstraints,reviewDescriptionWindow} from './DescriptionConstraints.js';
 import {creativeContext,type CreativeBrief} from "./CreativeBrief.js";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -50,12 +51,14 @@ export function mergeWindowEvents(windows: SoundEvent[][]): SoundEvent[] {
       matched.add(duplicate);
       const end = Math.max(duplicate.end, event.end);
       const oldDistance=duplicate.distance,oldImportance=duplicate.importance;
+      const requirements=[...new Set([...(duplicate.descriptionRequirementIds||[]),...(event.descriptionRequirementIds||[])])];
       if (event.confidence > duplicate.confidence) Object.assign(duplicate, event, { id: duplicate.id });
       // Spatial confidence is independent of contact timing confidence; timing-only updates retain it.
       const spatial=[oldDistance,event.distance].filter((d):d is NonNullable<typeof d>=>Boolean(trustedDistance(d))).sort((a,b)=>b.confidence-a.confidence)[0];
       duplicate.distance=spatial||duplicate.distance||oldDistance;
       duplicate.importance=duplicate.importance||oldImportance||event.importance;
       duplicate.end = round(end);
+      if(requirements.length)duplicate.descriptionRequirementIds=requirements;
     }
     }
     result.push(...additions);
@@ -82,7 +85,8 @@ function parseEvents(value: unknown, duration: number, precision: number): Sound
 
 /** Uses the same workflow for every video; no video-specific cue times or asset IDs. */
 export async function analyzeTemporal(video: string, duration: number, outputDir: string, media: MediaSource, director: FrameDirector, options: AnalysisOptions = {}) {
-  const originalDirector=director,brief=creativeContext(options);
+  let brief=creativeContext(options);
+  const originalDirector=director;
   if(brief)director={model:originalDirector.model,analyzeFrames:(scenes,prompt,signal)=>originalDirector.analyzeFrames(scenes,prompt+brief,signal)};
   const signal = options.signal, progress = options.progress || (() => {});
   if (!media.sampleFrames) throw new Error("当前媒体工具不支持密集时间帧");
@@ -95,6 +99,8 @@ export async function analyzeTemporal(video: string, duration: number, outputDir
   const overviewFrames = frames.filter((_, i) => i % Math.max(1, Math.ceil(frames.length / 36)) === 0);
   if (overviewFrames.at(-1) !== frames.at(-1)) overviewFrames.push(frames.at(-1)!);
   progress("Gemini 1/4：理解完整视频、角色和背景音乐结构");
+  const descriptionConstraints=await extractDescriptionConstraints(originalDirector,overviewFrames,options,signal);
+  if(descriptionConstraints){brief=creativeContext({...options,descriptionConstraints});progress("已解析描述要求，画面分析后将逐项核对");}
   const overviewPrompt = `你是游戏视频声音导演，先理解完整视频 ${duration} 秒。${guardrails}
 返回JSON {"context":"中文简述角色、场景、武器材质与战斗节奏，角色只确认外形不猜游戏专名","events":[${eventShape}]}。
 本轮events只给环境氛围${options.musicEnabled !== false ? "和背景音乐结构" : "，不要音乐"}，不要具体动作。
@@ -178,9 +184,27 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     }
   }
   signal?.throwIfAborted(); progress("Gemini 4/4：合并跨段事件、整理音乐点位与画面证据");
-  const events = mergeWindowEvents([overviewEvents, actions]);
-  if (options.musicEnabled !== false && !events.some(e => e.category === "music")) warnings.push("模型未给出可靠的音乐结构，音乐点位留空，可在时间线添加。");
-  const report = { workflow: "overview-window-audit-dense-contact-music-v3", model: director.model || process.env.SFX_CCSWITCH_MODEL || SFX_WORKFLOW.model, windows: windows.length, refinedContacts, timingNote: `动作按5 FPS分析，${reviewWindows.length}个短窗用12 FPS查漏纠错，接触点用30 FPS模型复核；画面采样精度不等于判断准确率，仍需试听复核。` };
+  let events = mergeWindowEvents([overviewEvents, actions]);
+  let descriptionReview:import('./CreativeBrief.js').DescriptionReview|undefined;
+  if(descriptionConstraints){
+    const reviewed:SoundEvent[][]=[],missing:Array<{requirementId:string;reason:string}>=[];
+    for(let start=0;start<duration;start+=6){
+      const end=Math.min(duration,start+6);
+      progress(`Gemini 描述逐项复核：${start}–${end} 秒`);
+      const selected=frames.filter(f=>f.start>=Math.max(0,start-.2)&&f.start<Math.min(duration,end+.2));
+      const result=await reviewDescriptionWindow(director,selected,events.filter(e=>e.start>=start&&e.start<end),descriptionConstraints,duration,start,end,eventShape,signal);
+      reviewed.push(result.events);missing.push(...result.missing);
+    }
+    events=mergeWindowEvents(reviewed);
+    descriptionReview={constraints:descriptionConstraints,requirements:descriptionConstraints.requirements.filter(r=>r.requiresSound).map(r=>{
+      const matches=events.filter(e=>e.descriptionRequirementIds?.includes(r.id));
+      return {...r,eventIds:matches.map(e=>e.id),status:matches.length?'located' as const:'not-visible' as const,reason:matches.length?'Gemini 已按画面定位':missing.filter(m=>m.requirementId===r.id).map(m=>m.reason).join('；')||'未确认对应画面动作，请检查说明或补充定位'};
+    })};
+    for(const r of descriptionReview.requirements)if(r.status!=='located')warnings.push(`描述要求未覆盖：${r.text}（${r.reason}）`);
+    await writeJson(path.join(outputDir,'description-review.json'),descriptionReview);
+  }
+  if (!descriptionConstraints && options.musicEnabled !== false && !events.some(e => e.category === "music")) warnings.push("模型未给出可靠的音乐结构，音乐点位留空，可在时间线添加。");
+  const report = { descriptionReview, workflow: "overview-window-audit-dense-contact-music-v3", model: director.model || process.env.SFX_CCSWITCH_MODEL || SFX_WORKFLOW.model, windows: windows.length, refinedContacts, timingNote: `动作按5 FPS分析，${reviewWindows.length}个短窗用12 FPS查漏纠错，接触点用30 FPS模型复核；画面采样精度不等于判断准确率，仍需试听复核。` };
   await writeJson(path.join(outputDir, "analysis-review.json"), { ...report, context, warnings, events });
   return { events, scenes: overviewFrames, warnings, report };
 }

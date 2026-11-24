@@ -58,14 +58,19 @@ export async function testDistanceAnalysisAndPersistence() {
       sampleFrames:async(_v,start,end)=>[{start,end,thumbnail:"fixture.jpg"}]
     },{model:"gemini-4-argon",analyzeFrames:async(_frames,prompt)=>{
       prompts.push(prompt);
+      if(prompt.includes('描述要求提取'))return {exclusive:false,restrictions:['环境轻一点'],requirements:[{id:'stone',text:'远处投石和落地'}],conflicts:[]};
+      if(prompt.includes('描述逐项画面复核')){
+        const current=JSON.parse(prompt.split('待复核点位JSON：')[1].split('\n')[0]);
+        return {decisions:current.map((e:any)=>({eventId:e.id,allowed:true,reason:'可见落点',requirementIds:['stone']})),events:[],missing:[]};
+      }
       if(prompt.includes("逐帧复核"))return {visible:true,start:1,end:1.2,confidence:.95,evidence:"石块在前景玩家身旁首次碰撞",distance:distance("near",.95,"落点位于前景玩家身旁"),importance:"key"};
       return prompt.includes("先理解完整视频")?{context:"远处Boss向近处玩家投石",events:[]}:prompt.includes("只分析窗口")?{events:[raw]}:{events:[]};
     }},{musicEnabled:false,style:'修仙',soundRequirements:'突出落地，环境轻一点',videoDescription:'远处投石'});
     const refined=result.events.find(e=>e.type==="ground_slam") as any;
     assert.equal(refined.distance?.range,"near","contact review must replace source distance with actual impact position");
     assert.equal(refined.importance,"key");
-    assert.ok(prompts.every(p=>p.includes("distance")&&p.includes("importance")),"each visual stage needs spatial and salience evidence in its response contract");
-    assert.ok(prompts.every(p=>p.includes('修仙')&&p.includes('突出落地，环境轻一点')),'all video review stages must share the production brief');
+    assert.ok(prompts.filter(p=>!p.includes("描述要求提取")).every(p=>p.includes("distance")&&p.includes("importance")),"each visual stage needs spatial and salience evidence in its response contract");
+    assert.ok(prompts.filter(p=>!p.includes("描述要求提取")).every(p=>p.includes('修仙')&&p.includes('突出落地，环境轻一点')),'all video review stages must share the production brief');
     const merged=mergeWindowEvents([[hit],[event("copy",{confidence:.99})]])[0] as any;
     assert.equal(merged.distance?.range,"far","a timing-only correction must not drop existing distance evidence");
     const store=new SfxRunStore(path.join(root,"runs")),run=await store.createRun({videoPath:"v.mp4",libraryPath:root});

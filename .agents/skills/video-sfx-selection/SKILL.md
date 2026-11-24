@@ -34,3 +34,7 @@ description: Use when selecting local sound-library recordings for video events,
 - 不新增变速、移调或音高自动化。源录音本来升调，直接播放仍会升调；不合画面时换素材/段落，不能称为处理器升调。
 
 交付 `selection-report.json`、`source-edit-report.json` 和贴片的 sourceOffset/duration/sourceEdit.basis。失败时写明 fallback，既不能假称Gemini已确认，也不能无理由静音关键吼叫。
+
+## 描述范围
+
+遵守本次 descriptionConstraints。视频描述中的发声要求与声音要求同等有效，明确范围高于自动层规划和规则回退。描述对应点位必须进入 Gemini 候选复核，排他/禁用范围下所有候选均复核；要求选材决策附 meetsDescription，未明确符合或请求失败时保留缺口，不悄悄回退到名称候选。范围外的混合录音也应拒选。最终检查每条必需点位是否有启用贴片。

@@ -411,14 +411,14 @@ async function reanalyzeProject(mode) {
   const referenceWorks = mode === "visual" ? [] : referenceText.split(/[；;\n]+/u).map(value=>value.trim()).filter(Boolean);
   const playback = { time: $("video").currentTime || 0, playing: false };
   $("video").pause(); setBusy(true);
-  status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新的辅助说明重新分析画面、点位和音效…");
+  status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新描述要求重新分析画面、点位和音效…");
   let submitted = false;
   try {
     const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined,referenceWorks,keywordPreferences:keywordPreferences.read() });
     submitted = true;
     await poll(result.runId, true, playback, { recoverDraft: false });
     loadProjectInputs();
-    status(mode === "visual" ? "Gemini 已重新分析并生成新版本，原版本仍保留。" : "已根据新的辅助说明重新分析并生成新版本，原版本仍保留。", false);
+    status(mode === "visual" ? "Gemini 已重新分析并生成新版本，原版本仍保留。" : "已根据新描述要求重新分析并生成新版本，原版本仍保留。", false);
   } catch (error) {
     if (!submitted) updatePreviewStatus();
     throw error;

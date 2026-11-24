@@ -9,6 +9,7 @@ import {eligibleAssets} from "./AssetExclusions.js";
 
 /** Populate semantic candidates for every event while keeping ambience as its own layer. */
 export function planEventCandidates(event: SoundEvent, index: AudioLibraryIndex) {
+  if(event.descriptionAllowed===false){event.layers=[];event.candidates=[];return event;}
   if (event.evidence?.startsWith("密集帧未确认接触")) { event.layers = []; event.candidates = []; return event; }
   const indexer = new AudioLibraryIndexer();
   const planner = new LayerPlanner();

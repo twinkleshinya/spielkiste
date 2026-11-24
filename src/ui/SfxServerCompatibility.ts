@@ -23,6 +23,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "style-conflict-options",
   "folder-keyword-search",
   "creative-brief",
+  "strict-description-coverage",
   "project-git-export",
   "library-index-cache",
   "analysis-without-total-deadline",

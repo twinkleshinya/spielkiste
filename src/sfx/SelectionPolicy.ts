@@ -5,7 +5,7 @@ import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 export function selectReviewEvents(events: SoundEvent[], scope: "selective" | "full") {
   const unlocked = events.filter(e => !e.locked);
   if (scope === "full") return unlocked;
-  const key = (event: SoundEvent) => ["music", "impact"].includes(event.category) || /^ui_|charge|cast|warning|telegraph|roar|预警|蓄力|施法/.test(event.type)
+  const key = (event: SoundEvent) => Boolean(event.descriptionRequirementIds?.length) || ["music", "impact"].includes(event.category) || /^ui_|charge|cast|warning|telegraph|roar|预警|蓄力|施法/.test(event.type)
     || /张嘴.*(?:咆哮|吼)|发出.*(?:咆哮|吼)/.test(event.description);
   const ambiguous = unlocked.filter(event => {
     if (key(event)) return false;

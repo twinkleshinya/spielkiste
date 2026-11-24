@@ -338,3 +338,7 @@ await testStyleConflictApiResponse();
 import {testLibraryScanHasNoDeadline,testGenerationDeadlineExcludesLibraryScan,testLibraryCacheReuseAndRefresh,testLibraryCacheLegacyCorruptAndConcurrent,testLibraryCacheCancellationIsolation,testLibraryCacheRealFileChanges,testGenerationReusesAllLibraryIndexes,testLibraryIndexRefreshApi,testLibraryIndexRefreshUi} from "./sfx-library-cache.test.js";
 await testLibraryScanHasNoDeadline();await testGenerationDeadlineExcludesLibraryScan();
 await testLibraryCacheReuseAndRefresh();await testLibraryCacheLegacyCorruptAndConcurrent();await testLibraryCacheCancellationIsolation();await testLibraryCacheRealFileChanges();await testGenerationReusesAllLibraryIndexes();await testLibraryIndexRefreshApi();await testLibraryIndexRefreshUi();
+
+import {testDescriptionConstraints} from './sfx-description-constraints.test.js';
+await testDescriptionConstraints();
+console.log('Description constraint checks passed');

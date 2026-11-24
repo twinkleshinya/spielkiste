@@ -46,7 +46,7 @@ import { ProjectGit } from "./ProjectGit.js";
 import { ReaperExporter } from "./ReaperExporter.js";
 import { AiConfigService, type AiReasoningEffort } from "./SfxAiConfig.js";
 
-function creativeFields(input:CreativeBrief):CreativeBrief{return {videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,referenceWorks:input.referenceWorks,styleProfile:input.styleProfile,styleCompatibility:input.styleCompatibility,referenceStyles:input.referenceStyles};}
+function creativeFields(input:CreativeBrief):CreativeBrief{return {descriptionConstraints:input.descriptionConstraints,audioOutputMode:input.audioOutputMode,videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,referenceWorks:input.referenceWorks,styleProfile:input.styleProfile,styleCompatibility:input.styleCompatibility,referenceStyles:input.referenceStyles};}
 
 type PreviewRenderer = { renderPreview(run: SfxRun, outputDir: string, options?: { preserveSavedMix?: boolean; preserveSourceEdits?: boolean; videoSource?: string; preservePlacementIds?: ReadonlySet<string> }): Promise<{ video: string; audio: string; revision: number }> };
 
@@ -278,13 +278,13 @@ export class SfxService {
       const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { ...creativeFields(run),signal: controller.signal, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
       if (parsed.analysisMode === "auto" && !["gemini", "ccswitch"].includes(result.mode)) throw new SfxError(`Gemini 未完成动作点位分析，请检查连接后重试。${result.warnings.slice(0, 2).join("；")}`);
       controller.signal.throwIfAborted();
-      run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
+      run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length || result.report?.descriptionReview ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
       // The selected output is also an analysis scope. This prevents a
       // "仅音效" run from creating music events and a "仅音乐" run from
       // creating action/ambience candidates that can leak into exports.
       run.events = eventsForOutputMode({ audioOutputMode: parsed.audioOutputMode }, run.events);
       run.analysisMode = result.mode; run.warnings.push(...result.warnings);
-      run.analysisReport = result.report; run.musicEnabled = parsed.musicEnabled; run.musicLibraryPath = musicLibrary;
+      run.analysisReport = result.report; run.descriptionConstraints=result.report?.descriptionReview?.constraints; Object.assign(index,creativeFields(run)); run.musicEnabled = parsed.musicEnabled; run.musicLibraryPath = musicLibrary;
       if (!parsed.musicEnabled) run.events = run.events.filter(e => e.category !== "music");
       if (parsed.analysisMode === "scene" || result.mode === "scene") run.events = buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
       await planAllEventCandidatesResponsive(run.events,index,controller.signal,message=>{run.progress=message;});
@@ -303,11 +303,13 @@ export class SfxService {
         run.warnings.push(...reviewed.warnings);
       }
       await hydratePlacements(run);
+      const descriptionGaps=run.analysisReport?.descriptionReview?.requirements.filter(r=>r.status!=='located'||r.eventIds.some(id=>!run.events.some(e=>e.id===id&&!e.muted)||!run.placements.some(p=>p.eventId===id&&p.enabled)));
+      if(descriptionGaps?.length)run.warnings.push(`描述要求尚未完整配声：${descriptionGaps.map(r=>r.text).join('；')}。请补充画面说明或更换素材库后重新分析。`);
       if (parsed.autoRender && run.placements.length) {
         run.progress = "已识别动作和声音层，正在生成带音效视频";
         run.render = await usagePhase("render-and-mix", () => new SfxRenderer().renderPreview(run, this.store.directory(run.id)));
       }
-      run.status = "ready"; run.progress = "分析完成，请复核事件与贴片"; await exportTimeline(run, this.store.directory(run.id)); await this.saveProjectVersion(run, "create");
+      run.status = "ready"; run.progress = descriptionGaps?.length?"分析完成，描述要求仍有缺项，请查看生成记录":"分析完成，请复核事件与贴片"; await exportTimeline(run, this.store.directory(run.id)); await this.saveProjectVersion(run, "create");
     } finally { controller.abort(); } });
     return { runId: run.id };
   }
@@ -535,7 +537,7 @@ export class SfxService {
   private async selectAudio(run: SfxRun, signal?: AbortSignal) {
     run.aiSelection = true;
     const scope = run.selectionScope || "full";
-    const reviewed = selectReviewEvents(run.events, scope);
+    const reviewed = selectReviewEvents(run.events, run.descriptionConstraints?.exclusive||run.descriptionConstraints?.restrictions.length ? "full" : scope);
     await usagePhase("candidate-diversity",()=>prepareDiverseCandidates(reviewed,this.runIndex(run),this.store.directory(run.id),signal,message=>{run.progress=message;}));
     run.selectionReport = await usagePhase("audio-selection", () => this.selectorFactory(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high").select(reviewed,this.runIndex(run), { outputDir: this.store.directory(run.id), cacheDir: path.join(this.root, "audio-selection-cache"), signal, previousPlacements: run.placements, progress: message => { run.progress = message; } }));
     run.selectionReport.scope = scope;

@@ -21,7 +21,7 @@ export type SelectionOptions = { outputDir: string; cacheDir: string; signal?: A
 export type SelectionReport = { elapsedMs?: number; model: string; status: "complete" | "partial" | "fallback" | "skipped"; analyzedAssets: number; cachedAssets: number; selectedLayers: number; rejectedLayers: number; fallbackLayers: number; warnings: string[]; decisions: { eventIds: string[]; taskId: string; assetId: string | null; reason: string; basis: "audio-context" | "fallback" }[]; audio: AudioDescription[] };
 
 const descriptionSchema = z.object({ assetId: z.string(), summary: z.string().min(1).max(2000), tags: z.array(z.string().max(100)).max(20), energy: z.number().min(0).max(1), hasMusic: z.boolean(), hasSpeech: z.boolean() });
-const choicesSchema = z.object({ choices: z.array(z.object({ taskId: z.string(), assetId: z.string().nullable(), reason: z.string().min(1).max(2000), confidence: z.number().min(0).max(1) })).max(100) });
+const choicesSchema = z.object({ choices: z.array(z.object({ taskId: z.string(), assetId: z.string().nullable(), reason: z.string().min(1).max(2000), confidence: z.number().min(0).max(1),meetsDescription:z.boolean().optional() })).max(100) });
 
 export class GeminiAudioSelector {
   constructor(private model: AudioSelectionModel, private clips: AudioClipSource) {}
@@ -99,7 +99,7 @@ export class GeminiAudioSelector {
       const event = g.events[0];
       const previousAssetId = options.previousPlacements?.find(p => p.enabled && p.eventId === event.id && p.layerId === g.layers[0]?.id && g.ids.includes(p.assetId))?.assetId;
       const layerQuery=g.layers.map(l=>l.query).join("；").slice(0,2000);
-      return { creativeBrief:{videoDescription:index.videoDescription,soundRequirements:index.soundRequirements,style:index.style,referenceWorks:index.referenceWorks,styleProfile:index.styleProfile,styleCompatibility:compatibilityEvidence(index.styleCompatibility),referenceStyles:referenceStylesFor(event,index.referenceStyles)},taskId: g.taskId, role: g.layers[0]?.role || event.category, layerQuery, previousAssetId, event: { id: event.id, start: event.start, end: g.events.at(-1)!.end, type: event.type, category: event.category, description: event.category === "music" ? g.events.map(e => `${e.musicStage || ""}: ${e.description}`).join("；").slice(0, 2000) : event.description, query:g.events.map(e=>e.query).join("；").slice(0,2000), actor: event.actor, phase: event.phase, evidence: event.evidence, musicStage: event.musicStage, intensity: event.intensity }, candidates: g.ids.filter(id => descriptions.has(id)).map(id => ({ ...descriptions.get(id)!, fileName: assets.get(id)!.fileName,pathPreference:pathPreference(assets.get(id)!.path,index.libraryPreferences),keywordPreference:keywordPreferenceResolver(index.keywordPreferences,event)(assets.get(id)!), duration: assets.get(id)!.duration, pitchSweep: assets.get(id)!.pitchSweep, nameAdvice: assetNameAdvice(event, g.layers[0]?.role || event.category, assets.get(id)!),continuityAdvice:chargeContinuityAdvice(event,layerQuery,descriptions.get(id)!.summary,descriptions.get(id)!.tags) })) };
+      return { creativeBrief:{descriptionConstraints:index.descriptionConstraints,videoDescription:index.videoDescription,soundRequirements:index.soundRequirements,style:index.style,referenceWorks:index.referenceWorks,styleProfile:index.styleProfile,styleCompatibility:compatibilityEvidence(index.styleCompatibility),referenceStyles:referenceStylesFor(event,index.referenceStyles)},taskId: g.taskId, role: g.layers[0]?.role || event.category, layerQuery, previousAssetId, event: { id: event.id, start: event.start, end: g.events.at(-1)!.end, type: event.type, category: event.category, description: event.category === "music" ? g.events.map(e => `${e.musicStage || ""}: ${e.description}`).join("；").slice(0, 2000) : event.description, query:g.events.map(e=>e.query).join("；").slice(0,2000), actor: event.actor, phase: event.phase, evidence: event.evidence, musicStage: event.musicStage, intensity: event.intensity }, candidates: g.ids.filter(id => descriptions.has(id)).map(id => ({ ...descriptions.get(id)!, fileName: assets.get(id)!.fileName,pathPreference:pathPreference(assets.get(id)!.path,index.libraryPreferences),keywordPreference:keywordPreferenceResolver(index.keywordPreferences,event)(assets.get(id)!), duration: assets.get(id)!.duration, pitchSweep: assets.get(id)!.pitchSweep, nameAdvice: assetNameAdvice(event, g.layers[0]?.role || event.category, assets.get(id)!),continuityAdvice:chargeContinuityAdvice(event,layerQuery,descriptions.get(id)!.summary,descriptions.get(id)!.tags) })) };
     });
     for (let i = 0; i < tasks.length; i += 8) {
       options.signal?.throwIfAborted();
@@ -124,7 +124,15 @@ export class GeminiAudioSelector {
         }
         const matches = choices.filter(c => c.taskId === task.taskId);
         const choice = matches.length === 1 ? matches[0] : undefined;
-        if (choice?.assetId === null && task.previousAssetId && task.candidates.some(c => c.assetId === task.previousAssetId && !c.hasMusic && !c.hasSpeech) && group.events[0].category !== "music") {
+        const strictDescription=Boolean(index.descriptionConstraints&&(index.descriptionConstraints.exclusive||index.descriptionConstraints.restrictions.length||group.events.some(e=>e.descriptionRequirementIds?.length)));
+        if(strictDescription&&(!choice||choice.meetsDescription!==true||choice.assetId!==null&&!task.candidates.some(c=>c.assetId===choice.assetId))){
+          for(const layer of group.layers)layer.candidates=[];
+          report.rejectedLayers+=group.layers.length;
+          report.warnings.push(`${task.event.start.toFixed(3)}秒 ${task.event.description}：素材未通过描述要求复核，保留缺口，不使用规则回退。`);
+          report.decisions.push({taskId:task.taskId,eventIds:group.events.map(e=>e.id),assetId:null,basis:'audio-context',reason:choice?.reason||'未获得描述符合性判断'});
+          continue;
+        }
+        if (!strictDescription && choice?.assetId === null && task.previousAssetId && task.candidates.some(c => c.assetId === task.previousAssetId && !c.hasMusic && !c.hasSpeech) && group.events[0].category !== "music") {
           const reason = "重新选材未确认更合适素材，保留上一版已用贴片；名称和音色待复核";
           for (const layer of group.layers) layer.candidates = [{ assetId: task.previousAssetId, score: 1, reason }, ...layer.candidates.filter(c => c.assetId !== task.previousAssetId)];
           report.fallbackLayers += group.layers.length;
@@ -145,7 +153,7 @@ export class GeminiAudioSelector {
         const reason = `Gemini 音频片段＋画面判断：${choice.reason}${preferred?`；路径优先 ×${preferred.weight}：${preferred.path}（相关性优先）`:""}`;
         for (const layer of group.layers) {
           if (choice.assetId === null) layer.candidates = [];
-          else layer.candidates = [{ assetId: choice.assetId, score: choice.confidence * 100, reason }, ...layer.candidates.filter(c => c.assetId !== choice.assetId)];
+          else layer.candidates = [{ assetId: choice.assetId, score: choice.confidence * 100, reason }, ...(strictDescription?[]:layer.candidates.filter(c => c.assetId !== choice.assetId))];
         }
         if (choice.assetId === null) report.rejectedLayers += group.layers.length; else report.selectedLayers += group.layers.length;
         report.decisions.push({ taskId: task.taskId, eventIds: group.events.map(e => e.id), assetId: choice.assetId, reason, basis: "audio-context" });

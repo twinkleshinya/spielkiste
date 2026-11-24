@@ -37,7 +37,10 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
     return advice.warnings.length?[`${p.start.toFixed(3)}秒 ${assets.get(p.assetId)?.fileName}：${advice.warnings.join("；")}`]:[];
   });
   const fallbackEvents=[...new Set(run.selectionReport?.decisions.filter(d=>d.basis==="fallback").flatMap(d=>d.eventIds)||[])].map(id=>events.get(id)).filter((e):e is NonNullable<typeof e>=>Boolean(e));
+  const described=run.analysisReport?.descriptionReview;
+  const descriptionGaps=described?.requirements.filter(r=>r.status!=='located'||r.eventIds.some(id=>!covered.has(id)));
   const checks:Check[]=[
+    ...(described?[{id:'description-coverage',status:descriptionGaps?.length?'review' as const:'pass' as const,count:descriptionGaps?.length||0,detail:descriptionGaps?.length?`描述要求未完整配声：${descriptionGaps.map(r=>r.text).join('；')}`:`描述要求 ${described.requirements.length} 项均有对应点位和启用贴片；声音范围已复核，仍需试听确认`}]:[]),
     ...(run.status==="failed"?[{id:"execution",status:"fail" as const,detail:`生成失败：${run.error||run.progress||"任务未完成"}`}]:[]),
     {id:"sound-intent",status:soundConflicts.length?"review":"pass",count:soundConflicts.length,detail:soundConflicts.length?soundConflicts.join("；"):"已有音频描述中未发现持续蓄力的脉冲冲突；片段描述不能代替完整试听"},
     {id:"content",status:run.events.length&&enabled.length?"pass":"review",detail:run.events.length&&enabled.length?`${run.events.length} 个点位、${enabled.length} 个启用贴片`:"尚未生成有效点位与贴片，不能视为已完成音效制作"},
@@ -65,7 +68,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
   return {version:1,runId:run.id,revision:run.revision,runStatus:run.status,error:run.error||null,progress:run.progress,generatedAt:new Date().toISOString(),profile:run.workflow||null,
     legacy:!run.workflow,baseline:run.id===SFX_WORKFLOW.referenceRunId?{reference:true,configurationReconstructed:true,note:"历史⑥版的现有报告与代码复盘，不代表重新执行新标准流程"}:undefined,
     effective:{analysisMode:run.analysisMode,timingModel:run.analysisReport?.model||null,selectionModel:run.selectionReport?.model||null,sourceModel:run.sourceReview?.model||null,reasoningEffort:run.workflow?.reasoningEffort||null,
-      style:run.style,referenceWorks:run.referenceWorks,styleProfile:run.styleProfile,styleCompatibility:run.styleCompatibility,referenceStyles:run.referenceStyles||[],libraryPath:run.libraryPath,libraryPreferences:run.libraryPreferences||[],keywordPreferences:run.keywordPreferences||[],excludedLibraryPaths:run.excludedLibraryPaths||[],excludedKeywords:run.excludedKeywords||[],originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,selectionScope:run.selectionReport?.scope||run.selectionScope||null,autoMix:run.autoMix===true,addedReverb:false,preservePitch:true,preserveSpeed:true},
+      descriptionConstraints:run.descriptionConstraints,descriptionReview:described,style:run.style,referenceWorks:run.referenceWorks,styleProfile:run.styleProfile,styleCompatibility:run.styleCompatibility,referenceStyles:run.referenceStyles||[],libraryPath:run.libraryPath,libraryPreferences:run.libraryPreferences||[],keywordPreferences:run.keywordPreferences||[],excludedLibraryPaths:run.excludedLibraryPaths||[],excludedKeywords:run.excludedKeywords||[],originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,selectionScope:run.selectionReport?.scope||run.selectionScope||null,autoMix:run.autoMix===true,addedReverb:false,preservePitch:true,preserveSpeed:true},
     usage:usage?{elapsedMs:usage.elapsedMs,totals:usage.totals,models:usage.requests?.map(r=>({phase:r.phase,requested:r.requestedModel,returned:r.returnedModel||null,status:r.status}))}:null,
     stages:WORKFLOW_STAGES.map(s=>({...s,status:stageStatus(s.id)})),
     quality:{status:checks.some(c=>c.status==="fail")?"failed":checks.some(c=>c.status==="review")?"needs-review":"checks-passed",checks,

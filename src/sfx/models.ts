@@ -1,6 +1,6 @@
 import { z } from "zod";
 import path from "node:path";
-import {CreativeFields,StyleProfileSchema,ReferenceStyleSchema,StyleCompatibilitySchema,referenceWorksFrom} from "./CreativeBrief.js";
+import {CreativeFields,DescriptionConstraintsSchema,DescriptionReviewSchema,StyleProfileSchema,ReferenceStyleSchema,StyleCompatibilitySchema,referenceWorksFrom} from "./CreativeBrief.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
 export const CategorySchema = z.enum(["foley", "impact", "whoosh", "ambience", "music", "other"]);
@@ -23,7 +23,7 @@ export const ExclusionFields = {
   excludedLibraryPaths:z.array(z.string().trim().min(1).max(2000).refine(value=>Boolean(value.replace(/^"|"$/g,"").trim()),"排除目录不能为空")).max(12).optional(),
   excludedKeywords:z.array(z.string().trim().min(1).max(120)).max(50).optional()
 };
-export const IndexSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),styleCompatibility:StyleCompatibilitySchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
+export const IndexSchema = z.object({...CreativeFields,descriptionConstraints:DescriptionConstraintsSchema.optional(),styleProfile:StyleProfileSchema.optional(),styleCompatibility:StyleCompatibilitySchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(), version: z.literal(1), root: z.string(), generatedAt: z.string(), assets: z.array(AssetSchema), warnings: z.array(z.string()), musicLibraryConfigured:z.boolean().optional(),libraryPreferences:z.array(LibraryPreferenceSchema).max(12).optional(),keywordPreferences:KeywordPreferencesSchema.optional(),...ExclusionFields });
 export type AudioLibraryIndex = z.infer<typeof IndexSchema>;
 export const CandidateSchema = z.object({ assetId: z.string(), score: z.number(), reason: z.string() });
 export const LayerRoleSchema = z.enum(["ambience", "music", "foley", "impact", "whoosh", "texture", "tail"]);
@@ -46,7 +46,7 @@ export const EventSchema = z.object({
   layers: z.array(SoundLayerSchema).optional(), actor: z.string().max(200).optional(), phase: z.string().max(100).optional(),
   evidence: z.string().max(2000).optional(), timingPrecision: z.number().positive().optional(),
   musicStage: MusicStageSchema.optional(), intensity: z.number().min(0).max(1).optional(),
-  distance: DistanceSchema.optional(), importance: ImportanceSchema.optional()
+  distance: DistanceSchema.optional(), importance: ImportanceSchema.optional(), descriptionAllowed:z.boolean().optional(),descriptionRequirementIds:z.array(z.string()).optional()
 }).refine(v => v.end > v.start, "事件结束时间必须大于开始时间");
 export type SoundEvent = z.infer<typeof EventSchema>;
 export const PlacementSchema = z.object({
@@ -68,7 +68,7 @@ export const SelectionReportSchema = z.object({
   decisions: z.array(z.object({ eventIds: z.array(z.string()), taskId: z.string(), assetId: z.string().nullable(), reason: z.string(), basis: z.enum(["audio-context", "fallback"]) })),
   audio: z.array(z.object({ assetId: z.string(), summary: z.string(), tags: z.array(z.string()), energy: z.number(), hasMusic: z.boolean(), hasSpeech: z.boolean() }))
 });
-export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSchema.optional(),styleCompatibility:StyleCompatibilitySchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(),
+export const RunSchema = z.object({...CreativeFields,descriptionConstraints:DescriptionConstraintsSchema.optional(),styleProfile:StyleProfileSchema.optional(),styleCompatibility:StyleCompatibilitySchema.optional(),referenceStyles:z.array(ReferenceStyleSchema).max(12).optional(),
   ...ExclusionFields,
   version: z.literal(1), id: z.string(), projectId: z.string().uuid().optional(), name: z.string(), createdAt: z.string(), revision: z.number().int().nonnegative(),
   status: z.enum(["analyzing", "ready", "rendering", "failed"]), progress: z.string(), error: z.string().optional(),
@@ -87,7 +87,7 @@ export const RunSchema = z.object({...CreativeFields,styleProfile:StyleProfileSc
     perspective:z.object({workflow:z.literal("visual-distance-priority-v1"),knownClips:z.number(),attenuatedClips:z.number(),unknownClips:z.number(),exemptClips:z.number(),lockedClips:z.number(),energyReserveDb:z.number(),baseTargetLufs:z.number()}).optional(),
     mastering:z.enum(["linear-distance-headroom","loudnorm-two-pass","peak-only"]).optional()
   }).optional(),
-  analysisReport: z.object({ workflow: z.string(), model: z.string(), windows: z.number(), refinedContacts: z.number(), timingNote: z.string() }).optional(),
+  analysisReport: z.object({ descriptionReview:DescriptionReviewSchema.optional(), workflow: z.string(), model: z.string(), windows: z.number(), refinedContacts: z.number(), timingNote: z.string() }).optional(),
   render: z.object({ video: z.string(), audio: z.string(), revision: z.number() }).optional()
 });
 export type SfxRun = z.infer<typeof RunSchema>;

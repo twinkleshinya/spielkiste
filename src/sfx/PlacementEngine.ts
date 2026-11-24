@@ -5,7 +5,7 @@ import { planSourceEdit } from "./ClipEdit.js";
 import {eligibleAssets,type AssetExclusions} from "./AssetExclusions.js";
 
 export function createPlacements(events: SoundEvent[], assets: AudioAsset[], videoDuration: number,exclusions:AssetExclusions={}): SoundPlacement[] {
-  const ordered = [...events].sort((a, b) => a.start - b.start);
+  const ordered = events.filter(e=>e.descriptionAllowed!==false).sort((a, b) => a.start - b.start);
   const assetById = new Map(eligibleAssets(assets,exclusions).map(a => [a.id, a]));
   let musicAnchor = 0, previousMusic: { end: number; assetId: string } | undefined;
   return ordered.flatMap(event => (event.layers?.length ? event.layers : [{ id: "default", role: event.category === "impact" ? "impact" : event.category, query: event.query, offset: 0, candidates: event.candidates }]).flatMap(layer => {
