@@ -36,6 +36,8 @@ export async function testPreservedVersionReuse() {
     assert.equal((await reusedViaApi.json() as {runId:string}).runId,run.id);
     const same=await recreated.create({videoPath:copy,libraryPath:library});
     assert.equal(same.runId,run.id,"identical video uploaded at a new path must open the preserved sounds instead of reselecting");
+    await assert.rejects(recreated.create({videoPath:copy,libraryPath:library,audioOutputMode:"sfx"}),/Gemini AI/,
+      "changing from all audio to SFX only must not reopen a preserved full-audio preview");
     await assert.rejects(recreated.create({videoPath:copy,libraryPath:library,style:'修仙'}),/Gemini AI/,'a new style must not reopen an old unstyled take');
     await assert.rejects(recreated.create({videoPath:copy,libraryPath:library,soundRequirements:'轻一点'}),/Gemini AI/,'new sound requirements must not reuse old matching results');
     assert.equal(await fs.readFile(path.join(dir,"run.json"),"utf8"),original,"preservation/reopening cannot rewrite the reference");

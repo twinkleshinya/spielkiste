@@ -193,7 +193,7 @@ export class SfxService {
     }
     if(parsed.reusePreserved) {
       const preserved=new PreservedSounds(path.join(this.root,"preserved"));
-      const record=await preserved.find({...parsed,videoPath:video,libraryPath:library,musicLibraryPath:musicLibrary});
+      const record=await preserved.find({...parsed,videoPath:video,libraryPath:library,musicLibraryPath:musicLibrary,audioOutputMode:parsed.audioOutputMode || "all"});
       if(record) {
         const existing=await this.readRun(record.runId);
         let selectedModel:string|undefined, selectedEffort:AiReasoningEffort|undefined;

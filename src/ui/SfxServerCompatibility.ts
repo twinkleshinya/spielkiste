@@ -1,4 +1,4 @@
-export const SFX_API_VERSION = "2026-11-25";
+export const SFX_API_VERSION = "2026-11-26";
 
 export const SFX_REQUIRED_CAPABILITIES = [
   "project-name-from-video",
@@ -28,6 +28,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "analysis-without-total-deadline",
   "candidate-failure-isolation",
   "audio-output-mode"
+  ,"output-mode-preservation"
 ] as const;
 
 type HealthPayload = {

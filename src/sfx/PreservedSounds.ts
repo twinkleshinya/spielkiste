@@ -7,7 +7,7 @@ import {writeJson} from "./SfxRunStore.js";
 import {normalizeExcludedLibraryPaths,normalizeKeywordPreferences,normalizeLibraryPreferences,preferenceKey} from "./LibraryPreferences.js";
 import {normalizeExcludedKeywords} from "./AssetExclusions.js";
 
-type VideoLibraries=Pick<SfxRun,"videoDescription"|"soundRequirements"|"style"|"referenceWorks"|"videoPath"|"libraryPath"|"musicLibraryPath"|"musicEnabled"|"libraryPreferences"|"keywordPreferences"|"excludedLibraryPaths"|"excludedKeywords">;
+type VideoLibraries=Pick<SfxRun,"videoDescription"|"soundRequirements"|"style"|"referenceWorks"|"videoPath"|"libraryPath"|"musicLibraryPath"|"musicEnabled"|"audioOutputMode"|"libraryPreferences"|"keywordPreferences"|"excludedLibraryPaths"|"excludedKeywords">;
 type PreservedVersion={version:1;runId:string;revision:number;videoHash:string;soundsHash:string;preservedAt:string};
 async function fileHash(file:string) {
   const hash=createHash("sha256");for await(const chunk of createReadStream(file))hash.update(chunk);return hash.digest("hex");
@@ -16,7 +16,7 @@ const libraryKey=(value:string)=>{const resolved=path.resolve(value);return proc
 /** Only sound-affecting saved data identifies the preserved revision; reports/labels do not. */
 function soundsHash(run:SfxRun) {
   const selected=new Set(run.placements.map(p=>p.assetId));
-  return createHash("sha256").update(JSON.stringify({duration:run.duration,originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,
+  return createHash("sha256").update(JSON.stringify({duration:run.duration,originalGainDb:run.originalGainDb,originalMuted:run.originalMuted===true,musicEnabled:run.musicEnabled!==false,audioOutputMode:run.audioOutputMode||"all",
     events:run.events,placements:run.placements,assets:run.assets.filter(a=>selected.has(a.id)).map(a=>({id:a.id,path:a.path,size:a.size,mtimeMs:a.mtimeMs})),render:run.render})).digest("hex");
 }
 
@@ -28,7 +28,7 @@ export class PreservedSounds {
     const preferences=normalizeLibraryPreferences(input.libraryPreferences).map(p=>({path:preferenceKey(p.path),weight:p.weight}));
     const keywords=normalizeKeywordPreferences(input.keywordPreferences);
     const excludedLibraryPaths=normalizeExcludedLibraryPaths(input.excludedLibraryPaths).map(preferenceKey),excludedKeywords=normalizeExcludedKeywords(input.excludedKeywords);
-    const key=createHash("sha256").update(JSON.stringify({videoHash,...(input.videoDescription?{videoDescription:input.videoDescription}:{}),...(input.soundRequirements?{soundRequirements:input.soundRequirements}:{}),...(input.style?{style:input.style}:{}),...(input.referenceWorks?.length?{referenceWorks:input.referenceWorks}:{}),library:libraryKey(input.libraryPath),music:input.musicLibraryPath?libraryKey(input.musicLibraryPath):null,musicEnabled:input.musicEnabled!==false,...(preferences.length?{libraryPreferences:preferences}:{}),...(keywords.length?{keywordPreferences:keywords}:{}),...(excludedLibraryPaths.length?{excludedLibraryPaths}:{}),...(excludedKeywords.length?{excludedKeywords}:{})})).digest("hex");
+    const key=createHash("sha256").update(JSON.stringify({videoHash,...(input.videoDescription?{videoDescription:input.videoDescription}:{}),...(input.soundRequirements?{soundRequirements:input.soundRequirements}:{}),...(input.style?{style:input.style}:{}),...(input.referenceWorks?.length?{referenceWorks:input.referenceWorks}:{}),library:libraryKey(input.libraryPath),music:input.musicLibraryPath?libraryKey(input.musicLibraryPath):null,musicEnabled:input.musicEnabled!==false,audioOutputMode:input.audioOutputMode||"all",...(preferences.length?{libraryPreferences:preferences}:{}),...(keywords.length?{keywordPreferences:keywords}:{}),...(excludedLibraryPaths.length?{excludedLibraryPaths}:{}),...(excludedKeywords.length?{excludedKeywords}:{})})).digest("hex");
     return {videoHash,file:path.join(this.root,`${key}.json`)};
   }
   async preserve(run:SfxRun):Promise<PreservedVersion> {
