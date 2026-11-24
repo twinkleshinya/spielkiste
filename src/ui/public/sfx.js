@@ -65,7 +65,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["refresh-library-index","style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","audio-output-mode","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "switch-project", "open-new-project", "add-event", "add-music", "add-described-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open", "video-seek"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
+function setBusy(value) { busy = value; for (const id of ["refresh-library-index","style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","audio-output-mode","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "switch-project", "open-new-project", "add-event", "add-music", "add-described-event", "add-manual-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open", "video-seek"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -338,11 +338,11 @@ function renderWorkspace(keepVideo = false) {
     const a = text("a", label); a.href = `/api/sfx/runs/${run.id}/export/${format}`; a.download = ""; exports.append(a);
   }
 }
-async function poll(id, afterRender = false, playback, {recoverDraft = true} = {}) {
+async function poll(id, afterRender = false, playback, {recoverDraft = true, onProgress} = {}) {
   setBusy(true);
   try {
     for (;;) {
-      const next = await api(`/api/sfx/runs/${id}/status`); status(next.progress);
+      const next = await api(`/api/sfx/runs/${id}/status`); status(next.progress); onProgress?.(next.progress);
       if (!["analyzing", "rendering"].includes(next.status)) {
         run = await api(`/api/sfx/runs/${id}`); project = run.projectId ? await api(`/api/sfx/projects/${run.projectId}`).catch(() => null) : null; dirty = false;
         loadExclusions(run);
@@ -459,8 +459,19 @@ async function aiReidentifyEvent() {
   } catch (error) { if (!submitted) updatePreviewStatus(); throw error; }
   finally { setBusy(false); }
 }
+function describedEventStatus(message, error = false) {
+  const element = $("described-event-status");
+  element.hidden = false;
+  element.textContent = message;
+  element.dataset.state = error ? "error" : "progress";
+}
 async function addDescribedEvent() {
-  if (!run || busy) return;
+  try { return await submitDescribedEvent(); }
+  catch (error) { describedEventStatus(error.message || String(error), true); throw error; }
+}
+async function submitDescribedEvent() {
+  if (!run) throw new Error("请先打开已分析的项目，再描述补声。");
+  if (busy) throw new Error("当前任务仍在处理中，请等待完成后再补声。");
   requireUpdatedPreview();
   const input = $("described-event-description").value.trim();
   if (!input) throw new Error("请先描述需要补充的声音，例如“猩猩啃咬角色”");
@@ -469,14 +480,16 @@ async function addDescribedEvent() {
   const previousIds = new Set(run.events.map(event => event.id));
   const playback={time:$("video").currentTime||0,playing:!$("video").paused}; $("video").pause(); setBusy(true);
   if (button) button.textContent = "正在提交补声分析…";
-  status("已提交补声分析请求，Gemini 正在全片查找描述的动作…"); $("preview-state").textContent="正在查找缺失动作并生成新预览…";
+  describedEventStatus("正在提交补声分析请求…");
+  status("正在提交补声分析请求…"); $("preview-state").textContent="正在查找缺失动作并生成新预览…";
   let submitted = false;
   try {
     const result = await api(`/api/sfx/runs/${run.id}/add-described-event`, { revision: run.revision, description: input });
     submitted = true;
     if (button) button.textContent = "正在定位动作并生成预览…";
+    describedEventStatus("正在定位动作、匹配素材并生成新预览…");
     status("补声分析已开始，正在定位动作、匹配素材并生成新预览…");
-    await poll(result.runId, true, playback);
+    await poll(result.runId, true, playback, {onProgress: message => describedEventStatus(message)});
     const addedEvents = run.events.filter(event => !previousIds.has(event.id)).sort((a, b) => a.start - b.start);
     if (addedEvents.length) {
       $("event-filter").value = "all";
@@ -487,7 +500,8 @@ async function addDescribedEvent() {
       document.querySelector(`[data-event-id="${CSS.escape(addedEvents[0].id)}"]`)?.scrollIntoView({ block: "nearest" });
     }
     $("described-event-description").value = "";
-    status(addedEvents.length ? `已根据“${input}”找到 ${addedEvents.length} 个动作点位，已选中第一个并生成新预览。` : `已根据“${input}”生成新预览，请试听确认。`);
+    const message = addedEvents.length ? `已根据“${input}”找到 ${addedEvents.length} 个动作点位，已选中第一个并生成新预览。` : `已根据“${input}”生成新预览，请试听确认。`;
+    describedEventStatus(message); status(message);
   } catch (error) { if (!submitted) updatePreviewStatus(); throw error; }
   finally { setBusy(false); if (button) button.textContent = originalLabel; }
 }

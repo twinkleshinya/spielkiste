@@ -29,7 +29,7 @@ import {testSavedProjectRecovery,testProjectSummaryMigration,testClientRunPayloa
 import {testSfxStartupDefaultsToNewProject} from "./sfx-startup-ui.test.js";
 import {testApplyEventTimingPreservesPlacementSettings,testLocateEventApiPreservesParentAndUsesOnlyTiming,testLocateEventLowConfidenceKeepsReviewFlag} from "./sfx-event-reidentify.test.js";
 import {testAddDescribedEventApiLocatesAndPreservesExistingTimeline,testAddDescribedEventRejectsStaleRevision,testDescribedEventMixProtectsParentPlacements} from "./sfx-described-event.test.js";
-import {testDescribedEventUiIsAnAddEventMode} from "./sfx-described-event-ui.test.js";
+import {testDescribedEventButtonFeedbackAndRecovery,testDescribedEventUiIsAnAddEventMode} from "./sfx-described-event-ui.test.js";
 import {testSfxHealthCompatibilityMarker,testSfxHealthRouteAdvertisesCompatibility} from "./sfx-server-startup.test.js";
 import {testSfxProjectVersioning} from "./sfx-project-versioning.test.js";
 import {testReaperExporter,testReaperExportApi,testReaperExportUi,testReaperPortableProject,testReaperActionCategoryUsesEventIntent,testReaperNamesWithoutExtension} from "./sfx-reaper-export.test.js";
@@ -282,7 +282,7 @@ testLocateEventLowConfidenceKeepsReviewFlag();
 await testAddDescribedEventApiLocatesAndPreservesExistingTimeline();
 await testAddDescribedEventRejectsStaleRevision();
 testDescribedEventMixProtectsParentPlacements();
-await testDescribedEventUiIsAnAddEventMode();
+await testDescribedEventUiIsAnAddEventMode();await testDescribedEventButtonFeedbackAndRecovery();
 testSfxHealthCompatibilityMarker();
 await testSfxHealthRouteAdvertisesCompatibility();
 await testSfxProjectVersioning();

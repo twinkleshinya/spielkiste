@@ -50,3 +50,5 @@
 .library-index-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.library-index-tools button{flex-shrink:0}.library-index-tools .field-help{flex:1;min-width:220px;margin:0}
 
 .folder-browser .folder-toolbar{display:flex;gap:10px;align-items:center;margin:8px 0 12px}.folder-browser .folder-toolbar code{min-width:0;flex:1;overflow-wrap:anywhere;color:var(--muted);font-size:12px}.folder-browser .folder-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.folder-browser .folder-actions [data-cancel]{margin-right:auto}
+
+.described-event-status{margin:10px 0;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}.described-event-status[data-state="error"]{color:#d85f50}
