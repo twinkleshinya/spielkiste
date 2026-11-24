@@ -4,7 +4,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {styleBlendOptions,StyleCompatibilitySchema,StyleProfileSchema,type StyleProfile,type CreativeBrief,type StyleCompatibility} from './CreativeBrief.js';
 import {readConfig} from './CcSwitchVisionProvider.js';
-import {modelJson} from './ModelUsage.js';
+import {generationFetch,modelJson} from './ModelUsage.js';
 import {appResource} from './RuntimePaths.js';
 import type {AiReasoningEffort} from './SfxAiConfig.js';
 import type {ReferenceStyle} from './CreativeBrief.js';
@@ -37,7 +37,7 @@ const key=(style:string)=>createHash('sha256').update(style.normalize('NFKC').tr
 const synthesisSchema=StyleProfileSchema.omit({version:true,targetType:true,style:true,researchedAt:true,model:true,basis:true,references:true});
 
 async function readJson(url:string,signal?:AbortSignal) {
-  const response=await fetch(url,{headers:{'user-agent':'Spielkiste/0.1 (style reference research)'},signal:AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(20000)])});
+  const response=await generationFetch(url,{headers:{'user-agent':'Spielkiste/0.1 (style reference research)'},signal});
   if(!response.ok)throw new Error(`公开参考资料读取失败（${response.status}）`);return response.json();
 }
 export async function collectStyleReferences(style:string,signal?:AbortSignal,targetType:'style'|'work'='style'):Promise<Reference[]> {
