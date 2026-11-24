@@ -1,3 +1,5 @@
+import {testAddDescribedEventApiLocatesAndPreservesExistingTimeline} from "./sfx-described-event.test.js";
+import {testLocateEventApiPreservesParentAndUsesOnlyTiming} from "./sfx-event-reidentify.test.js";
 import assert from "node:assert/strict";
 import {mock} from "node:test";
 import {promises as fs} from "node:fs";
@@ -45,7 +47,6 @@ export async function testAnalysisFailureIncludesLastStage(){
 }
 
 export async function testDescribedAndReidentifyJobsHaveNoTotalDeadline(){
-  const source = await fs.readFile(path.resolve("src/sfx/SfxService.ts"), "utf8");
-  assert.doesNotMatch(source, /描述式补声超过 15 分钟/);
-  assert.doesNotMatch(source, /当前事件重新定位超过 10 分钟/);
+  await testAddDescribedEventApiLocatesAndPreservesExistingTimeline(true);
+  await testLocateEventApiPreservesParentAndUsesOnlyTiming(true);
 }

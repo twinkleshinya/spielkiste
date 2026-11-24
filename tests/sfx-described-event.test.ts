@@ -1,3 +1,4 @@
+import {mock} from "node:test";
 import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -39,7 +40,7 @@ function makeAsset(file: string) {
   };
 }
 
-export async function testAddDescribedEventApiLocatesAndPreservesExistingTimeline() {
+export async function testAddDescribedEventApiLocatesAndPreservesExistingTimeline(simulateLongWait = false) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-described-event-"));
   const video = path.join(root, "source.mp4");
   const audio = path.join(root, "gorilla_bite.wav");
@@ -81,7 +82,7 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
     sampleFrames: async (_file: string, start: number, end: number) => [{ start, end, thumbnail: "fixture.jpg" }]
   };
   const fakeTimingProvider = {
-    locateEvents: async () => ({ events: [{ start: 1, end: 2, type: "monster_bite", description: "猩猩张嘴啃咬角色", query: "gorilla bite jaw attack", category: "impact", confidence: .86, evidence: "看到猩猩张嘴接触角色", actor: "boss", phase: "contact" }] }),
+    locateEvents: async (_frames:any, _prompt:any, signal?:AbortSignal) => { if(simulateLongWait){mock.timers.tick(65*60000); const aborted=signal?.aborted; mock.timers.reset(); assert.equal(aborted,false,"processing past 65 minutes must remain active");} return ({ events: [{ start: 1, end: 2, type: "monster_bite", description: "猩猩张嘴啃咬角色", query: "gorilla bite jaw attack", category: "impact", confidence: .86, evidence: "看到猩猩张嘴接触角色", actor: "boss", phase: "contact" }] });},
     locateEvent: async () => ({ start: 1.25, end: 1.75, confidence: .95, evidence: "逐帧看到牙齿接触角色", timingPrecision: .033 })
   };
   const fakeSelector = {
@@ -131,6 +132,7 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
   try {
+    if(simulateLongWait)mock.timers.enable({apis:["Date","setTimeout","setInterval"]});
     const response = await fetch(`${base}/api/sfx/runs/${parent.id}/add-described-event`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -156,6 +158,7 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
     const usage = JSON.parse(await fs.readFile(path.join(service.store.directory(child.id), "usage-report.json"), "utf8"));
     assert.equal(usage.operation, "add-described-event");
   } finally {
+    if(simulateLongWait)mock.timers.reset();
     await new Promise<void>(resolve => server.close(() => resolve()));
     await fs.rm(root, { recursive: true, force: true });
   }

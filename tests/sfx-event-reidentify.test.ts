@@ -1,3 +1,4 @@
+import {mock} from "node:test";
 import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -68,7 +69,7 @@ export function testApplyEventTimingPreservesPlacementSettings() {
   assert.deepEqual(result.placements[0].perspective, placement.perspective);
 }
 
-export async function testLocateEventApiPreservesParentAndUsesOnlyTiming() {
+export async function testLocateEventApiPreservesParentAndUsesOnlyTiming(simulateLongWait = false) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-event-reidentify-"));
   const video = path.join(root, "source.mp4");
   const audio = path.join(root, "tone.wav");
@@ -81,7 +82,7 @@ export async function testLocateEventApiPreservesParentAndUsesOnlyTiming() {
     sampleFrames: async (_file: string, start: number, end: number) => [{ start, end, thumbnail: "fixture.jpg" }]
   };
   const fakeTimingProvider = {
-    locateEvent: async () => ({ start: 1.4, end: 2.1, confidence: .94, evidence: "看到动作实际接触", timingPrecision: .033 })
+    locateEvent: async (_frames:any, _prompt:any, signal?:AbortSignal) => { if(simulateLongWait){mock.timers.tick(65*60000); const aborted=signal?.aborted; mock.timers.reset(); assert.equal(aborted,false,"processing past 65 minutes must remain active");} return ({ start: 1.4, end: 2.1, confidence: .94, evidence: "看到动作实际接触", timingPrecision: .033 });}
   };
   const renderer = { renderPreview: async (run: any, outputDir: string) => {
     const videoOut = path.join(outputDir, "preview.mp4");
@@ -108,6 +109,7 @@ export async function testLocateEventApiPreservesParentAndUsesOnlyTiming() {
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
   try {
+    if(simulateLongWait)mock.timers.enable({apis:["Date","setTimeout","setInterval"]});
     const response = await fetch(`${base}/api/sfx/runs/${rendered.id}/locate-event`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -143,6 +145,7 @@ export async function testLocateEventApiPreservesParentAndUsesOnlyTiming() {
     });
     assert.equal(stale.status, 409);
   } finally {
+    if(simulateLongWait)mock.timers.reset();
     await new Promise<void>(resolve => server.close(() => resolve()));
     await fs.rm(root, { recursive: true, force: true });
   }
