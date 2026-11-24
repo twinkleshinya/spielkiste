@@ -65,7 +65,7 @@ function keepDraftBeforeLeaving() {
 function requireUpdatedPreview() {
   if (dirty || run?.render && run.render.revision !== run.revision) throw new Error("有待更新的修改，请先点击“更新视频预览”，完成后再操作。");
 }
-function setBusy(value) { busy = value; for (const id of ["refresh-library-index","style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","audio-output-mode","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "render", "preserve", "history", "refresh-history", "switch-project", "open-new-project", "add-event", "add-music", "add-described-event", "add-manual-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open", "video-seek"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
+function setBusy(value) { busy = value; for (const id of ["refresh-library-index","style-conflict-custom","apply-style-conflict","video-description","sound-requirements","sound-style","custom-style","reference-works","audio-output-mode","research-style","refresh-style","search-library-path","search-music-path","discard-edits", "analyze", "reanalyze-visual", "reanalyze-brief", "reanalyze-video-description", "reanalyze-sound-requirements", "reanalyze-sound-style", "reanalyze-reference-works", "render", "preserve", "history", "refresh-history", "switch-project", "open-new-project", "add-event", "add-music", "add-described-event", "add-manual-event", "search", "pick-video", "browse-library", "browse-music", "new-project", "name", "video-path", "library-path", "music-library-path", "described-event-description", "ai-reidentify", "apply-timing", "rename-project", "save-as-project", "sync-project", "version-history", "open-version", "restore-version", "export-reaper", "ai-config-open", "video-seek"]) { const el = $(id); if (el) el.disabled = value; } $("style-conflict-options").inert=value;libraryPreferences.setBusy(value);keywordPreferences.setBusy(value);libraryExclusions.setBusy(value);keywordExclusions.setBusy(value); $("event-editor").inert = value; $("event-list").inert=value; $("timeline").inert=value; $("parent-version").inert=value; for(const kind of ["sfx","music"])$("mute-"+kind+"-group").disabled=value||!run?.events.some(e=>(e.category==="music")===(kind==="music")); }
 function renderAiConfig(snapshot) {
   aiConfig = snapshot;
   const button = $("ai-config-open"), dot = $("ai-config-dot"), label = $("ai-config-status");
@@ -302,6 +302,13 @@ function renderWorkspace(keepVideo = false) {
   $("workspace").hidden = false; $("project-title").textContent = project?.name || run.name; $("run-id").textContent = run.id;
   $("reanalyze-visual").hidden = !run || !["ready","failed"].includes(run.status);
   $("reanalyze-brief").hidden = !run || !["ready","failed"].includes(run.status);
+  $("reanalyze-brief-panel").hidden = !run || !["ready","failed"].includes(run.status);
+  if (run) {
+    $("reanalyze-video-description").value = run.videoDescription || "";
+    $("reanalyze-sound-requirements").value = run.soundRequirements || "";
+    $("reanalyze-sound-style").value = run.style || "";
+    $("reanalyze-reference-works").value = referenceWorksFrom(run).join("；");
+  }
   $("duration-label").textContent = time(run.duration);void renderWorkflowReport();
   void loadVersionHistory();
   $("parent-version").hidden=!run.parentRunId;$("parent-version").href=run.parentRunId?`/sfx?run=${run.parentRunId}`:"#";
@@ -333,6 +340,12 @@ function renderWorkspace(keepVideo = false) {
   }).catch(() => {});
   selectEvent(run.events.some(e => e.id === selectedId) ? selectedId : run.events[0]?.id);
   const exports = $("exports"); exports.replaceChildren();
+  const download = $("download-video");
+  if (download) {
+    download.hidden = !run.render;
+    download.href = run.render ? `/api/sfx/runs/${run.id}/export/video` : "#";
+    download.download = `${(project?.name || run.name || "Spielkiste").replace(/[<>:"/\\|?*]+/g, "_")}.mp4`;
+  }
   const workflowLink=text("a","工作流与质量报告 ↓");workflowLink.href=`/api/sfx/runs/${run.id}/export/workflow`;workflowLink.download="";exports.append(workflowLink);
   for (const [format, label] of [["json", "贴片 JSON ↓"], ["csv", "清单 CSV ↓"], ["events", "事件 JSON ↓"], ["music", "音乐点位 ↓"], ...(run.analysisReport ? [["review", "分析依据 ↓"]] : []), ...(run.selectionReport ? [["selection", "Gemini 选材依据 ↓"]] : []), ...(run.sourceReview ? [["edits", "发声段落复核 ↓"]] : []), ...(run.workflow?.operation === "augment" ? [["described", "描述补声依据 ↓"]] : []), ...(run.mixReport ? [["mix", "混音报告 ↓"], ["usage", "耗时与 token ↓"]] : []), ...(run.render ? [["video", "预览 MP4 ↓"], ["audio", "混音 WAV ↓"]] : [])]) {
     const a = text("a", label); a.href = `/api/sfx/runs/${run.id}/export/${format}`; a.download = ""; exports.append(a);
@@ -377,21 +390,26 @@ function loadProjectInputs() {
   loadExclusions(run);
   $("video-description").value=run.videoDescription||"";$("sound-requirements").value=run.soundRequirements||"";$("audio-output-mode").value=run.audioOutputMode||"all";appliedConflictRequirements="";
   $("reference-works").value=referenceWorksFrom(run).join("；");
+  $("reanalyze-video-description").value=run.videoDescription||"";
+  $("reanalyze-sound-requirements").value=run.soundRequirements||"";
+  $("reanalyze-sound-style").value=run.style||"";
+  $("reanalyze-reference-works").value=referenceWorksFrom(run).join("；");
   const preset=["修仙","武侠","暗黑奇幻","科幻","写实战争","恐怖悬疑","卡通喜剧","史诗冒险","魔法","现代动作","赛博朋克","像素复古"];$("sound-style").value=run.style?(preset.includes(run.style)?run.style:"custom"):"";$("custom-style").value=run.style||"";$("sound-style").onchange();if(run.styleProfile)showStyleProfile(run.styleProfile);for(const [i,reference] of (run.referenceStyles||[]).entries())showStyleProfile(reference.profile,Boolean(run.styleProfile)||i>0);
 }
 async function reanalyzeProject(mode) {
   if (!run || busy) return;
   requireUpdatedPreview();
   hideStyleConflict();
-  const description = mode === "visual" ? "" : $("video-description").value.trim();
-  const soundRequirements = $("sound-requirements").value.trim();
-  const style = selectedStyle();
+  const description = mode === "visual" ? "" : $("reanalyze-video-description").value.trim();
+  const soundRequirements = mode === "visual" ? "" : $("reanalyze-sound-requirements").value.trim();
+  const style = mode === "visual" ? "" : $("reanalyze-sound-style").value.trim();
+  const referenceWorks = mode === "visual" ? [] : $("reanalyze-reference-works").value.split(/[；;\n]+/u).map(value=>value.trim()).filter(Boolean);
   const playback = { time: $("video").currentTime || 0, playing: false };
   $("video").pause(); setBusy(true);
   status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新的辅助说明重新分析画面、点位和音效…");
   let submitted = false;
   try {
-    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined,referenceWorks:selectedReferenceWorks(),keywordPreferences:keywordPreferences.read() });
+    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined,referenceWorks,keywordPreferences:keywordPreferences.read() });
     submitted = true;
     await poll(result.runId, true, playback, { recoverDraft: false });
     loadProjectInputs();

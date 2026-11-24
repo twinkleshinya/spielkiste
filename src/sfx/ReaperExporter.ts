@@ -324,7 +324,10 @@ function descriptorFor(run: SfxRun, placement: SoundPlacement): TrackDescriptor 
 
 function activePlacement(run: SfxRun, placement: SoundPlacement) {
   const event = run.events.find(item => item.id === placement.eventId);
-  return Boolean(placement.enabled && !event?.muted && (placement.category !== "music" || run.musicEnabled !== false));
+  const mode = run.audioOutputMode || "all";
+  return Boolean(placement.enabled && !event?.muted && (mode === "all"
+    ? placement.category !== "music" || run.musicEnabled !== false
+    : mode === "sfx" ? placement.category !== "music" : placement.category === "music"));
 }
 
 export class ReaperExporter {

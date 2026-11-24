@@ -133,7 +133,10 @@ export async function exportTimeline(run: SfxRun, outputDir: string) {
   });
   await writeJson(path.join(outputDir, "events.json"), run.events);
   const actionEvents = run.events.filter(event => !event.muted && !["ambience", "music"].includes(event.category));
-  const enabled = run.placements.filter(p => p.enabled && !run.events.find(e=>e.id===p.eventId)?.muted && (p.category !== "music" || run.musicEnabled !== false));
+  const mode = run.audioOutputMode || "all";
+  const outputEnabled = (p: SfxRun["placements"][number]) => p.enabled && !run.events.find(e=>e.id===p.eventId)?.muted
+    && (mode === "all" ? p.category !== "music" || run.musicEnabled !== false : mode === "sfx" ? p.category !== "music" : p.category === "music");
+  const enabled = run.placements.filter(outputEnabled);
   const coveredEventIds = new Set(enabled.map(placement => placement.eventId));
   await writeJson(path.join(outputDir, "coverage-report.json"), {
     version: 1,
@@ -155,6 +158,6 @@ export async function exportTimeline(run: SfxRun, outputDir: string) {
   await writeJson(path.join(outputDir, "placements.json"), { version: 1, timeUnit: "seconds", videoDescription:run.videoDescription,soundRequirements:run.soundRequirements,style:run.style,referenceWorks:run.referenceWorks,styleProfile:run.styleProfile,styleCompatibility:run.styleCompatibility,referenceStyles:run.referenceStyles, revision: run.revision, videoPath: run.videoPath, libraryPath:run.libraryPath,libraryPreferences:run.libraryPreferences||[],keywordPreferences:run.keywordPreferences||[],excludedLibraryPaths:run.excludedLibraryPaths||[],excludedKeywords:run.excludedKeywords||[],originalGainDb: run.originalGainDb, originalMuted:run.originalMuted,workflow:run.workflow,audioOutputMode:run.audioOutputMode||"all",musicEnabled: run.musicEnabled !== false, analysisReport: run.analysisReport, selectionReport: run.selectionReport,events:run.events,mixReport:run.mixReport,placements });
   const quote = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
   const header = "eventId,layerId,role,start,end,assetPath,gainDb,fadeIn,fadeOut,category,enabled,locked,sourceOffset,duration,loop,musicStage,intensity,evidence,sourceEditBasis,sourceEditReason,eventMuted,distance,distanceConfidence,distanceEvidence,importance,distanceGainDb";
-  const rows = placements.map(p => { const event = run.events.find(e => e.id === p.eventId); return [p.eventId, p.layerId, p.role, p.start, p.end, p.assetPath, p.gainDb, p.fadeIn, p.fadeOut, p.category, p.enabled && !event?.muted && (p.category !== "music" || run.musicEnabled !== false), p.locked, p.sourceOffset, p.duration, p.loop || false, event?.musicStage || "", event?.intensity ?? "", event?.evidence || "",p.sourceEdit?.basis||"",p.sourceEdit?.reason||"",p.eventMuted,event?.distance?.range||"",event?.distance?.confidence??"",event?.distance?.evidence||"",p.perspective?.importance||event?.importance||"",p.perspective?.distanceGainDb??""].map(quote).join(","); });
+  const rows = placements.map(p => { const event = run.events.find(e => e.id === p.eventId); return [p.eventId, p.layerId, p.role, p.start, p.end, p.assetPath, p.gainDb, p.fadeIn, p.fadeOut, p.category, outputEnabled(p), p.locked, p.sourceOffset, p.duration, p.loop || false, event?.musicStage || "", event?.intensity ?? "", event?.evidence || "",p.sourceEdit?.basis||"",p.sourceEdit?.reason||"",p.eventMuted,event?.distance?.range||"",event?.distance?.confidence??"",event?.distance?.evidence||"",p.perspective?.importance||event?.importance||"",p.perspective?.distanceGainDb??""].map(quote).join(","); });
   await fs.writeFile(path.join(outputDir, "placements.csv"), "\uFEFF" + [header, ...rows].join("\r\n"), "utf8");
 }

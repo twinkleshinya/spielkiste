@@ -16,7 +16,7 @@ import { OllamaVisionProvider } from "./OllamaVisionProvider.js";
 import { GeminiVideoProvider } from "./GeminiVideoProvider.js";
 import { CcSwitchVisionProvider } from "./CcSwitchVisionProvider.js";
 import { createPlacements } from "./PlacementEngine.js";
-import { SfxRenderer } from "./SfxRenderer.js";
+import { SfxRenderer, eventsForOutputMode } from "./SfxRenderer.js";
 import { probeAudio } from "./AudioLibraryIndexer.js";
 import { hydratePlacements } from "./HydratePlacements.js";
 import { buildEventTimeline } from "./EventTimelineBuilder.js";
@@ -278,7 +278,12 @@ export class SfxService {
       const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { ...creativeFields(run),signal: controller.signal, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
       if (parsed.analysisMode === "auto" && !["gemini", "ccswitch"].includes(result.mode)) throw new SfxError(`Gemini 未完成动作点位分析，请检查连接后重试。${result.warnings.slice(0, 2).join("；")}`);
       controller.signal.throwIfAborted();
-      run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events }); run.analysisMode = result.mode; run.warnings.push(...result.warnings);
+      run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
+      // The selected output is also an analysis scope. This prevents a
+      // "仅音效" run from creating music events and a "仅音乐" run from
+      // creating action/ambience candidates that can leak into exports.
+      run.events = eventsForOutputMode({ audioOutputMode: parsed.audioOutputMode }, run.events);
+      run.analysisMode = result.mode; run.warnings.push(...result.warnings);
       run.analysisReport = result.report; run.musicEnabled = parsed.musicEnabled; run.musicLibraryPath = musicLibrary;
       if (!parsed.musicEnabled) run.events = run.events.filter(e => e.category !== "music");
       if (parsed.analysisMode === "scene" || result.mode === "scene") run.events = buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });

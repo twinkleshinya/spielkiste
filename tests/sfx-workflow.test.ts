@@ -6,7 +6,7 @@ import {SfxRunStore,exportTimeline} from "../src/sfx/SfxRunStore.js";
 import {CreateRunSchema,EventSchema,PlacementSchema} from "../src/sfx/models.js";
 import {readConfig} from "../src/sfx/CcSwitchVisionProvider.js";
 import {SfxService} from "../src/sfx/SfxService.js";
-import {placementsForOutputMode} from "../src/sfx/SfxRenderer.js";
+import {placementsForOutputMode,eventsForOutputMode} from "../src/sfx/SfxRenderer.js";
 import {buildWorkflowReport} from "../src/sfx/WorkflowReport.js";
 import http from "node:http";
 import {handleSfxRequest} from "../src/ui/sfx-routes.js";
@@ -22,7 +22,7 @@ export async function testAudioOutputModes() {
   const all=CreateRunSchema.parse(base) as any;
   assert.equal(all.audioOutputMode,"all");assert.equal(all.musicEnabled,true);
   const sfx=CreateRunSchema.parse({...base,audioOutputMode:"sfx"}) as any;
-  assert.equal(sfx.audioOutputMode,"sfx");assert.equal(sfx.musicEnabled,true);
+  assert.equal(sfx.audioOutputMode,"sfx");assert.equal(sfx.musicEnabled,false,"仅音效模式必须关闭音乐分析和生成");
   const music=CreateRunSchema.parse({...base,audioOutputMode:"music"}) as any;
   assert.equal(music.audioOutputMode,"music");assert.equal(music.musicEnabled,true);
   const run:any={musicEnabled:true,audioOutputMode:"all"};
@@ -30,6 +30,9 @@ export async function testAudioOutputModes() {
   assert.deepEqual(placementsForOutputMode({...run,audioOutputMode:"all"},placements).map((p:any)=>p.id),["s","m"]);
   assert.deepEqual(placementsForOutputMode({...run,audioOutputMode:"sfx"},placements).map((p:any)=>p.id),["s"]);
   assert.deepEqual(placementsForOutputMode({...run,audioOutputMode:"music"},placements).map((p:any)=>p.id),["m"]);
+  const events=[{id:"s",category:"foley"},{id:"m",category:"music"},{id:"a",category:"ambience"}];
+  assert.deepEqual(eventsForOutputMode({audioOutputMode:"sfx"},events).map((e:any)=>e.id),["s","a"]);
+  assert.deepEqual(eventsForOutputMode({audioOutputMode:"music"},events).map((e:any)=>e.id),["m"]);
 }
 
 export async function testAiConfigCore() {

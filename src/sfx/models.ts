@@ -106,7 +106,13 @@ export const CreateRunSchema = z.object({...CreativeFields,
   input={...input,referenceWorks:referenceWorksFrom(input),keywordPreferences:input.keywordPreferences?.filter(p=>p.purpose!=="reference")};
   const workflowPreset=input.workflowPreset||(input.analysisMode==="auto"?"reference-v6":"custom");
   const audioOutputMode = input.audioOutputMode || "all";
-  return workflowPreset==="reference-v6"?{...input,workflowPreset,analysisMode:"auto" as const,autoRender:true,aiSelection:true,autoMix:true,audioOutputMode,musicEnabled:true,selectionScope:"selective" as const,originalGainDb:SFX_WORKFLOW.mix.originalGainDb}:{...input,workflowPreset,audioOutputMode};
+  // Output mode is a generation constraint. In "sfx" mode we do not even
+  // create music events/candidates; the renderer still enforces the filter
+  // for edit-preview and legacy runs.
+  const musicEnabled = workflowPreset === "reference-v6"
+    ? audioOutputMode !== "sfx"
+    : audioOutputMode === "sfx" ? false : input.musicEnabled;
+  return workflowPreset==="reference-v6"?{...input,workflowPreset,analysisMode:"auto" as const,autoRender:true,aiSelection:true,autoMix:true,audioOutputMode,musicEnabled,selectionScope:"selective" as const,originalGainDb:SFX_WORKFLOW.mix.originalGainDb}:{...input,workflowPreset,audioOutputMode,musicEnabled};
 });
 export class SfxError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export const round = (n: number) => Math.round(n * 1000) / 1000;

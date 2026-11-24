@@ -24,6 +24,13 @@ export function placementsForOutputMode<T extends { enabled: boolean; category: 
   });
 }
 
+export function eventsForOutputMode<T extends { category: string }>(run: Pick<SfxRun, "audioOutputMode"> , events: T[]): T[] {
+  const mode = run.audioOutputMode || "all";
+  if (mode === "sfx") return events.filter(event => event.category !== "music");
+  if (mode === "music") return events.filter(event => event.category === "music");
+  return events;
+}
+
 export class SfxRenderer {
   async renderPreview(run: SfxRun, outputDir: string,options:{preserveSavedMix?:boolean;preserveSourceEdits?:boolean;videoSource?:string;preservePlacementIds?:ReadonlySet<string>}={}) {
     const preserveSourceEdits=options.preserveSourceEdits ?? (options.preserveSavedMix||run.workflow?.operation==="automix"&&run.workflow.source==="reused");
