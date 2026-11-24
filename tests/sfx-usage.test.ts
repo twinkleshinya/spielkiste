@@ -35,3 +35,15 @@ export async function testSfxUsageIsolation() {
     assert.equal((await fs.readdir(path.join(root, "first", "usage-history"))).length, 2, "rerendering must keep the original model usage history");
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); await fs.rm(root, { recursive: true, force: true }); }
 }
+import { generationFetch } from "../src/sfx/ModelUsage.js";
+export async function testGenerationHttpKeepsCallerCancellation() {
+  const server=http.createServer((_req,res)=>{res.writeHead(200,{'content-type':'application/json'});res.write('{');});
+  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try {
+    const controller=new AbortController();
+    const response=await generationFetch(`http://127.0.0.1:${(server.address() as {port:number}).port}`,{signal:controller.signal});
+    const body=response.text();
+    controller.abort(new Error('user cancelled'));
+    await assert.rejects(body);
+  } finally {server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}
+}

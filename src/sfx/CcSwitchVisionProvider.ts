@@ -49,7 +49,7 @@ export class CcSwitchVisionProvider implements VideoUnderstandingProvider {
     return DescribedEventsResultSchema.parse(JSON.parse(stripJsonFence(text)));
   }
 
-  async describe(scenes: Scene[]): Promise<unknown[]> {
+  async describe(scenes: Scene[], signal?: AbortSignal): Promise<unknown[]> {
     const config = await readConfig(undefined,this.model,this.reasoningEffort);
     const available = scenes.filter(scene => scene.thumbnail).slice(0, 48);
     if (!available.length) throw new Error("CC Switch 没有可分析的关键帧");
@@ -59,8 +59,8 @@ export class CcSwitchVisionProvider implements VideoUnderstandingProvider {
 description 使用中文，query 使用简短英文文件名关键词，category 只能是 foley/impact/whoosh/ambience/other，最多 120 个事件；即使置信度较低但动作可见也要保留，时间精确到 0.01 秒。`;
     const images = await Promise.all(available.map(async scene => `data:image/jpeg;base64,${await fs.readFile(scene.thumbnail!).then(buffer => buffer.toString("base64"))}`));
     const text = config.wireApi === "responses"
-      ? await this.responses(config, prompt, images)
-      : await this.chatCompletions(config, prompt, images);
+      ? await this.responses(config, prompt, images, signal)
+      : await this.chatCompletions(config, prompt, images, signal);
     const parsed = z.object({ events: z.array(VisionEventSchema).max(120) }).parse(JSON.parse(stripJsonFence(text)));
     return parsed.events;
   }
