@@ -17,4 +17,6 @@ export async function testDescribedEventUiIsAnAddEventMode() {
   assert.match(js, /setAttribute\("aria-expanded", "false"\)/);
   assert.match(js, /addedEvents/);
   assert.match(js, /selectEvent\(addedEvents\[0\]\.id/);
+  assert.match(js, /正在提交补声分析/);
+  assert.doesNotMatch(js, /任务超过 30 分钟/);
 }

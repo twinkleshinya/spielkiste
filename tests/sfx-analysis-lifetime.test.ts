@@ -43,3 +43,9 @@ export async function testAnalysisFailureIncludesLastStage(){
     assert.equal(run.status,"failed");assert.match(run.error||"",/接触点复核 7\/43/);assert.match(run.error||"",/模型请求连接中断/);
   }finally{SfxVideoAnalyzer.prototype.analyze=original;await fs.rm(root,{recursive:true,force:true});}
 }
+
+export async function testDescribedAndReidentifyJobsHaveNoTotalDeadline(){
+  const source = await fs.readFile(path.resolve("src/sfx/SfxService.ts"), "utf8");
+  assert.doesNotMatch(source, /描述式补声超过 15 分钟/);
+  assert.doesNotMatch(source, /当前事件重新定位超过 10 分钟/);
+}
