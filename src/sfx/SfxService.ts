@@ -636,7 +636,6 @@ export class SfxService {
       delete child.render;
       await this.store.save(child);
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(new Error("描述式补声超过 15 分钟，已停止；父版本仍保留")), 15 * 60 * 1000);
       this.launch(child, async () => {
         try {
           const media = this.mediaFactory();
@@ -721,10 +720,7 @@ export class SfxService {
           child.progress = `已为“${input.description}”新增 ${addedEvents.length} 个音效点位并生成预览`;
           await exportTimeline(child, this.store.directory(child.id));
           await this.saveProjectVersion(child, "augment");
-        } finally {
-          clearTimeout(timer);
-          controller.abort();
-        }
+        } finally { controller.abort(); }
       }, "add-described-event");
       return { runId: child.id };
     } finally { this.locks.delete(id); }
@@ -911,7 +907,6 @@ export class SfxService {
       }
       await this.store.save(child);
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(new Error("当前事件重新定位超过 10 分钟，已停止；原版本仍保留")), 10 * 60 * 1000);
       this.launch(child, async () => {
         try {
           const media = this.mediaFactory();
@@ -989,10 +984,7 @@ export class SfxService {
           child.progress = result.confidence < .8 ? "点位已重新定位并生成预览，请人工复核" : "点位已重新定位并生成预览";
           await exportTimeline(child, this.store.directory(child.id));
           await this.saveProjectVersion(child, "reidentify");
-        } finally {
-          clearTimeout(timer);
-          controller.abort();
-        }
+        } finally { controller.abort(); }
       }, "reidentify-event");
       return { runId: child.id };
     } finally { this.locks.delete(id); }
