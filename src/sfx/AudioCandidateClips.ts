@@ -23,7 +23,7 @@ export class AudioCandidateClips implements AudioClipSource {
     const file = path.join(dir, `${createHash("sha256").update(asset.id).digest("hex").slice(0, 20)}.wav`);
     const inputs = segments.flatMap(s => ["-ss", String(s.start), "-t", String(s.end - s.start), "-i", asset.path]);
     const filter = segments.map((_, i) => `[${i}:a]aformat=sample_fmts=s16:sample_rates=16000:channel_layouts=mono,asetpts=PTS-STARTPTS[a${i}]`).join(";") + (segments.length > 1 ? `;${segments.map((_, i) => `[a${i}]`).join("")}concat=n=${segments.length}:v=0:a=1[out]` : "");
-    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", ...inputs, "-filter_complex", filter, "-map", segments.length > 1 ? "[out]" : "[a0]", "-vn", "-c:a", "pcm_s16le", "-ac", "1", "-ar", "16000", file], { timeout: 45000, maxBuffer: 2 * 1024 * 1024, cancelSignal: signal });
+    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", ...inputs, "-filter_complex", filter, "-map", segments.length > 1 ? "[out]" : "[a0]", "-vn", "-c:a", "pcm_s16le", "-ac", "1", "-ar", "16000", file], { maxBuffer: 2 * 1024 * 1024, cancelSignal: signal });
     signal?.throwIfAborted();
     const bytes = await fs.readFile(file);
     if (!music && segments.length === 1) asset.acoustics = measureCandidateAcoustics(bytes, start);

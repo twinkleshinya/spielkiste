@@ -69,7 +69,7 @@ export async function synthesizeStyle(prompt:string,model:string,effort:AiReason
   if(config.bearer&&config.bearer!=='PROXY_MANAGED')headers.authorization=`Bearer ${config.bearer}`;
   const responses=config.wireApi==='responses';
   const payload=responses?{model:config.model,reasoning:{effort},input:[{role:'user',content:prompt}],temperature:.1}:{model:config.model,reasoning_effort:effort,messages:[{role:'user',content:prompt}],temperature:.1};
-  const {response,body}=await modelJson(`${config.baseUrl.replace(/\/$/,'')}/${responses?'responses':'chat/completions'}`,{method:'POST',headers,body:JSON.stringify(payload),signal:AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(180000)])},'style-research',config.model);
+  const {response,body}=await modelJson(`${config.baseUrl.replace(/\/$/,'')}/${responses?'responses':'chat/completions'}`,{method:'POST',headers,body:JSON.stringify(payload),signal},'style-research',config.model);
   if(!response.ok)throw new Error(`Gemini 风格研究失败（HTTP ${response.status}），请检查 AI 连接。`);
   const text=body?.choices?.[0]?.message?.content||body?.output_text||body?.output?.flatMap((o:any)=>o.content||[]).filter((c:any)=>c.type==='output_text').map((c:any)=>c.text).join('\n');
   if(typeof text!=='string')throw new Error('Gemini 未返回风格研究结果');

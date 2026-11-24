@@ -1,3 +1,4 @@
+import { Agent } from "undici";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -7,6 +8,13 @@ type RequestUsage = { phase: string; requestedModel: string; reasoningEffort?: s
 type JobUsage = { version: number; runId: string; operation: string; startedAt: string; elapsedMs: number; success: boolean; phases: { phase: string; elapsedMs: number }[]; requests: RequestUsage[] };
 const context = new AsyncLocalStorage<JobUsage>();
 const count = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+
+// Scoped to generation HTTP calls. Do not change the app's global dispatcher.
+// Zero disables header/body waiting limits; caller cancellation still applies.
+const generationDispatcher = new Agent({headersTimeout: 0, bodyTimeout: 0});
+export function generationFetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, {...init, dispatcher: generationDispatcher} as RequestInit);
+}
 
 /** Only usage counters, request identifiers and timings are persisted. */
 export async function modelJson(url: string, init: RequestInit, phase: string, model: string): Promise<{ response: Response; body: any }> {
@@ -18,7 +26,7 @@ export async function modelJson(url: string, init: RequestInit, phase: string, m
     if (effort === "high" || effort === "xhigh") entry.reasoningEffort = effort;
   } catch { /* Usage recording must never prevent a model request. */ }
   try {
-    const response = await fetch(url, init);
+    const response = await generationFetch(url, init);
     entry.status = response.status;
     const body = await response.json().catch(() => undefined);
     entry.requestId = response.headers.get("x-request-id") || response.headers.get("request-id") || (typeof body?.id === "string" ? body.id : undefined);

@@ -10,7 +10,7 @@ export async function inspectAudioCandidate(asset: AudioAsset, signal?: AbortSig
   if (asset.rmsDb !== undefined && asset.onset !== undefined && asset.duration !== undefined) return true;
   try {
     if (asset.duration === undefined) Object.assign(asset, await probeAudio(asset.path));
-    const { stderr } = await runFfmpeg(["-hide_banner", "-nostats", "-i", asset.path, "-t", "40", "-vn", "-ac", "1", "-ar", "12000", "-af", "silencedetect=noise=-50dB:d=0.015,volumedetect", "-f", "null", "-"], { timeout: 45000, maxBuffer: 2 * 1024 * 1024, cancelSignal: signal });
+    const { stderr } = await runFfmpeg(["-hide_banner", "-nostats", "-i", asset.path, "-t", "40", "-vn", "-ac", "1", "-ar", "12000", "-af", "silencedetect=noise=-50dB:d=0.015,volumedetect", "-f", "null", "-"], { maxBuffer: 2 * 1024 * 1024, cancelSignal: signal });
     const mean = /mean_volume:\s*(-?inf|[-\d.]+)/.exec(stderr)?.[1];
     const peak = /max_volume:\s*(-?inf|[-\d.]+)/.exec(stderr)?.[1];
     const rmsDb = mean === "-inf" ? -100 : Number(mean), peakDb = peak === "-inf" ? -100 : Number(peak);

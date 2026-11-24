@@ -32,7 +32,7 @@ export class CcSwitchAudioProvider implements AudioSelectionModel {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (config.bearer && config.bearer !== "PROXY_MANAGED") headers.authorization = `Bearer ${config.bearer}`;
     // Audio uses the gateway's OpenAI-compatible audio input contract, tested independently of its Responses image path.
-    const { response, body } = await modelJson(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, { method: "POST", headers, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000), body: JSON.stringify({ model: config.model, reasoning_effort: config.reasoningEffort || "high", temperature: .1, messages: [{ role: "user", content }] }) }, phase, config.model);
+    const { response, body } = await modelJson(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, { method: "POST", headers, signal, body: JSON.stringify({ model: config.model, reasoning_effort: config.reasoningEffort || "high", temperature: .1, messages: [{ role: "user", content }] }) }, phase, config.model);
     if (!response.ok) throw new Error(`Gemini 音频选材请求失败（HTTP ${response.status}）`);
     const value = body.choices?.[0]?.message?.content;
     const text = typeof value === "string" ? value : Array.isArray(value) ? value.map(part => part.text || "").join("\n") : "";

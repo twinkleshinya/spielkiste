@@ -10,7 +10,7 @@ import {scanWindowsLibrary} from "./WindowsLibraryScan.js";
 
 type AudioMetadata = { duration: number; channels?: number; sampleRate?: number };
 export async function probeAudio(file: string): Promise<AudioMetadata> {
-  const { stdout } = await runFfmpeg(["__ffprobe__", "-v", "error", "-show_format", "-show_streams", "-of", "json", file], { timeout: 30000 });
+  const { stdout } = await runFfmpeg(["__ffprobe__", "-v", "error", "-show_format", "-show_streams", "-of", "json", file], { });
   const data = JSON.parse(stdout);
   const audio = data.streams?.find((s: { codec_type: string }) => s.codec_type === "audio");
   const duration = Number(audio?.duration ?? data.format?.duration);

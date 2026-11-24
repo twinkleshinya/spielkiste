@@ -49,7 +49,7 @@ export class SfxRenderer {
       const tracks: string[] = [];
       const base = path.join(temp, "base.wav");
       const baseInput = metadata.hasAudio&&!run.originalMuted ? ["-i", run.videoPath, "-map", "0:a:0", "-af", `volume=${run.originalGainDb}dB,apad`] : ["-f", "lavfi", "-i", `anullsrc=r=${rate}:cl=stereo`];
-      await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", ...baseInput, "-t", String(run.duration), "-ar", rate, "-ac", channels, "-c:a", "pcm_f32le", base], { timeout: 600000 });
+      await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", ...baseInput, "-t", String(run.duration), "-ar", rate, "-ac", channels, "-c:a", "pcm_f32le", base], { });
       tracks.push(base);
       for (let i = 0; i < active.length; i += 16) {
         const batch = active.slice(i, i + 16); const args: string[] = ["-hide_banner", "-loglevel", "error", "-y"];
@@ -66,7 +66,7 @@ export class SfxRenderer {
         filters.push(`${batch.map((_, j) => `[a${j}]`).join("")}amix=inputs=${batch.length}:normalize=0:duration=longest,apad=whole_len=${sampleCount},atrim=end_sample=${sampleCount},asetpts=N/SR/TB[mix]`);
         const filterFile = path.join(temp, `filter-${i}.txt`); await fs.writeFile(filterFile, filters.join(";"));
         const track = path.join(temp, `track-${i}.wav`);
-        await runFfmpeg( [...args, "-filter_complex_script", filterFile, "-map", "[mix]", "-t", String(run.duration), "-ar", rate, "-ac", channels, "-c:a", "pcm_f32le", track], { timeout: 600000 });
+        await runFfmpeg( [...args, "-filter_complex_script", filterFile, "-map", "[mix]", "-t", String(run.duration), "-ar", rate, "-ac", channels, "-c:a", "pcm_f32le", track], { });
         tracks.push(track);
       }
       // Tree reduction keeps file descriptors bounded even for hundreds of placements.
@@ -75,7 +75,7 @@ export class SfxRenderer {
         const next: string[] = [];
         for (let i = 0; i < layer.length; i += 16) {
           const group = layer.slice(i, i + 16); const out = path.join(temp, `mix-${generation}-${i}.wav`);
-          await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", ...group.flatMap(f => ["-i", f]), "-filter_complex", `${group.map((_, j) => `[${j}:a]`).join("")}amix=inputs=${group.length}:normalize=0:duration=longest[mix]`, "-map", "[mix]", "-t", String(run.duration), "-c:a", "pcm_f32le", out], { timeout: 600000 });
+          await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", ...group.flatMap(f => ["-i", f]), "-filter_complex", `${group.map((_, j) => `[${j}:a]`).join("")}amix=inputs=${group.length}:normalize=0:duration=longest[mix]`, "-map", "[mix]", "-t", String(run.duration), "-c:a", "pcm_f32le", out], { });
           next.push(out);
         }
         layer = next; generation++;
@@ -84,7 +84,7 @@ export class SfxRenderer {
       let master = "alimiter=limit=0.95:level=0:latency=1";
       const loudness=`I=${run.mixReport?.targetLufs??SFX_WORKFLOW.mix.targetLufs}:TP=${SFX_WORKFLOW.mix.truePeakDb}:LRA=${SFX_WORKFLOW.mix.loudnessRange}`;
       if (planned) {
-        const measured = await runFfmpeg(["-hide_banner", "-i", layer[0], "-af", `loudnorm=${loudness}:print_format=json`, "-f", "null", "-"], { timeout: 600000 });
+        const measured = await runFfmpeg(["-hide_banner", "-i", layer[0], "-af", `loudnorm=${loudness}:print_format=json`, "-f", "null", "-"], { });
         const match = measured.stderr.match(/\{\s*"input_i"[\s\S]*?\}/);
         const levels = match ? JSON.parse(match[0]) as Record<string, string> : undefined;
         const finite = levels && ["input_i", "input_tp", "input_lra", "input_thresh", "target_offset"].every(k => Number.isFinite(Number(levels[k])));
@@ -100,9 +100,9 @@ export class SfxRenderer {
           }
         }else if(run.mixReport)run.mixReport.mastering="peak-only";
       }
-      await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", "-i", layer[0], "-af", master, "-t", String(run.duration), "-ar", rate, "-ac", channels, "-c:a", output.audioCodec, tempAudio], { timeout: 600000 });
+      await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", "-i", layer[0], "-af", master, "-t", String(run.duration), "-ar", rate, "-ac", channels, "-c:a", output.audioCodec, tempAudio], { });
       if (run.mixReport && planned) {
-        const measured = await runFfmpeg(["-hide_banner", "-i", tempAudio, "-af", `loudnorm=${loudness}:print_format=json`, "-f", "null", "-"], { timeout: 600000 });
+        const measured = await runFfmpeg(["-hide_banner", "-i", tempAudio, "-af", `loudnorm=${loudness}:print_format=json`, "-f", "null", "-"], { });
         const match = measured.stderr.match(/\{\s*"input_i"[\s\S]*?\}/);
         const levels = match ? JSON.parse(match[0]) as Record<string, string> : {};
         run.mixReport.measuredLufs = Number.isFinite(Number(levels.input_i)) ? Number(levels.input_i) : null;
@@ -112,11 +112,11 @@ export class SfxRenderer {
       let copiedVideo=false;
       if(options.videoSource) {
         try {
-          await runFfmpeg(["-hide_banner","-loglevel","error","-y","-i",options.videoSource,"-i",tempAudio,"-map","0:v:0","-map","1:a:0","-t",String(run.duration),"-c:v","copy","-c:a",output.previewAudioCodec,"-b:a","192k","-movflags","+faststart",tempVideo],{timeout:600000});
+          await runFfmpeg(["-hide_banner","-loglevel","error","-y","-i",options.videoSource,"-i",tempAudio,"-map","0:v:0","-map","1:a:0","-t",String(run.duration),"-c:v","copy","-c:a",output.previewAudioCodec,"-b:a","192k","-movflags","+faststart",tempVideo],{});
           copiedVideo=true;
         } catch { /* Missing/incompatible parent preview: encode from the source video. */ }
       }
-      if(!copiedVideo)await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", "-i", run.videoPath, "-i", tempAudio, "-map", "0:v:0", "-map", "1:a:0", "-t", String(run.duration), "-c:v", output.videoCodec, "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-c:a", output.previewAudioCodec, "-b:a", "192k", "-movflags", "+faststart", tempVideo], { timeout: 1200000 });
+      if(!copiedVideo)await runFfmpeg( ["-hide_banner", "-loglevel", "error", "-y", "-i", run.videoPath, "-i", tempAudio, "-map", "0:v:0", "-map", "1:a:0", "-t", String(run.duration), "-c:v", output.videoCodec, "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-c:a", output.previewAudioCodec, "-b:a", "192k", "-movflags", "+faststart", tempVideo], { });
       await fs.copyFile(tempAudio, audio); await fs.copyFile(tempVideo, video);
       await exportTimeline({...run,render:{audio,video,revision:run.revision}}, outputDir);
       return { audio, video, revision: run.revision };

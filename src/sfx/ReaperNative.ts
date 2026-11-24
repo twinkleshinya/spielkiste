@@ -113,7 +113,7 @@ reaper.defer(function() reaper.Main_OnCommand(40004,0) end)
 `;
 }
 async function nativeScript(binary:string,config:string,script:string,status:string) {
-  try {await execa(binary,["-newinst","-nosplash","-noactivate","-ignoreerrors","-cfgfile",config,script],{windowsHide:true,timeout:120000,killSignal:"SIGKILL"});}
+  try {await execa(binary,["-newinst","-nosplash","-noactivate","-ignoreerrors","-cfgfile",config,script],{windowsHide:true,killSignal:"SIGKILL"});}
   catch(error) {throw new Error(`REAPER 自动处理失败：${(error as Error).message.slice(0,500)}`);}
   let state:NativeState;
   try {state=JSON.parse(await fs.readFile(status,"utf8"));}catch {throw new Error("REAPER 未完成自动脚本，请检查本机 REAPER 是否存在首次启动或授权提示。");}
@@ -181,7 +181,7 @@ state.steps={"import-originals"}
         if(settings.channelMode!=="preserve")lines.push(` NCH ${settings.channelMode==="mono"?1:2}`);
         lines.push(" <OUTFMT",`  ${reaperWaveFormat(settings.audioFormat)}`," >",">");
         await fs.writeFile(job,lines.join("\r\n")+"\r\n");
-        await execa(binary,["-newinst","-nosplash","-noactivate","-cfgfile",config,"-batchconvert",job],{timeout:1200000,windowsHide:true,killSignal:"SIGKILL"});
+        await execa(binary,["-newinst","-nosplash","-noactivate","-cfgfile",config,"-batchconvert",job],{windowsHide:true,killSignal:"SIGKILL"});
         const log=await fs.readFile(job+".log","utf8");
         if(!/^OK\s*$/m.test(log)||/^FAIL|^ERROR|Can't open/m.test(log))throw new Error(`REAPER 批量转换失败：${log.slice(-700)}`);
         await fs.mkdir(path.join(directory,"Audio","Converted"),{recursive:true});

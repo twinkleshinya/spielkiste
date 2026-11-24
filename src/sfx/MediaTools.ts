@@ -15,17 +15,17 @@ export interface MediaSource {
 export class MediaTools implements MediaSource {
   async sampleFrames(file: string, start: number, end: number, fps: number, outputDir: string, signal?: AbortSignal, width = 512): Promise<Scene[]> {
     signal?.throwIfAborted(); await fs.mkdir(outputDir, { recursive: true });
-    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(start), "-i", file, "-t", String(end - start), "-vf", `fps=${fps},scale=${width}:-2`, path.join(outputDir, "raw-%05d.jpg")], { timeout: 180000, cancelSignal: signal });
+    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(start), "-i", file, "-t", String(end - start), "-vf", `fps=${fps},scale=${width}:-2`, path.join(outputDir, "raw-%05d.jpg")], { cancelSignal: signal });
     const files = (await fs.readdir(outputDir)).filter(f => /^raw-\d+\.jpg$/.test(f)).sort();
     const frames = files.map((file, i) => ({ start: round(start + i / fps), end: round(Math.min(end, start + (i + 1) / fps)), thumbnail: path.join(outputDir, `stamp-${String(i).padStart(5, "0")}.jpg`) }));
     const manifest = path.join(outputDir, "labels.json");
     await fs.writeFile(manifest, JSON.stringify(frames.map((f, i) => ({ input: path.join(outputDir, files[i]), output: f.thumbnail, label: `ABSOLUTE TIME ${f.start.toFixed(3)}s` }))));
-    await execa("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", appResource("scripts/stamp-sfx-frames.ps1"), "-Manifest", manifest], { timeout: 120000, windowsHide: true, cancelSignal: signal });
+    await execa("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", appResource("scripts/stamp-sfx-frames.ps1"), "-Manifest", manifest], { windowsHide: true, cancelSignal: signal });
     signal?.throwIfAborted(); return frames.filter(f => f.start < f.end);
   }
   async inspect(file: string): Promise<MediaInspection> {
     try {
-      const { stdout } = await runFfmpeg(["__ffprobe__", "-v", "error", "-show_format", "-show_streams", "-of", "json", file], { timeout: 30000 });
+      const { stdout } = await runFfmpeg(["__ffprobe__", "-v", "error", "-show_format", "-show_streams", "-of", "json", file], { });
       const data = JSON.parse(stdout);
       if (!data.streams?.some((s: { codec_type: string }) => s.codec_type === "video")) throw new Error("文件不包含视频画面");
       const duration = Number(data.format?.duration);
@@ -40,12 +40,12 @@ export class MediaTools implements MediaSource {
     }
   }
   async scenes(file: string): Promise<number[]> {
-    const { stderr } = await runFfmpeg(["-hide_banner", "-i", file, "-vf", "scale=320:-2,select='gt(scene,0.30)',showinfo", "-an", "-f", "null", "-"], { timeout: 600000, maxBuffer: 16 * 1024 * 1024 });
+    const { stderr } = await runFfmpeg(["-hide_banner", "-i", file, "-vf", "scale=320:-2,select='gt(scene,0.30)',showinfo", "-an", "-f", "null", "-"], { maxBuffer: 16 * 1024 * 1024 });
     return [...stderr.matchAll(/pts_time:([\d.]+)/g)].map(m => Number(m[1]));
   }
   async thumbnail(file: string, time: number, output: string) {
     await fs.mkdir(path.dirname(output), { recursive: true });
-    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(time), "-i", file, "-frames:v", "1", "-vf", "scale=768:-2", output], { timeout: 60000 });
+    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(time), "-i", file, "-frames:v", "1", "-vf", "scale=768:-2", output], { });
     return output;
   }
 }

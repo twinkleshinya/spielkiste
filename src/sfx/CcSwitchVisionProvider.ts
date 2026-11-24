@@ -73,7 +73,7 @@ description 使用中文，query 使用简短英文文件名关键词，category
 
   private async responses(config: CcSwitchConfig, prompt: string, images: string[], signal?: AbortSignal, labels?: number[]): Promise<string> {
     const { response, body } = await modelJson(`${config.baseUrl.replace(/\/$/, "")}/responses`, {
-      method: "POST", headers: this.headers(config), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(180000)]) : AbortSignal.timeout(180000),
+      method: "POST", headers: this.headers(config), signal,
       body: JSON.stringify({ model: config.model, reasoning: { effort: config.reasoningEffort || "high" }, input: [{ role: "user", content: [{ type: "input_text", text: prompt }, ...images.flatMap((image_url, i) => labels ? [{ type: "input_text", text: `ABSOLUTE TIME ${labels[i].toFixed(3)} seconds` }, { type: "input_image", image_url }] : [{ type: "input_image", image_url }])] }], temperature: 0.1 })
     }, "video-timing", config.model);
     if (!response.ok) throw new Error(`CC Switch Responses 请求失败（HTTP ${response.status}），请检查本机网关连接。`);
@@ -82,7 +82,7 @@ description 使用中文，query 使用简短英文文件名关键词，category
 
   private async chatCompletions(config: CcSwitchConfig, prompt: string, images: string[], signal?: AbortSignal, labels?: number[]): Promise<string> {
     const { response, body } = await modelJson(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST", headers: this.headers(config), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(180000)]) : AbortSignal.timeout(180000),
+      method: "POST", headers: this.headers(config), signal,
       body: JSON.stringify({ model: config.model, reasoning_effort: config.reasoningEffort || "high", temperature: 0.1, messages: [{ role: "user", content: [{ type: "text", text: prompt }, ...images.flatMap((image_url, i) => labels ? [{ type: "text", text: `ABSOLUTE TIME ${labels[i].toFixed(3)} seconds` }, { type: "image_url", image_url: { url: image_url } }] : [{ type: "image_url", image_url: { url: image_url } }])] }] })
     }, "video-timing", config.model);
     if (!response.ok) throw new Error(`CC Switch Chat Completions 请求失败（HTTP ${response.status}），请检查本机网关连接。`);

@@ -8,10 +8,10 @@ import { analyzeTemporal, AnalysisOptions, FrameDirector } from "./TemporalAnaly
 export const VisionEventSchema = z.object({ start: z.number().finite().nonnegative(), end: z.number().finite().positive(), type: z.string(), description: z.string().max(2000), query: z.string().max(2000), category: CategorySchema, confidence: z.number().min(0).max(1) });
 export interface VideoUnderstandingProvider {
   readonly kind?: "ollama" | "gemini" | "ccswitch";
-  describe(scenes: Scene[]): Promise<unknown[]>;
+  describe(scenes: Scene[], signal?: AbortSignal): Promise<unknown[]>;
   analyzeFrames?: FrameDirector["analyzeFrames"];
   /** Optional full-video path. Providers that support temporal video input should implement this. */
-  describeVideo?(video: string, scenes: Scene[]): Promise<unknown[]>;
+  describeVideo?(video: string, scenes: Scene[], signal?: AbortSignal): Promise<unknown[]>;
 }
 export class SfxVideoAnalyzer {
   constructor(private media: MediaSource = new MediaTools(), private provider?: VideoUnderstandingProvider) {}
@@ -43,8 +43,8 @@ export class SfxVideoAnalyzer {
     if (this.provider) {
       try {
         const proposed = this.provider.describeVideo
-          ? await this.provider.describeVideo(video, sampledScenes)
-          : await this.provider.describe(sampledScenes);
+          ? await this.provider.describeVideo(video, sampledScenes, options.signal)
+          : await this.provider.describe(sampledScenes, options.signal);
         if (!Array.isArray(proposed)) throw new Error("模型未返回事件数组");
         for (const item of proposed.slice(0, 500)) {
           const v = VisionEventSchema.parse(item);
