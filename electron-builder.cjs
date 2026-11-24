@@ -9,7 +9,8 @@ module.exports = {
     {from:'docs/Spielkiste-团队使用说明.md',to:'使用说明.md'},
     {from:'docs/Spielkiste-使用指南.html',to:'Spielkiste-使用指南.html'},
     {from:'docs/spielkiste-guide-assets',to:'spielkiste-guide-assets'}],
-  win:{icon:'src/ui/public/assets/spielkiste.ico',target:['nsis'],signExecutable:false},
+  win:{icon:'src/ui/public/assets/spielkiste.ico',target:['nsis','portable'],signExecutable:false},
+  portable:{artifactName:'Spielkiste-${version}-Portable.${ext}'},
   nsis:{oneClick:false,allowToChangeInstallationDirectory:true,include:'desktop/installer.nsh',createDesktopShortcut:true,shortcutName:'Spielkiste',deleteAppDataOnUninstall:false},
   artifactName:'Spielkiste-${version}-Setup.${ext}',
   publish:null
