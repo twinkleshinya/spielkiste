@@ -123,7 +123,8 @@ export class SfxService {
   private audioProvider(run:SfxRun) {return new CcSwitchAudioProvider(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high");}
   async status(id: string) {
     const run = this.failedWrites.get(id) || this.active.get(id) || await this.readRun(id);
-    return { id: run.id, status: run.status, progress: run.progress, error: run.error, revision: run.revision };
+    const finishing = this.pending.has(id) && !["analyzing", "rendering"].includes(run.status);
+    return { id: run.id, status: finishing ? "analyzing" : run.status, progress: finishing ? "正在保存项目版本与生成记录…" : run.progress, error: run.error, revision: run.revision };
   }
   async compare(localId?: string, geminiId?: string): Promise<SfxComparison> {
     const ids = localId && geminiId ? { localId, geminiId } : await this.defaultComparisonIds();

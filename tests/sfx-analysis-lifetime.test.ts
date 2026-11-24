@@ -50,3 +50,18 @@ export async function testDescribedAndReidentifyJobsHaveNoTotalDeadline(){
   await testAddDescribedEventApiLocatesAndPreservesExistingTimeline(true);
   await testLocateEventApiPreservesParentAndUsesOnlyTiming(true);
 }
+export async function testReadyStatusWaitsForFinalSave() {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-save-state-'));
+  let release!:()=>void;
+  const saving=new Promise<void>(resolve=>{release=resolve;});
+  const service=new SfxService(root);
+  const run=await service.store.createRun({videoPath:path.join(root,'video.mp4'),libraryPath:root});
+  try {
+    (service as any).launch(run,async()=>{run.status='ready';run.progress='已生成';await saving;await service.store.save(run);});
+    const pending=await service.status(run.id);
+    assert.equal(pending.status,'analyzing','ready must not be advertised before final writes release the task');
+    assert.match(pending.progress||'',/保存/);
+    release();await service.waitForIdle(run.id);
+    assert.equal((await service.status(run.id)).status,'ready');
+  }finally{release();await service.waitForIdle(run.id);await fs.rm(root,{recursive:true,force:true});}
+}

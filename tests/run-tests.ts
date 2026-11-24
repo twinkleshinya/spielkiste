@@ -3,8 +3,8 @@ import {testKeywordRanking,testKeywordPlannerScope,testKeywordPersistence,testGe
 import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBoundaries,testExclusionsPersistenceAndManualSelection,testExclusionsHttpRoutes} from "./sfx-library-exclusions.test.js";
 import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute,testFailedGenerationShowsCauseAndAllowsRetry} from "./sfx-edit-preview-ui.test.js";
 import assert from "node:assert/strict";
-import {testAnalysisCanProgressPastThirtyMinutes,testAnalysisFailureIncludesLastStage,testDescribedAndReidentifyJobsHaveNoTotalDeadline} from "./sfx-analysis-lifetime.test.js";
-await testAnalysisCanProgressPastThirtyMinutes();await testAnalysisFailureIncludesLastStage();await testDescribedAndReidentifyJobsHaveNoTotalDeadline();
+import {testAnalysisCanProgressPastThirtyMinutes,testAnalysisFailureIncludesLastStage,testReadyStatusWaitsForFinalSave,testDescribedAndReidentifyJobsHaveNoTotalDeadline} from "./sfx-analysis-lifetime.test.js";
+await testAnalysisCanProgressPastThirtyMinutes();await testAnalysisFailureIncludesLastStage();await testDescribedAndReidentifyJobsHaveNoTotalDeadline();await testReadyStatusWaitsForFinalSave();
 import { testDirectorMusicSchema, testDirectorSemanticSafety, testMusicCandidatesRequireIndependentLibrary, testDirectorContinuousPlacements, testDirectorTemporalMerging, testDirectorWorkflow } from "./sfx-director.test.js";
 import { testSfxLibrary, testSfxLazyLibrary, testLibraryScanBoundedConcurrency, testSfxAnalysis, testSfxRendering, testSfxApi } from "./sfx-tests.js";
 import { testSfxImportPaths } from "./sfx-import.test.js";
