@@ -11,12 +11,12 @@ export async function testSfxProjectVersioning() {
     const service = new SfxService(path.join(root, "output"));
     const projectId = crypto.randomUUID();
     const first = await service.store.createRun({ projectId, name: "Boss 编辑1", videoPath: path.join(root, "boss.mp4"), libraryPath: root });
-    Object.assign(first, { status: "ready", duration: 2 });
+    Object.assign(first, { status: "ready", duration: 2, render: { video: path.join(root, "preview.mp4"), audio: path.join(root, "preview.wav"), revision: 0 } });
     await service.store.save(first);
     await service.projects.registerRun(first, "create");
 
     const second = await service.store.createRun({ projectId, name: "Boss 编辑2", videoPath: first.videoPath, libraryPath: root });
-    Object.assign(second, { status: "ready", duration: 2, revision: 1, parentRunId: first.id });
+    Object.assign(second, { status: "ready", duration: 2, revision: 1, parentRunId: first.id, render: { video: path.join(root, "preview.mp4"), audio: path.join(root, "preview.wav"), revision: 1 } });
     await service.store.save(second);
     await service.projects.registerRun(second, "edit");
 
@@ -46,6 +46,18 @@ export async function testSfxProjectVersioning() {
     assert.equal(restoredRun.revision, 2);
     assert.equal((await service.projects.listVersions(projectId)).length, 3);
     assert.equal((await service.readRun(second.id)).revision, 1, "回退不能改写目标旧版本");
+
+    const namedVersion = await service.saveVersion(projectId, "声音锁定版", restored.runId);
+    assert.equal(namedVersion.projectId, projectId);
+    assert.notEqual(namedVersion.runId, restored.runId, "保存为新版本必须创建新的版本记录");
+    const namedRun = await service.readRun(namedVersion.runId);
+    assert.equal(namedRun.name, "声音锁定版");
+    assert.equal(namedRun.parentRunId, restored.runId);
+    assert.equal(namedRun.revision, 3);
+    assert.equal(namedRun.status, "ready");
+    assert.deepEqual(namedRun.events, (await service.readRun(restored.runId)).events, "命名版本要保留当前点位");
+    assert.deepEqual(namedRun.placements, (await service.readRun(restored.runId)).placements, "命名版本要保留当前贴片");
+    assert.equal((await service.projects.listVersions(projectId)).length, 4);
 
     let syncCalls = 0;
     let syncOptions: unknown;

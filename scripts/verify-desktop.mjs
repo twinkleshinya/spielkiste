@@ -36,7 +36,16 @@ try{
  const preview=await wait(edited.runId);assert.ok(preview.render);for(const [key,value] of Object.entries(placement))assert.deepEqual(preview.placements[0][key],value,key);report.checks.push('explicit edit preview renders with saved placement and fades');
  const probe=JSON.parse((await exec(ffprobe,['-v','error','-show_format','-show_streams','-of','json',preview.render.video],{windowsHide:true})).stdout);assert.ok(probe.streams.some(s=>s.codec_type==='video'));assert.ok(probe.streams.some(s=>s.codec_type==='audio'));report.preview={duration:probe.format.duration,video:preview.render.video};
  const ranged=await fetch(base+`/api/sfx/runs/${preview.id}/media/preview`,{headers:{range:'bytes=0-1023'}});assert.equal(ranged.status,206);report.rangeStatus=ranged.status;
- const projectId=preview.projectId;await api(`/api/sfx/projects/${projectId}/rename`,{name:'验收已重命名'});
+ const projectId=preview.projectId;
+ const namedVersion=await api(`/api/sfx/projects/${projectId}/save-version`,{name:'验收命名版本',runId:preview.id});
+ assert.notEqual(namedVersion.runId,preview.id);
+ const namedRun=await api(`/api/sfx/runs/${namedVersion.runId}`);
+ assert.deepEqual(namedRun.placements,preview.placements);assert.deepEqual(namedRun.events,preview.events);
+ assert.deepEqual(await fs.readFile(namedRun.render.video),await fs.readFile(preview.render.video));
+ const versions=await api(`/api/sfx/projects/${projectId}/versions`);
+ assert.equal(versions.find(version=>version.runId===namedRun.id)?.name,'验收命名版本');
+ report.checks.push('named local version saves placements, events and identical preview without overwriting parent');
+ await api(`/api/sfx/projects/${projectId}/rename`,{name:'验收已重命名'});
  const saved=await api(`/api/sfx/projects/${projectId}/save-as`,{name:'验收副本'});assert.notEqual(saved.projectId,projectId);
  const restored=await api(`/api/sfx/projects/${projectId}/restore`,{runId:run.id});assert.equal((await wait(restored.runId)).placements.length,0);report.checks.push('local rename, save-as and historical rollback without remote');
  const muted=await api(`/api/sfx/runs/${preview.id}/edit-preview`,{revision:preview.revision,events:[{...event,muted:true}],placements:[placement],originalGainDb:-60,originalMuted:true,musicEnabled:false});assert.ok((await wait(muted.runId)).render);report.checks.push('muted event creates valid silent preview');

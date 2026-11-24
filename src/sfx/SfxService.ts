@@ -363,6 +363,64 @@ export class SfxService {
     }finally {this.locks.delete(id);}
   }
 
+  async saveVersion(projectId: string, name: string, sourceRunId?: string) {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length > 120) throw new SfxError("版本名称不能为空且不能超过 120 个字符");
+    const project = await this.projects.project(projectId);
+    const source = await this.readRun(sourceRunId || project.currentRunId);
+    if ((source.projectId || this.projects.deriveProjectId(source)) !== projectId) throw new SfxError("当前版本不属于此项目", 409);
+    if (source.status !== "ready" || !source.render || source.render.revision !== source.revision) {
+      throw new SfxError("请先点击“更新视频预览”，再保存为新版本", 409);
+    }
+    const child = await this.store.createRun({
+      projectId,
+      name: trimmed,
+      videoPath: source.videoPath,
+      libraryPath: source.libraryPath,
+      libraryPreferences: source.libraryPreferences,
+      keywordPreferences: source.keywordPreferences,
+      excludedLibraryPaths: source.excludedLibraryPaths,
+      excludedKeywords: source.excludedKeywords,
+      workflowPreset: source.workflow?.presetId || "custom",
+      musicLibraryPath: source.musicLibraryPath,
+      musicEnabled: source.musicEnabled !== false,
+      audioOutputMode: source.audioOutputMode || "all",
+      aiSelection: source.aiSelection === true,
+      autoMix: source.autoMix !== false,
+      originalGainDb: source.originalGainDb,
+      selectionScope: source.selectionScope || "selective",
+      reusePreserved: false
+    });
+    const versions = await this.projects.listVersions(projectId);
+    const nextRevision = Math.max(source.revision, ...versions.map(version => version.revision)) + 1;
+    Object.assign(child, structuredClone(source), {
+      id: child.id,
+      projectId,
+      name: trimmed,
+      createdAt: child.createdAt,
+      revision: nextRevision,
+      parentRunId: source.id,
+      status: "ready",
+      progress: "已保存为新版本",
+      error: undefined,
+      render: source.render ? { ...source.render, revision: nextRevision } : undefined
+    });
+    child.workflow = structuredClone(source.workflow || workflowSnapshot("custom", {
+      analysisMode: source.analysisMode,
+      selectionScope: source.selectionScope || "selective",
+      musicEnabled: source.musicEnabled !== false,
+      aiSelection: source.aiSelection === true,
+      autoMix: source.autoMix === true,
+      originalGainDb: source.originalGainDb,
+      audioOutputMode: source.audioOutputMode || "all"
+    }));
+    Object.assign(child.workflow, { operation: "save", timing: "reused", selection: "reused", source: "reused" });
+    child.workflow.options = { ...child.workflow.options, savedFromRunId: source.id, versionName: trimmed };
+    await exportTimeline(child, this.store.directory(child.id));
+    const result = await this.saveProjectVersion(child, "save");
+    return { runId: child.id, projectId, git: result.git };
+  }
+
   async renameProject(projectId: string, name: string) {
     return this.projects.rename(projectId, name);
   }

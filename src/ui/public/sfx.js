@@ -379,7 +379,7 @@ async function refreshHistory() {
 }
 async function loadVersionHistory() {
   const picker=$("version-history"); if(!picker||!run?.projectId)return;
-  try { const versions=await api(`/api/sfx/projects/${run.projectId}/versions`); picker.replaceChildren(new Option(`当前版本（${run.revision}）`, run.id)); versions.forEach(v=>{if(v.runId!==run.id)picker.add(new Option(`版本 ${v.revision} · ${v.operation||"保存"} · ${new Date(v.createdAt).toLocaleString()}${v.hasPreview?" · 有预览":""}`,v.runId));}); picker.value=run.id; } catch(e) { status(`版本历史暂不可用：${e.message}`,true); }
+  try { const versions=await api(`/api/sfx/projects/${run.projectId}/versions`); picker.replaceChildren(new Option(`当前版本 · ${run.name || `版本 ${run.revision}`}`, run.id)); versions.forEach(v=>{if(v.runId!==run.id)picker.add(new Option(`${v.name || `版本 ${v.revision}`} · ${v.operation||"保存"} · ${new Date(v.createdAt).toLocaleString()}${v.hasPreview?" · 有预览":""}`,v.runId));}); picker.value=run.id; } catch(e) { status(`版本历史暂不可用：${e.message}`,true); }
 }
 async function projectAction(action, body) {
   if(!run||busy)return;
@@ -403,7 +403,12 @@ async function reanalyzeProject(mode) {
   const description = mode === "visual" ? "" : $("reanalyze-video-description").value.trim();
   const soundRequirements = mode === "visual" ? "" : $("reanalyze-sound-requirements").value.trim();
   const style = mode === "visual" ? "" : $("reanalyze-sound-style").value.trim();
-  const referenceWorks = mode === "visual" ? [] : $("reanalyze-reference-works").value.split(/[；;\n]+/u).map(value=>value.trim()).filter(Boolean);
+  const loadedReferenceText = referenceWorksFrom(run).join("；");
+  const mainReferenceText = $("reference-works").value.trim();
+  const reanalyzeReferenceText = $("reanalyze-reference-works").value.trim();
+  // An explicit edit in the main project input, including clearing it, wins over the loaded value.
+  const referenceText = mainReferenceText !== loadedReferenceText ? mainReferenceText : reanalyzeReferenceText;
+  const referenceWorks = mode === "visual" ? [] : referenceText.split(/[；;\n]+/u).map(value=>value.trim()).filter(Boolean);
   const playback = { time: $("video").currentTime || 0, playing: false };
   $("video").pause(); setBusy(true);
   status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新的辅助说明重新分析画面、点位和音效…");
@@ -656,7 +661,7 @@ $("analyze").onclick = guard(async () => {
   try {
     const result = await api("/api/sfx/runs", input); localStorage.setItem("sfx-last-input", JSON.stringify(input));
     selectedId = null; await poll(result.runId, true);
-    if(result.reused)status("已打开保留版本；点位、素材、剪辑和混音保持原样。");
+    if(result.reused)status("已打开相同条件下的已有版本；点位、素材、剪辑和混音保持原样。");
   }catch(error) {
     if (/Gemini AI 连接未就绪/.test(error.message)) { await loadAiConfig(); fillAiConfig(aiConfig); $("ai-config-message").className="ai-config-message error"; $("ai-config-message").textContent=error.message; $("ai-config-dialog").showModal(); }
     throw error;
@@ -679,9 +684,15 @@ $("restore-version").onclick = guard(async()=>{const id=$("version-history").val
 $("preserve").onclick=guard(async()=>{
   if(!run||busy)return;
   requireUpdatedPreview();
+  const name=window.prompt("新版本名称",`${run.name || "视频音效"} · 新版本`);
+  if(!name||!name.trim())return;
   setBusy(true);
-  try {await api(`/api/sfx/runs/${run.id}/preserve`,{revision:run.revision});status("已保留本版音效。同一视频和素材库将自动打开此版本。");}
-  finally{setBusy(false);}
+  try {
+    const result=await api(`/api/sfx/projects/${run.projectId}/save-version`,{name:name.trim(),runId:run.id});
+    if(result?.runId){await poll(result.runId,true,{time:$("video").currentTime||0,playing:false});}
+    await refreshHistory();
+    status(`已保存为新版本：${name.trim()}。可在“版本”中打开或回退。`);
+  } finally{setBusy(false);}
 });
 $("render").onclick = guard(async () => {
   if (!run || busy) return;
@@ -872,4 +883,5 @@ if(initialId) {
 }else resetToNewProject();
 await historyLoad;
 await loadAiConfig();
+
 

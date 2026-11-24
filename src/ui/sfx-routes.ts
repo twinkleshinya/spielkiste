@@ -144,6 +144,7 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
       if (req.method === "GET" && !parts[2]) { json(res, await service.projects.project(projectId)); return true; }
       if (req.method === "POST" && parts[2] === "rename") { const body = z.object({ name: z.string().trim().min(1).max(120) }).parse(await readJson(req)); json(res, await service.renameProject(projectId, body.name)); return true; }
       if (req.method === "POST" && parts[2] === "save-as") { const body = z.object({ name: z.string().trim().min(1).max(120) }).parse(await readJson(req)); json(res, await service.saveProjectAs(projectId, body.name)); return true; }
+      if (req.method === "POST" && parts[2] === "save-version") { const body = z.object({ name: z.string().trim().min(1).max(120), runId: z.string().uuid().optional() }).parse(await readJson(req)); json(res, await service.saveVersion(projectId, body.name, body.runId)); return true; }
       if (req.method === "POST" && parts[2] === "restore") { const body = z.object({ runId: z.string().uuid() }).parse(await readJson(req)); json(res, await service.restoreProjectVersion(projectId, body.runId)); return true; }
       if (req.method === "POST" && parts[2] === "sync") { const body=z.object({includeMedia:z.boolean().default(false)}).parse(await readJson(req));json(res, await service.syncProject(projectId,body.includeMedia)); return true; }
       throw new SfxError("接口不存在", 404);

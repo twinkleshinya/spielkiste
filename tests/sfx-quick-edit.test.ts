@@ -12,7 +12,13 @@ export async function testQuickEditApi() {
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"sfx-quick-edit-"));
   const service=new SfxService(path.join(root,"output"));
   const server=http.createServer((req,res)=>{void handleSfxRequest(req,res,new URL(req.url!,"http://localhost"),service);});
-  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  // Windows may allocate a port rejected by Fetch (for example 6000 or 10080).
+  // Keep the test HTTP server outside that range so the random allocation is stable.
+  do {
+    await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+    if ((server.address() as {port:number}).port > 10080) break;
+    await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
+  } while (true);
   const base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
   const post=(id:string,body:unknown,action="quick-edit")=>fetch(`${base}/api/sfx/runs/${id}/${action}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
   try {
