@@ -20,3 +20,54 @@ export async function testDescribedEventUiIsAnAddEventMode() {
   assert.match(js, /正在提交补声分析/);
   assert.doesNotMatch(js, /任务超过 30 分钟/);
 }
+import { editorHarness } from "./sfx-edit-preview-ui.test.js";
+
+export async function testDescribedEventButtonFeedbackAndRecovery() {
+  const ui = await editorHarness();
+  const click = () => ui.$("add-described-event").onclick({preventDefault(){}});
+  await click();
+  assert.match(ui.$("described-event-status").textContent, /请先描述/);
+  assert.equal(ui.$("described-event-status").hidden, false);
+  ui.$("described-event-description").value = "猩猩啃咬角色";
+  await ui.exec('quickEdit("event", "boss-event", "mute")');
+  await click();
+  assert.match(ui.$("described-event-status").textContent, /更新视频预览/);
+  assert.equal(ui.calls.some(c=>c.url.endsWith('/add-described-event')), false);
+  ui.exec('dirty=false');
+  let rejectRequest!: (error: Error) => void;
+  ui.context.fetch = () => new Promise((_resolve, reject) => {rejectRequest = reject;});
+  const pending = click();
+  assert.equal(ui.$("add-described-event").disabled, true);
+  assert.match(ui.$("described-event-status").textContent, /正在提交/);
+  rejectRequest(new Error("模型网关连接中断"));
+  await pending;
+  assert.match(ui.$("described-event-status").textContent, /模型网关连接中断/);
+  assert.equal(ui.$("described-event-description").value, "猩猩啃咬角色");
+  assert.equal(ui.$("add-described-event").disabled, false);
+
+  // Retry the real handler, then observe progress locally and the new preview.
+  const child = ui.getRun(); child.id = "new-described-run"; child.revision++;
+  child.render.revision = child.revision;
+  child.events.push({...child.events[0], id:"new-bite", description:"猩猩啃咬角色", start:1.25,end:1.75});
+  const requests: any[] = [];
+  let resolveStatus!: (value: any) => void;
+  let signalStarted!: () => void;
+  const started = new Promise<void>(resolve=>{signalStarted=resolve;});
+  ui.context.CSS = {escape:(value:string)=>value};
+  ui.context.fetch = async (url:string,options?:any) => {
+    requests.push({url, body:options?.body && JSON.parse(options.body)});
+    const response=(data:any)=>({ok:true,json:async()=>data});
+    if(url.endsWith('/add-described-event'))return response({runId:child.id});
+    if(url.endsWith('/status')) {signalStarted();return new Promise(resolve=>{resolveStatus=resolve;});}
+    if(url.endsWith('/runs/'+child.id))return response(child);
+    return response({});
+  };
+  const retry=click(); await started;
+  assert.match(ui.$("described-event-status").textContent,/定位动作/);
+  resolveStatus({ok:true,json:async()=>({status:'ready',progress:'已补充啃咬音效'})});
+  await retry;
+  assert.equal(ui.getRun().id, child.id);
+  assert.match(ui.$("described-event-status").textContent, /找到 1 个动作点位/);
+  assert.equal(ui.$("described-event-description").value, "");
+  assert.equal(requests[0].body.description,"猩猩啃咬角色");
+}
