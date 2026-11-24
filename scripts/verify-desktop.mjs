@@ -17,7 +17,7 @@ try{
  for(const route of ['/sfx','/sfx.js','/sfx-git.js','/sfx-clip-edit.js','/sfx-asset-exclusions.js','/WorkflowPolicy.js','/assets/spielkiste.ico','/api/sfx/workflow/guide','/api/sfx/workflow/bundle'])assert.equal((await fetch(base+route)).status,200,route);
  report.checks.push('static resources, icon, internal workflow resources');
  assert.deepEqual(await api('/api/sfx/projects'),[]);assert.equal((await api('/api/sfx/git-config')).configured,false);report.checks.push('fresh user contains no private projects or Git settings');
- const runtime=path.join(release,'resources/runtime'),ffmpeg=path.join(runtime,'ffmpeg.exe'),ffprobe=path.join(runtime,'ffprobe.exe'),git=path.join(runtime,'git/cmd/git.exe');
+ const runtime=boot.runtime,ffmpeg=path.join(runtime,'ffmpeg.exe'),ffprobe=path.join(runtime,'ffprobe.exe'),git=path.join(runtime,'git/cmd/git.exe');
  const tools={};for(const [name,binary,args] of [['ffmpeg',ffmpeg,['-version']],['ffprobe',ffprobe,['-version']],['git',git,['--version']]])tools[name]=(await exec(binary,args,{windowsHide:true})).stdout.split(/\r?\n/)[0];report.tools=tools;report.checks.push('bundled FFmpeg, FFprobe, Git execute');
  const library=path.join(root,'中文音效库');await fs.mkdir(library,{recursive:true});const video=path.join(root,'中文测试视频.mp4'),audio=path.join(library,'boss_charge_cast.wav');
  await exec(ffmpeg,['-y','-f','lavfi','-i','color=c=0x536353:s=640x360:r=24:d=3','-f','lavfi','-i','sine=frequency=220:duration=3','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac','-shortest',video],{windowsHide:true});
