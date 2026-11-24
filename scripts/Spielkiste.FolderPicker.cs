@@ -84,7 +84,7 @@ namespace Spielkiste {
     }
     [DllImport("shell32.dll", CharSet=CharSet.Unicode, PreserveSig=false)]
     static extern void SHCreateItemFromParsingName(string name, IntPtr bind, ref Guid iid, out IShellItem item);
-    // The WinForms picker is the primary path for the web launcher. It is a
+    // The WinForms picker is a fallback for the web launcher. It is a
     // normal interactive Windows dialog and does not depend on a hidden
     // PowerShell host or COM dialog callbacks being delivered to the foreground.
     // It supports local drives and UNC/shared folders through the same shell
