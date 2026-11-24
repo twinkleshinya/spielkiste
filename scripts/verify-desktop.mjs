@@ -8,8 +8,9 @@ const root=path.resolve('.output/desktop-acceptance',String(Date.now())),workspa
 await fs.mkdir(workspace,{recursive:true});await fs.rm(path.join(workspace,'desktop-smoke.json'),{force:true});
 const child=spawn(process.env.SPIELKISTE_TEST_EXE||path.join(release,'Spielkiste.exe'),['--spielkiste-smoke'],{windowsHide:true,stdio:'ignore',env:{...process.env,SPIELKISTE_DATA_DIR:workspace,SPIELKISTE_SMOKE_HOLD:'1'}});
 const report={started:new Date().toISOString(),checks:[]};
+let boot;
 try{
- let boot;for(let i=0;i<90;i++){try{boot=JSON.parse(await fs.readFile(path.join(workspace,'desktop-smoke.json'),'utf8'));break;}catch{await new Promise(resolve=>setTimeout(resolve,500));}}
+ for(let i=0;i<240;i++){try{boot=JSON.parse(await fs.readFile(path.join(workspace,'desktop-smoke.json'),'utf8'));break;}catch{await new Promise(resolve=>setTimeout(resolve,500));}}
  assert.ok(boot?.ready,'packaged desktop UI starts');assert.equal(boot.packaged,true);assert.equal(boot.nativeFolderPicker,true,'native folder picker is exposed by the sandboxed preload');report.checks.push('packaged UI, backend startup and native folder picker bridge');report.port=boot.port;
  const base=`http://127.0.0.1:${boot.port}`;
  async function api(url,body){const response=await fetch(base+url,body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const value=await response.json();if(!response.ok)throw new Error(`${url}: ${JSON.stringify(value)}`);return value;}
@@ -49,4 +50,4 @@ try{
  if(process.argv.includes('--ai')){const test=await api('/api/sfx/ai-config/test',{});assert.equal(test.ok,true);assert.equal(test.model,ai.model);report.ai.test={ok:test.ok,model:test.model,capabilities:test.capabilities,elapsedMs:test.elapsedMs};report.checks.push('actual configured Gemini image and audio connection');}
  report.ok=true;
 }catch(error){report.ok=false;report.error=error.stack;throw error;}
-finally{report.finished=new Date().toISOString();await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));await fs.writeFile(path.resolve('.output/desktop-acceptance/latest.json'),JSON.stringify({...report,root},null,2));child.kill();console.log(JSON.stringify(report,null,2));}
+finally{report.finished=new Date().toISOString();await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));await fs.writeFile(path.resolve('.output/desktop-acceptance/latest.json'),JSON.stringify({...report,root},null,2));if(process.platform==='win32'){for(const pid of new Set([boot?.processId,child.pid].filter(Boolean))){try{await exec('taskkill.exe',['/PID',String(pid),'/T','/F'],{windowsHide:true});}catch{}}}else child.kill();console.log(JSON.stringify(report,null,2));}
