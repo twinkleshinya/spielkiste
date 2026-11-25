@@ -107,7 +107,18 @@ export function repairEventCandidates(event: SoundEvent, index: AudioLibraryInde
   if (event.layers.some(l => !l.candidates.length)) {
     const replenished = structuredClone(event);
     planEventCandidates(replenished, index);
-    for (const layer of event.layers) if (!layer.candidates.length) layer.candidates = replenished.layers?.find(l => l.id === layer.id)?.candidates || [];
+    // Replanning creates fresh layer ids. Match by stable semantics first and
+    // fall back to the layer position; using the old id here silently kept an
+    // empty persisted layer forever (especially after an earlier run rejected
+    // all candidates for a visible action).
+    for (let i = 0; i < event.layers.length; i++) {
+      const layer = event.layers[i];
+      if (layer.candidates.length) continue;
+      const replacement = replenished.layers?.find(candidate =>
+        candidate.role === layer.role && candidate.query === layer.query
+      ) || replenished.layers?.[i];
+      layer.candidates = replacement?.candidates ? structuredClone(replacement.candidates) : [];
+    }
   }
   event.candidates = event.layers.flatMap(l => l.candidates).slice(0, 8);
 }
