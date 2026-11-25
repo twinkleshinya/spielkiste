@@ -150,6 +150,22 @@ export async function testGeminiAudioSelectionBoundaries() {
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 }
 
+export async function testGeminiRejectKeepsBestVisibleActionCandidate() {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-visible-fallback-"));
+  try {
+    const events = [cue("move", ["a", "b"])];
+    const index = { version: 1 as const, root: ".", generatedAt: "now", assets: [asset("a"), asset("b")], warnings: [] };
+    const model: AudioSelectionModel = {
+      model: "test",
+      async describe(samples) { return { assets: samples.map(s => ({ assetId: s.assetId, summary: "短促动作拟音", tags: [], energy: .5, hasMusic: false, hasSpeech: false })) }; },
+      async choose(tasks) { return { choices: tasks.map(t => ({ taskId: t.taskId, assetId: null, reason: "现有候选声学与时长不完全匹配，存在素材缺口", confidence: .8 })) }; }
+    };
+    const report = await new GeminiAudioSelector(model, { async sample(a) { return { assetId: a.id, data: "d2F2", format: "wav", segments: [{ start: 0, end: 2 }] }; } }).select(events, index, { outputDir: root, cacheDir: path.join(root, "cache") });
+    assert.equal(events[0].layers![0].candidates[0].assetId, "a", "a visible action must retain the best local candidate when Gemini rejects an imperfect shortlist");
+    assert.equal(report.fallbackLayers, 1);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+}
+
 export async function testGeminiAudioReselectRun() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-reselect-"));
   try {
