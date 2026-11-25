@@ -48,7 +48,7 @@ export async function testDescribedEventButtonFeedbackAndRecovery() {
   // Retry the real handler, then observe progress locally and the new preview.
   const child = ui.getRun(); child.id = "new-described-run"; child.revision++;
   child.render.revision = child.revision;
-  child.events.push({...child.events[0], id:"new-bite", description:"猩猩啃咬角色", start:1.25,end:1.75});
+  child.events.push({...child.events[0], id:"new-bite", muted:false, description:"猩猩啃咬角色", start:1.25,end:1.75});
   child.placements.push({...child.placements[0],id:"new-bite-clip",eventId:"new-bite",enabled:true,category:"impact"});
   const requests: any[] = [];
   let resolveStatus!: (value: any) => void;

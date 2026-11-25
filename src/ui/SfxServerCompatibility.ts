@@ -4,6 +4,7 @@ export const SFX_REQUIRED_CAPABILITIES = [
   "project-name-from-video",
   "task-pause-resume-terminate",
   "bounded-creative-context",
+  "supplement-scoped-requirements-and-coverage",
   "add-described-event",
   "described-event-inline-feedback",
   "generation-without-fixed-deadlines",
