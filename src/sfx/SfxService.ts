@@ -16,7 +16,7 @@ import { OllamaVisionProvider } from "./OllamaVisionProvider.js";
 import { GeminiVideoProvider } from "./GeminiVideoProvider.js";
 import { CcSwitchVisionProvider } from "./CcSwitchVisionProvider.js";
 import { createPlacements } from "./PlacementEngine.js";
-import { SfxRenderer, eventsForOutputMode } from "./SfxRenderer.js";
+import { SfxRenderer, eventsForOutputMode, placementsForOutputMode } from "./SfxRenderer.js";
 import { probeAudio } from "./AudioLibraryIndexer.js";
 import { hydratePlacements } from "./HydratePlacements.js";
 import { buildEventTimeline } from "./EventTimelineBuilder.js";
@@ -587,11 +587,12 @@ export class SfxService {
   }
 
   /** Run candidate selection only for events introduced by a described-event operation. */
-  private async selectAudioForEvents(run: SfxRun, events: SfxRun["events"], signal?: AbortSignal) {
+  private async selectAudioForEvents(run: SfxRun, events: SfxRun["events"], signal?: AbortSignal, brief?: CreativeBrief) {
     if (!events.length) return;
     run.aiSelection = true;
-    await usagePhase("candidate-diversity", () => prepareDiverseCandidates(events, this.runIndex(run), this.store.directory(run.id), signal, message => { run.progress = message; }));
-    const report = await usagePhase("audio-selection", () => this.selectorFactory(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high").select(events, this.runIndex(run), {
+    const index = { ...this.runIndex(run), ...(brief ? creativeFields(brief) : {}) };
+    await usagePhase("candidate-diversity", () => prepareDiverseCandidates(events, index, this.store.directory(run.id), signal, message => { run.progress = message; }));
+    const report = await usagePhase("audio-selection", () => this.selectorFactory(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high").select(events, index, {
       outputDir: this.store.directory(run.id),
       cacheDir: path.join(this.root, "audio-selection-cache"),
       signal,
@@ -684,6 +685,13 @@ export class SfxService {
       const source = await this.readRun(id);
       if (input.revision !== source.revision) throw new SfxError("任务已更新，请重新打开后再补声", 409);
       if (!source.duration || !source.scenes.length) throw new SfxError("请先完成视频动作分析");
+      // A supplement is a new explicit instruction for new events only. Historical
+      // exclusive descriptions continue to describe the parent, not veto this edit.
+      const supplementBrief: CreativeBrief = {
+        ...creativeFields(source), videoDescription: undefined,
+        soundRequirements: `本次只为新增点位执行用户最新补声要求：${input.description}。原有点位及声音保持不变；辅助声音不能遮蔽主体。`,
+        descriptionConstraints: { exclusive: true, restrictions: ["只新增本次补声要求中的声音；动作锚点仅用于定位，不重复添加其声音"], requirements: [{id:"supplement",text:input.description,requiresSound:true}],conflicts:[] }
+      };
       const child = await this.store.createRun({
         projectId: source.projectId,
         name: `${source.name.replace(/ · (?:编辑|定位|补声)(?:副本|\d+)?$/, "").slice(0, 100)} · 补声${source.revision + 1}`,
@@ -758,7 +766,7 @@ export class SfxService {
             "不要因为镜头切换、静止或推测画外动作添加事件。每个可见动作单独返回，时间使用视频开头起算的绝对秒数。query必须是适合本地音效文件名检索的中英文关键词，包含动作、主体和材质；description写实际画面行为。",
             "category只能是foley/impact/whoosh/ambience/music/other；phase可用preparation/motion/contact/aftermath；importance为key/support/detail，烘托氛围使用detail；返回JSON：{\"events\":[{\"start\":0,\"end\":1,\"type\":\"monster_bite\",\"description\":\"猩猩张嘴咬住角色\",\"query\":\"gorilla bite jaw attack\",\"category\":\"impact\",\"confidence\":0.9,\"evidence\":\"中文画面证据\",\"actor\":\"boss\",\"phase\":\"contact\"}]}。没有看到动作时返回空数组。"
           ].join("\n");
-          const coarse = DescribedEventsResultSchema.parse(await provider.locateEvents(overviewFrames, prompt+creativeContext(child), taskSignal(controller.signal)!));
+          const coarse = DescribedEventsResultSchema.parse(await provider.locateEvents(overviewFrames, prompt+creativeContext(supplementBrief), taskSignal(controller.signal)!));
           if (!coarse.events.length) throw new SfxError(`Gemini 未找到“${input.description}”对应的可见动作`);
           const addedEvents: SfxRun["events"] = [];
           const locationReport: unknown[] = [];
@@ -792,7 +800,7 @@ export class SfxService {
           const index = this.runIndex(child);
           await planAllEventCandidatesResponsive(addedEvents,index,taskSignal(controller.signal)!,message=>{child.progress=message;});
           await prepareCandidates(addedEvents, index, message => { child.progress = message; }, taskSignal(controller.signal)!);
-          await this.selectAudioForEvents(child, addedEvents, taskSignal(controller.signal)!);
+          await this.selectAudioForEvents(child, addedEvents, taskSignal(controller.signal)!, supplementBrief);
           const uncovered = addedEvents.filter(event => !(event.layers || []).some(layer => layer.candidates.length) && event.candidates.length === 0);
           if (uncovered.length) {
             for (const event of uncovered) event.requiresHumanReview = true;
@@ -803,10 +811,13 @@ export class SfxService {
           const reviewRun = { ...child, events: addedEvents, placements: newPlacements };
           const reviewed = await usagePhase("audio-source-edit", () => reviewSourceEdits(reviewRun, this.audioProvider(child), new AudioCandidateClips(), this.store.directory(child.id), taskSignal(controller.signal)!));
           child.warnings.push(...reviewed.warnings);
+          await hydratePlacements(reviewRun, { preserveEdits: false });
           const reviewedIds = new Set(addedEvents.map(event => event.id));
           child.placements = [...source.placements, ...child.placements.filter(placement => reviewedIds.has(placement.eventId))];
-          await hydratePlacements(child, { preserveEdits: false });
-          await writeJson(path.join(this.store.directory(child.id), "described-event-report.json"), { version: 1, sourceRunId: source.id, description: input.description, events: locationReport, addedEventIds: addedEvents.map(event => event.id) });
+          const activeAdded = () => placementsForOutputMode(child, child.placements).filter(p => reviewedIds.has(p.eventId) && !child.events.find(e => e.id === p.eventId)?.muted);
+          const supplementReport = () => ({ version: 2, sourceRunId: source.id, description: input.description, selectionBrief: supplementBrief, events: locationReport, addedEventIds: [...reviewedIds], activePlacementIds: activeAdded().map(p => p.id), missingEventIds: addedEvents.filter(e => !activeAdded().some(p => p.eventId === e.id)).map(e => e.id) });
+          await writeJson(path.join(this.store.directory(child.id), "described-event-report.json"), supplementReport());
+          if (!activeAdded().length) throw new SfxError("已定位动作，但未添加任何可播放音效贴片；请查看选材缺口及生成内容设置，原预览保持不变。");
           validateTimeline(child, child.events, child.placements);
           child.status = "rendering";
           child.progress = "描述动作已定位并匹配素材，正在自动混音生成新预览";
@@ -817,8 +828,11 @@ export class SfxService {
             preservePlacementIds: new Set(source.placements.map(placement => placement.id)),
             videoSource: source.render?.revision === source.revision ? source.render.video : undefined
           }));
+          if (!activeAdded().length) { delete child.render; throw new SfxError("混音后未保留任何新增音效贴片，不能标记补声成功。"); }
+          await writeJson(path.join(this.store.directory(child.id), "described-event-report.json"), supplementReport());
           child.status = "ready";
-          child.progress = `已为“${input.description}”新增 ${addedEvents.length} 个音效点位并生成预览`;
+          const completed = new Set(activeAdded().map(p => p.eventId)).size;
+          child.progress = `已为“${input.description}”添加 ${activeAdded().length} 个启用音效贴片，覆盖 ${completed}/${addedEvents.length} 个点位并生成预览${completed < addedEvents.length ? "；部分点位缺素材，需复核" : "，请试听确认"}`;
           await exportTimeline(child, this.store.directory(child.id));
           await this.saveProjectVersion(child, "augment");
         } finally { controller.abort(); }
