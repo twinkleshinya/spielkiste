@@ -878,12 +878,13 @@ export class SfxService {
     } finally { this.locks.delete(id); }
   }
   private launch(run: SfxRun, work: () => Promise<void>, operation = "analyze-and-render") {
-    let previousStatus:SfxRun['status']=run.status,stage=run.progress;
+    let previousStatus:SfxRun['status']=run.status,stage=run.progress,wasPaused=false;
     const control=new TaskControl(async state=>{
-      if(state==='pausing') {previousStatus=run.status;stage=run.progress;}
+      if(state==='pausing') stage=run.progress;
+      if(state==='paused'){previousStatus=run.status;stage=run.progress;wasPaused=true;}
       run.taskControl={state,stage,operation,updatedAt:new Date().toISOString()};
       if(state==='paused'){run.status='paused';run.progress=`已停止，点击继续 · ${stage}`;}
-      if(state==='running'){run.status=previousStatus==='rendering'?'rendering':'analyzing';run.progress=stage;}
+      if(state==='running'&&wasPaused){run.status=previousStatus;run.progress=stage;wasPaused=false;}
       await this.store.save(run);
     });
     this.controls.set(run.id,control);

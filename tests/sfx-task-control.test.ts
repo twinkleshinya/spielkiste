@@ -9,6 +9,8 @@ import {usagePhase,modelJson} from '../src/sfx/ModelUsage.js';
 import {editorHarness} from './sfx-edit-preview-ui.test.js';
 import {handleSfxRequest} from '../src/ui/sfx-routes.js';
 import {modelGatewayError} from '../src/sfx/ModelGatewayError.js';
+import {taskCheckpoint,TaskControl} from '../src/sfx/TaskControl.js';
+import {runFfmpeg} from '../src/sfx/FfmpegBinaries.js';
 
 export function testCreativeContextNeverSerializesProject(){
  const context=creativeContext({style:'暗黑奇幻',soundRequirements:'吼叫点加风声',assets:[{path:'private-library.wav',data:'x'.repeat(1000000)}],events:[{secret:'private-event'}],workflow:{private:'private-workflow'},signal:{},progress:()=>{}} as any);
@@ -34,6 +36,17 @@ export async function testTaskPauseResumeAndTerminate(){
   assert.equal((await service.store.readRun(run.id)).status,'paused','pause is saved to disk');
   await (service as any).controlTask(run.id,'resume');
   assert.equal((await service.waitForIdle(run.id)).status,'ready');assert.equal(second,1);
+  const finalizing=await service.store.createRun({videoPath:'v.mp4',libraryPath:root});
+  let finalStarted!:()=>void,finishFinal!:()=>void;
+  const finalStep=new Promise<void>(r=>finishFinal=r),atFinal=new Promise<void>(r=>finalStarted=r);
+  (service as any).launch(finalizing,async()=>{finalizing.status='ready';finalizing.progress='保存版本';finalStarted();await finalStep;await taskCheckpoint();await service.store.save(finalizing);});
+  await atFinal;await service.controlTask(finalizing.id,'pause');finishFinal();
+  for(let n=0;n<100&&(await service.status(finalizing.id)).status!=='paused';n++)await new Promise(r=>setTimeout(r,5));
+  await service.controlTask(finalizing.id,'resume');assert.equal((await service.waitForIdle(finalizing.id)).status,'ready','pause during final save must restore ready state');
+  const mediaControl=new TaskControl(async()=>{});
+  const media=mediaControl.run(()=>runFfmpeg(['-v','error','-re','-f','lavfi','-i','sine=frequency=110','-f','null','-']));
+  const rejected=assert.rejects(media);
+  await new Promise(r=>setTimeout(r,150));await mediaControl.terminate();await rejected;
   const cancel=await service.store.createRun({videoPath:'v.mp4',libraryPath:root});let requestStarted!:()=>void;
   const request=new Promise<void>(r=>requestStarted=r);const original=globalThis.fetch;
   globalThis.fetch=async(_url,init)=>{requestStarted();return await new Promise<Response>((_resolve,reject)=>{init?.signal?.addEventListener('abort',()=>reject(init.signal?.reason),{once:true});});};
