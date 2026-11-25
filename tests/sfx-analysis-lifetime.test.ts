@@ -53,11 +53,14 @@ export async function testDescribedAndReidentifyJobsHaveNoTotalDeadline(){
 export async function testReadyStatusWaitsForFinalSave() {
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-save-state-'));
   let release!:()=>void;
+  let entered!:()=>void;
+  const started=new Promise<void>(resolve=>{entered=resolve;});
   const saving=new Promise<void>(resolve=>{release=resolve;});
   const service=new SfxService(root);
   const run=await service.store.createRun({videoPath:path.join(root,'video.mp4'),libraryPath:root});
   try {
-    (service as any).launch(run,async()=>{run.status='ready';run.progress='已生成';await saving;await service.store.save(run);});
+    (service as any).launch(run,async()=>{run.status='ready';run.progress='已生成';entered();await saving;await service.store.save(run);});
+    await started;
     const pending=await service.status(run.id);
     assert.equal(pending.status,'analyzing','ready must not be advertised before final writes release the task');
     assert.match(pending.progress||'',/保存/);

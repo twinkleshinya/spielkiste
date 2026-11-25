@@ -52,3 +52,5 @@
 .folder-browser .folder-toolbar{display:flex;gap:10px;align-items:center;margin:8px 0 12px}.folder-browser .folder-toolbar code{min-width:0;flex:1;overflow-wrap:anywhere;color:var(--muted);font-size:12px}.folder-browser .folder-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.folder-browser .folder-actions [data-cancel]{margin-right:auto}
 
 .described-event-status{margin:10px 0;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}.described-event-status[data-state="error"]{color:#d85f50}
+
+.task-controls{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 18px;margin:12px 0 18px}.task-controls strong{font-size:13px}.task-controls p{font-size:12px;color:var(--muted);line-height:1.7;margin-top:5px;overflow-wrap:anywhere}.task-control-actions{display:flex;gap:8px;flex-shrink:0}#terminate-task{color:#a85444}@media(max-width:720px){.task-controls{align-items:flex-start;flex-direction:column}}

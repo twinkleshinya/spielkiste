@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execa, type Options } from "execa";
+import {taskCheckpoint,taskSignal} from './TaskControl.js';
 
 export type FfmpegProcessInvocation = { command: string; args: string[] };
 export type FfmpegFallbackInvocation = FfmpegProcessInvocation & { windowsHide: boolean };
@@ -63,10 +64,11 @@ export function ffmpegFallbackInvocations(invocation: FfmpegProcessInvocation): 
   ];
 }
 
-export function runFfmpeg(args: string[], options?: Options): Promise<{ stdout: string; stderr: string }> {
+export async function runFfmpeg(args: string[], options?: Options): Promise<{ stdout: string; stderr: string }> {
+  await taskCheckpoint();
   const invocation = ffmpegInvocation(args);
-  const baseOptions = { ...options, encoding: "utf8" as const };
-  const run = (command: string, commandArgs: string[], windowsHide: boolean) => execa(command, commandArgs, { ...baseOptions, windowsHide });
+  const baseOptions = { ...options, cancelSignal:taskSignal(options?.cancelSignal), encoding: "utf8" as const };
+  const run = async (command: string, commandArgs: string[], windowsHide: boolean) => {await taskCheckpoint();const result=await execa(command, commandArgs, { ...baseOptions, windowsHide });await taskCheckpoint();return result;};
   const knownFallback = fallbackModeByCommand.get(invocation.command);
   if (knownFallback !== undefined) {
     const fallback = ffmpegFallbackInvocations(invocation)[knownFallback];

@@ -6,6 +6,7 @@ import { diverseCandidates } from "./CandidateDiversity.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 import {keywordPreferencesFor,preferredSearchQuery} from "./LibraryPreferences.js";
 import {eligibleAssets} from "./AssetExclusions.js";
+import {taskCheckpoint} from './TaskControl.js';
 
 /** Populate semantic candidates for every event while keeping ambience as its own layer. */
 export function planEventCandidates(event: SoundEvent, index: AudioLibraryIndex) {
@@ -63,6 +64,7 @@ export function planAllEventCandidates(events: SoundEvent[], index: AudioLibrary
 /** Yield between events so large-library ranking cannot freeze status requests. */
 export async function planAllEventCandidatesResponsive(events:SoundEvent[],index:AudioLibraryIndex,signal?:AbortSignal,progress?:(message:string)=>void) {
   for(let i=0;i<events.length;i++) {
+    await taskCheckpoint();
     signal?.throwIfAborted();
     progress?.(`匹配本地素材：${i+1}/${events.length} · ${events[i].description}`);
     await new Promise<void>(resolve=>setImmediate(resolve));

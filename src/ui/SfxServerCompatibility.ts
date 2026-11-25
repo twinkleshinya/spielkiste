@@ -2,6 +2,8 @@ export const SFX_API_VERSION = "2026-11-26";
 
 export const SFX_REQUIRED_CAPABILITIES = [
   "project-name-from-video",
+  "task-pause-resume-terminate",
+  "bounded-creative-context",
   "add-described-event",
   "described-event-inline-feedback",
   "generation-without-fixed-deadlines",

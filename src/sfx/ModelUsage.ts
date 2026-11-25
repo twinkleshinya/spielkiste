@@ -3,8 +3,10 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { writeJson } from "./SfxRunStore.js";
+import {taskCheckpoint,taskSignal} from './TaskControl.js';
+import {gatewayErrorInfo} from './ModelGatewayError.js';
 
-type RequestUsage = { phase: string; requestedModel: string; reasoningEffort?: string; returnedModel?: string; requestId?: string; startedAt: string; elapsedMs: number; status: number | null; inputTokens: number | null; outputTokens: number | null; cachedInputTokens: number | null };
+type RequestUsage = { phase: string; requestedModel: string; reasoningEffort?: string; returnedModel?: string; requestId?: string; startedAt: string; elapsedMs: number; status: number | null; inputTokens: number | null; outputTokens: number | null; cachedInputTokens: number | null;requestBytes?:number;errorCode?:string };
 type JobUsage = { version: number; runId: string; operation: string; startedAt: string; elapsedMs: number; success: boolean; phases: { phase: string; elapsedMs: number }[]; requests: RequestUsage[] };
 const context = new AsyncLocalStorage<JobUsage>();
 const count = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
@@ -12,8 +14,9 @@ const count = (value: unknown): number | null => typeof value === "number" && Nu
 // Scoped to generation HTTP calls. Do not change the app's global dispatcher.
 // Zero disables header/body waiting limits; caller cancellation still applies.
 const generationDispatcher = new Agent({headersTimeout: 0, bodyTimeout: 0});
-export function generationFetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, {...init, dispatcher: generationDispatcher} as RequestInit);
+export async function generationFetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
+  await taskCheckpoint();
+  return fetch(url, {...init, signal:taskSignal(init.signal||undefined), dispatcher: generationDispatcher} as RequestInit);
 }
 
 /** Only usage counters, request identifiers and timings are persisted. */
@@ -21,6 +24,7 @@ export async function modelJson(url: string, init: RequestInit, phase: string, m
   const started = Date.now();
   const entry: RequestUsage = { phase, requestedModel: model, startedAt: new Date(started).toISOString(), elapsedMs: 0, status: null, inputTokens: null, outputTokens: null, cachedInputTokens: null };
   try {
+    if(typeof init.body==='string')entry.requestBytes=Buffer.byteLength(init.body);
     const request = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
     const effort = request?.reasoning?.effort || request?.reasoning_effort;
     if (effort === "high" || effort === "xhigh") entry.reasoningEffort = effort;
@@ -29,19 +33,22 @@ export async function modelJson(url: string, init: RequestInit, phase: string, m
     const response = await generationFetch(url, init);
     entry.status = response.status;
     const body = await response.json().catch(() => undefined);
+    if(!response.ok)entry.errorCode=gatewayErrorInfo(body,response.status).code;
     entry.requestId = response.headers.get("x-request-id") || response.headers.get("request-id") || (typeof body?.id === "string" ? body.id : undefined);
     if (typeof body?.model === "string") entry.returnedModel = body.model;
     const usage = body?.usage || body?.usageMetadata;
     entry.inputTokens = count(usage?.input_tokens ?? usage?.prompt_tokens ?? usage?.promptTokenCount);
     entry.outputTokens = count(usage?.output_tokens ?? usage?.completion_tokens ?? usage?.candidatesTokenCount);
     entry.cachedInputTokens = count(usage?.input_tokens_details?.cached_tokens ?? usage?.prompt_tokens_details?.cached_tokens ?? usage?.cachedContentTokenCount);
+    await taskCheckpoint();
     return { response, body };
   } finally { entry.elapsedMs = Date.now() - started; context.getStore()?.requests.push(entry); }
 }
 
 export async function usagePhase<T>(phase: string, work: () => Promise<T>): Promise<T> {
+  await taskCheckpoint();
   const started = Date.now();
-  try { return await work(); }
+  try { const result=await work();await taskCheckpoint();return result; }
   finally { context.getStore()?.phases.push({ phase, elapsedMs: Date.now() - started }); }
 }
 

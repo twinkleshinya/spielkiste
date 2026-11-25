@@ -3,6 +3,8 @@ import {testKeywordRanking,testKeywordPlannerScope,testKeywordPersistence,testGe
 import {testLibraryExclusionsSearchAndPlanner,testExclusionsCandidateAndGeminiBoundaries,testExclusionsPersistenceAndManualSelection,testExclusionsHttpRoutes} from "./sfx-library-exclusions.test.js";
 import {testSfxExclusionsStageRestoreAndGuard,testSfxSeparatedGroupsAndBulkMute,testFailedGenerationShowsCauseAndAllowsRetry} from "./sfx-edit-preview-ui.test.js";
 import assert from "node:assert/strict";
+import {testCreativeContextNeverSerializesProject,testTaskPauseResumeAndTerminate,testTaskControlUi} from './sfx-task-control.test.js';
+testCreativeContextNeverSerializesProject();await testTaskPauseResumeAndTerminate();await testTaskControlUi();
 import {testBlankProjectNameUsesVideoFilename} from "./sfx-project-name.test.js";
 await testBlankProjectNameUsesVideoFilename();
 import {testAnalysisCanProgressPastThirtyMinutes,testAnalysisFailureIncludesLastStage,testReadyStatusWaitsForFinalSave,testDescribedAndReidentifyJobsHaveNoTotalDeadline} from "./sfx-analysis-lifetime.test.js";

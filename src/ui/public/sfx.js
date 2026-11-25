@@ -5,6 +5,29 @@ import {assetExclusionReasonResolver} from "/sfx-asset-exclusions.js";
 const $ = id => document.getElementById(id);
 let run = null, project = null, selectedId = null, selectedLayerId = "default", dirty = false, busy = false, showingPreview = false, reaperExporting = false;
 let aiConfig = null;
+let taskRunId=null,taskState=null,taskPolling=false,taskControlPending=false;
+function renderTaskControls(id,state){
+  taskRunId=id;taskState=state;
+  const active=['analyzing','rendering','paused'].includes(state?.status),failed=state?.status==='failed';
+  $('task-controls').hidden=!active&&!failed;
+  $('task-control-title').textContent=failed?'任务未完成':state?.status==='paused'?'任务已停止':state?.taskControl?.state==='pausing'?'正在停止':'任务进行中';
+  $('task-control-note').textContent=state?.taskControl?.state==='pausing'?'已收到停止请求，将在当前请求或处理步骤结束后暂停；已完成结果会保留。':failed?`${state.error||state.progress||'处理失败'}；点击继续会重试未完成操作，原版本保持不变。`:state?.status==='paused'?state.progress||'进度已保留，点击继续接着处理。':state?.progress||'';
+  $('resume-task').hidden=!(failed||state?.status==='paused'||state?.taskControl?.state==='pausing');
+  $('pause-task').hidden=!active||state?.status==='paused'||state?.taskControl?.state==='pausing';
+  $('terminate-task').hidden=!active;
+  for(const name of ['pause-task','resume-task','terminate-task'])$(name).disabled=taskControlPending;
+}
+async function controlCurrentTask(action){
+  if(!taskRunId||taskControlPending)return;
+  if(action==='terminate'&&!window.confirm('终止本次任务？已保存的原版本不会改变；终止后需要重新发起。'))return;
+  const id=taskRunId;taskControlPending=true;renderTaskControls(id,taskState);
+  try{
+    const result=await api(`/api/sfx/runs/${id}/control`,{action});
+    if(result.status)renderTaskControls(result.runId||id,result);
+    if(action==='resume'&&!taskPolling){taskControlPending=false;await poll(result.runId||id,true,{time:$('video').currentTime||0,playing:false});}
+    else if(action==='terminate'&&!taskPolling)renderTaskControls(id,{status:'cancelled'});
+  }finally{taskControlPending=false;if(taskState)renderTaskControls(taskRunId,taskState);}
+}
 const labels = { foley: "拟音", impact: "冲击", whoosh: "运动", ambience: "环境", music: "音乐", other: "其他 / UI" };
 const musicStages = { enter: "进入", build: "增强", climax: "高潮", release: "收束", exit: "退出" };
 const text = (tag, value, className) => { const el = document.createElement(tag); el.textContent = value; if (className) el.className = className; return el; };
@@ -352,11 +375,12 @@ function renderWorkspace(keepVideo = false) {
   }
 }
 async function poll(id, afterRender = false, playback, {recoverDraft = true, onProgress} = {}) {
-  setBusy(true);
+  setBusy(true);taskPolling=true;renderTaskControls(id,{status:'analyzing',progress:'正在读取任务进度…'});
   try {
     for (;;) {
       const next = await api(`/api/sfx/runs/${id}/status`); status(next.progress); onProgress?.(next.progress);
-      if (!["analyzing", "rendering"].includes(next.status)) {
+      renderTaskControls(id,next);
+      if (!["analyzing", "rendering", "paused"].includes(next.status)) {
         run = await api(`/api/sfx/runs/${id}`); project = run.projectId ? await api(`/api/sfx/projects/${run.projectId}`).catch(() => null) : null; dirty = false;
         loadExclusions(run);
         if (recoverDraft && restoreDraft()) status("已恢复暂存修改；当前视频仍为上次预览，点击“更新视频预览”后应用。");
@@ -366,11 +390,12 @@ async function poll(id, afterRender = false, playback, {recoverDraft = true, onP
         try {await api("/api/sfx/workspace",{runId:run.id,projectId:run.projectId});}
         catch {$("save-state").textContent="项目已保存 · 下次恢复记录未更新";}
         if (run.error) throw new Error(run.error);
+        if(run.status==='cancelled')throw new Error('本次任务已终止，原版本保持不变。');
         break;
       }
       await new Promise(resolve => setTimeout(resolve, 400));
     }
-  } finally { setBusy(false); }
+  } finally {taskPolling=false;setBusy(false); }
 }
 async function refreshHistory() {
   $("project-storage").textContent="正在读取本机已保存项目…";
@@ -542,6 +567,9 @@ async function quickEdit(target,targetId,action) {
   status(`${{mute:"静音",unmute:"恢复",delete:"删除"}[action]}已暂存，点击“更新视频预览”后应用。`);
 }
 function guard(action) { return async event => { event?.preventDefault(); try { await action(event); } catch (e) { handleRequestError(e); } }; }
+$('pause-task').onclick=guard(()=>controlCurrentTask('pause'));
+$('resume-task').onclick=guard(()=>controlCurrentTask('resume'));
+$('terminate-task').onclick=guard(()=>controlCurrentTask('terminate'));
 const libraryPreferences=createLibraryPreferences($("library-preferences"),{chooseFolder:browseLocalFolder,isBusy:()=>busy,onChange:error=>{if(error)status(error.message,true);else rememberLibrarySettings();}});
 const keywordPreferences=createKeywordPreferences($("keyword-preferences"),{isBusy:()=>busy,onChange:()=>{rememberLibrarySettings();if(run)markDirty();}});
 const libraryExclusions=createLibraryExclusions($("excluded-library-paths"),{chooseFolder:browseLocalFolder,isBusy:()=>busy,onChange:exclusionsChanged});
@@ -556,6 +584,7 @@ function rememberLibrarySettings() {
   try {const previous=JSON.parse(localStorage.getItem("sfx-last-input")||"{}");localStorage.setItem("sfx-last-input",JSON.stringify({...previous,libraryPath:$("library-path").value,musicLibraryPath:$("music-library-path").value,referenceWorks:selectedReferenceWorks(),libraryPreferences:libraryPreferences.read(),keywordPreferences:keywordPreferences.read(),...exclusionSettings()}));}catch { /* optional preference storage */ }
 }
 function resetToNewProject() {
+  taskRunId=null;taskState=null;$('task-controls').hidden=true;
   $("video").pause();
   $("video").removeAttribute("src");
   $("video").load();

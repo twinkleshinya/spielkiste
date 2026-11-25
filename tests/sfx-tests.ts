@@ -167,7 +167,7 @@ export async function testSfxApi() {
     await failing.waitForIdle(failed.runId);
     assert.ok((await failing.readRun(failed.runId)).error?.includes("disk unavailable"));
     const pendingRun = await service.store.createRun({ videoPath: video, libraryPath: root, name: "interrupted", analysisMode: "scene" });
-    assert.equal((await service.readRun(pendingRun.id)).status, "failed");
+    assert.equal((await service.readRun(pendingRun.id)).status, "paused", "interrupted task can be explicitly continued after restart");
     await fs.writeFile(path.join(root, "broken_unique.wav"), "not an audio file");
     const badIndex = await new AudioLibraryIndexer().indexDirectory(root);
     const brokenRun = await service.readRun(runId);

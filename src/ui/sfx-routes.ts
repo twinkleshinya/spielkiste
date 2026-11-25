@@ -158,6 +158,7 @@ export async function handleSfxRequest(req: http.IncomingMessage, res: http.Serv
     }
     else if (id && !action && req.method === "GET") json(res, clientRunPayload(await service.readRun(id)));
     else if (id && action === "status" && req.method === "GET") json(res, await service.status(id));
+    else if (id && action === 'control' && req.method === 'POST') {const input=z.object({action:z.enum(['pause','resume','terminate'])}).parse(await readJson(req));json(res,await service.controlTask(id,input.action),202);}
     else if (id && action === "placements" && req.method === "POST") json(res, await service.update(id, await readJson(req)));
     else if (id && action === "quick-edit" && req.method === "POST") json(res, await service.quickEdit(id, await readJson(req)),202);
     else if (id && action === "edit-preview" && req.method === "POST") json(res, await service.editPreview(id, await readJson(req)),202);

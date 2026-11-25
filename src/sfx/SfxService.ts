@@ -45,6 +45,7 @@ import { SfxGitStore } from "./SfxGitStore.js";
 import { ProjectGit } from "./ProjectGit.js";
 import { ReaperExporter } from "./ReaperExporter.js";
 import { AiConfigService, type AiReasoningEffort } from "./SfxAiConfig.js";
+import {TaskControl,taskCheckpoint,taskSignal} from './TaskControl.js';
 
 function creativeFields(input:CreativeBrief):CreativeBrief{return {descriptionConstraints:input.descriptionConstraints,audioOutputMode:input.audioOutputMode,videoDescription:input.videoDescription,soundRequirements:input.soundRequirements,style:input.style,referenceWorks:input.referenceWorks,styleProfile:input.styleProfile,styleCompatibility:input.styleCompatibility,referenceStyles:input.referenceStyles};}
 
@@ -81,6 +82,7 @@ export class SfxService {
   private active = new Map<string, SfxRun>();
   private locks = new Set<string>();
   private failedWrites = new Map<string, SfxRun>();
+  private controls = new Map<string,TaskControl>();
   constructor(
     public root = path.resolve(".output/sfx"),
     private selectorFactory = (model?:string, effort?:AiReasoningEffort) => new GeminiAudioSelector(new CcSwitchAudioProvider(model, effort), new AudioCandidateClips()),
@@ -114,6 +116,7 @@ export class SfxService {
   }
   libraryIndexStatus(id:string){const job=this.indexJobs.get(id);if(!job)throw new SfxError("索引更新任务不存在或服务已重启，请重新更新",404);return job;}
   private async saveProjectVersion(run: SfxRun, operation = run.workflow?.operation || "save") {
+    await taskCheckpoint();
     run.projectId = this.projects.deriveProjectId(run);
     await this.store.save(run);
     const result = await this.projects.registerRun(run, operation);
@@ -123,8 +126,35 @@ export class SfxService {
   private audioProvider(run:SfxRun) {return new CcSwitchAudioProvider(run.workflow?.requestedModel, run.workflow?.reasoningEffort || "high");}
   async status(id: string) {
     const run = this.failedWrites.get(id) || this.active.get(id) || await this.readRun(id);
-    const finishing = this.pending.has(id) && !["analyzing", "rendering"].includes(run.status);
-    return { id: run.id, status: finishing ? "analyzing" : run.status, progress: finishing ? "正在保存项目版本与生成记录…" : run.progress, error: run.error, revision: run.revision };
+    const finishing = this.pending.has(id) && !["analyzing", "rendering", "paused", "cancelled"].includes(run.status);
+    return { id: run.id, status: finishing ? "analyzing" : run.status, progress: finishing ? "正在保存项目版本与生成记录…" : run.progress, error: run.error, revision: run.revision,taskControl:run.taskControl,canResume:this.controls.has(id)||['failed','paused'].includes(run.status) };
+  }
+  async controlTask(id:string,action:'pause'|'resume'|'terminate'){
+    const control=this.controls.get(id);
+    if(control){
+      if(action==='pause')await control.pause();
+      else if(action==='resume')await control.resume();
+      else await control.terminate();
+      return {runId:id,...await this.status(id)};
+    }
+    const run=await this.readRun(id);
+    if(action==='resume'){
+      if(run.status==='cancelled')throw new SfxError('该任务已终止，请从原版本重新发起。',409);
+      if(!['failed','paused'].includes(run.status))throw new SfxError('当前任务无需继续',409);
+      const source=run.parentRunId?await this.readRun(run.parentRunId):run;
+      const operation=run.taskControl?.operation||run.workflow?.options.operation||run.workflow?.operation;
+      // Failed/restarted tasks re-enter their original operation from its preserved source.
+      if(operation==='add-described-event'||operation==='augment')return this.addDescribedEvent(source.id,{revision:source.revision,description:run.workflow?.options.description});
+      if(operation==='reidentify-event'||operation==='reidentify')return this.locateEvent(source.id,{revision:source.revision,eventId:run.workflow?.options.eventId,description:run.workflow?.options.description,startHint:run.workflow?.options.startHint,endHint:run.workflow?.options.endHint});
+      if(operation==='render-saved-timeline'||operation==='render'||operation==='edit')return this.render(id);
+      if(operation==='reselect-reused-timing'||operation==='reselect')return this.reselect(source.id,{revision:source.revision,selectionScope:run.selectionScope,autoRender:true});
+      if(operation==='automix-reused-timing-selection'||operation==='automix')return this.automix(source.id,{revision:source.revision,autoRender:true,reviewSource:run.workflow?.source==='fresh'});
+      return this.create({...run.workflow?.options,projectId:run.projectId,parentRunId:run.id,videoPath:run.videoPath,libraryPath:run.libraryPath,name:run.name,reusePreserved:false});
+    }
+    if(action==='terminate'&&run.status==='paused'){
+      run.status='cancelled';run.progress='本次任务已终止，原版本保持不变';run.taskControl={state:'cancelled',stage:run.taskControl?.stage||run.progress,operation:run.taskControl?.operation||'interrupted',updatedAt:new Date().toISOString()};delete run.error;await this.store.save(run);return {runId:id,...await this.status(id)};
+    }
+    throw new SfxError('当前没有正在运行的任务',409);
   }
   async compare(localId?: string, geminiId?: string): Promise<SfxComparison> {
     const ids = localId && geminiId ? { localId, geminiId } : await this.defaultComparisonIds();
@@ -152,8 +182,9 @@ export class SfxService {
     // the next saved version persists it in the run snapshot.
     if (!run.projectId) run.projectId = this.projects.deriveProjectId(run);
     if (["analyzing", "rendering"].includes(run.status) && !this.pending.has(id)) {
-      run.status = run.duration > 0 ? "ready" : "failed"; run.progress = "上次任务被中断，可重试";
-      run.error = "本地服务重启中断了处理；请重新分析或渲染。"; await this.store.save(run);
+      run.taskControl={state:'paused',stage:run.progress,operation:run.taskControl?.operation||run.workflow?.operation||'create',updatedAt:new Date().toISOString()};
+      run.status = "paused"; run.progress = "上次任务被中断；点击继续可重新执行未完成操作，原版本保持不变";
+      delete run.error; await this.store.save(run);
     }
     return run;
   }
@@ -233,7 +264,8 @@ export class SfxService {
       run.progress = "读取已保存的素材库索引"; await this.store.save(run);
       let lastProgress=0;
       const scan=async(directory:string)=>{
-        const result=await this.libraryCache.get(directory,{signal:controller.signal,progress:count=>{
+        await taskCheckpoint();
+        const result=await this.libraryCache.get(directory,{signal:taskSignal(controller.signal),progress:count=>{
           if(Date.now()-lastProgress>300){lastProgress=Date.now();run.progress=`首次建立索引：${directory} · 已扫描 ${count.toLocaleString()} 个音频`;}
         },waiting:minutes=>{run.progress=`仍在扫描：${directory} · ${minutes} 分钟未收到新文件，扫描继续；可检查共享盘连接`;}});
         run.progress=result.source==="cache"?`使用已保存索引：${result.index.assets.length.toLocaleString()} 个音频 · ${result.index.generatedAt}`:`素材库索引已保存：${result.index.assets.length.toLocaleString()} 个音频`;
@@ -249,7 +281,7 @@ export class SfxService {
       index.keywordPreferences=run.keywordPreferences;
       index.excludedLibraryPaths=run.excludedLibraryPaths;
       index.excludedKeywords=run.excludedKeywords;
-      controller.signal.throwIfAborted();
+      taskSignal(controller.signal)!.throwIfAborted();
       index.musicLibraryConfigured = Boolean(musicLibrary && musicLibrary !== library && parsed.musicEnabled);
       run.assets = index.assets; run.warnings = index.warnings;
       if (musicLibrary && musicLibrary !== library && parsed.musicEnabled) {
@@ -275,9 +307,9 @@ export class SfxService {
         : new OllamaVisionProvider();
       if (parsed.analysisMode === "auto" && provider?.kind === "gemini") run.progress = "上传视频到 Gemini，分析动作时间点和声音事件";
       if (parsed.analysisMode === "auto" && provider?.kind === "ccswitch") run.progress = "读取 CC Switch 本地配置，分析关键帧动作和声音事件";
-      const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { ...creativeFields(run),signal: controller.signal, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
+      const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { ...creativeFields(run),signal: taskSignal(controller.signal)!, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
       if (parsed.analysisMode === "auto" && !["gemini", "ccswitch"].includes(result.mode)) throw new SfxError(`Gemini 未完成动作点位分析，请检查连接后重试。${result.warnings.slice(0, 2).join("；")}`);
-      controller.signal.throwIfAborted();
+      taskSignal(controller.signal)!.throwIfAborted();
       run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length || result.report?.descriptionReview ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
       // The selected output is also an analysis scope. This prevents a
       // "仅音效" run from creating music events and a "仅音乐" run from
@@ -287,10 +319,10 @@ export class SfxService {
       run.analysisReport = result.report; run.descriptionConstraints=result.report?.descriptionReview?.constraints; Object.assign(index,creativeFields(run)); run.musicEnabled = parsed.musicEnabled; run.musicLibraryPath = musicLibrary;
       if (!parsed.musicEnabled) run.events = run.events.filter(e => e.category !== "music");
       if (parsed.analysisMode === "scene" || result.mode === "scene") run.events = buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
-      await planAllEventCandidatesResponsive(run.events,index,controller.signal,message=>{run.progress=message;});
-      await prepareCandidates(run.events, index, message => { run.progress = message; }, controller.signal);
-      await usagePhase("candidate-diversity",()=>prepareDiverseCandidates(run.events,index,this.store.directory(run.id),controller.signal,message=>{run.progress=message;}));
-      if (parsed.aiSelection && parsed.analysisMode === "auto") await this.selectAudio(run, controller.signal);
+      await planAllEventCandidatesResponsive(run.events,index,taskSignal(controller.signal)!,message=>{run.progress=message;});
+      await prepareCandidates(run.events, index, message => { run.progress = message; }, taskSignal(controller.signal)!);
+      await usagePhase("candidate-diversity",()=>prepareDiverseCandidates(run.events,index,this.store.directory(run.id),taskSignal(controller.signal)!,message=>{run.progress=message;}));
+      if (parsed.aiSelection && parsed.analysisMode === "auto") await this.selectAudio(run, taskSignal(controller.signal)!);
       const uncovered = run.events.filter(event => !["ambience", "music"].includes(event.category) && !(event.layers || []).some(layer => layer.candidates.length));
       if (uncovered.length) run.warnings.push(`有 ${uncovered.length} 个动作暂未找到同类素材，已保留事件供复核：${uncovered.slice(0, 8).map(e => e.description).join("；")}`);
       const musicEvents = run.events.filter(e => e.category === "music");
@@ -299,7 +331,7 @@ export class SfxService {
       if (result.report) run.warnings.push(result.report.timingNote);
       run.placements = createPlacements(run.events, run.assets, run.duration,run);
       if(parsed.analysisMode==="auto") {
-        const reviewed = await usagePhase("audio-source-edit",()=>reviewSourceEdits(run,this.audioProvider(run),new AudioCandidateClips(),this.store.directory(run.id),controller.signal));
+        const reviewed = await usagePhase("audio-source-edit",()=>reviewSourceEdits(run,this.audioProvider(run),new AudioCandidateClips(),this.store.directory(run.id),taskSignal(controller.signal)!));
         run.warnings.push(...reviewed.warnings);
       }
       await hydratePlacements(run);
@@ -617,7 +649,7 @@ export class SfxService {
           }
           const candidateIds = new Set(run.events.filter(e => !e.locked).flatMap(e => [...e.candidates, ...(e.layers || []).flatMap(l => l.candidates)].map(c => c.assetId)));
           for (const asset of run.assets.filter(a => candidateIds.has(a.id))) {
-            controller.signal.throwIfAborted();
+            taskSignal(controller.signal)!.throwIfAborted();
             try {
               const stat = await fs.stat(asset.path);
               if (!stat.isFile()) throw new Error("不是音频文件");
@@ -627,13 +659,13 @@ export class SfxService {
               }
             } catch { asset.usable = false; asset.warning = "候选素材已移动或无法访问"; run.warnings.push(`${asset.fileName}：${asset.warning}`); }
           }
-          await this.selectAudio(run, controller.signal);
+          await this.selectAudio(run, taskSignal(controller.signal)!);
           for (const e of run.events) { const locked = originalLocks.get(e.id); if (locked === undefined) delete e.locked; else e.locked = locked; }
           const keep = source.placements.filter(p => lockedIds.has(p.eventId) || source.events.find(e => e.id === p.eventId)?.locked);
           const keepIds = new Set(keep.map(p => p.eventId));
           run.placements = [...createPlacements(run.events.filter(e => !keepIds.has(e.id)), run.assets, run.duration,run), ...structuredClone(keep)];
           await hydratePlacements(run);
-          const reviewed = await usagePhase("audio-source-edit",()=>reviewSourceEdits(run,this.audioProvider(run),new AudioCandidateClips(),this.store.directory(run.id),controller.signal));
+          const reviewed = await usagePhase("audio-source-edit",()=>reviewSourceEdits(run,this.audioProvider(run),new AudioCandidateClips(),this.store.directory(run.id),taskSignal(controller.signal)!));
           run.warnings.push(...reviewed.warnings);
           if (input.autoRender && run.placements.length) { run.progress = "Gemini 选材完成，正在自动混音并生成新的视频预览"; run.render = await usagePhase("render-and-mix", () => new SfxRenderer().renderPreview(run, this.store.directory(run.id))); }
           run.status = "ready"; run.progress = "Gemini 选材及预览已完成，请试听复核";
@@ -710,7 +742,7 @@ export class SfxService {
           if (!provider.locateEvents) throw new SfxError("当前 Gemini 视觉配置不支持描述式补声");
           const frameDir = path.join(this.store.directory(child.id), "frames", "described-event");
           const sampleFrames = async (start: number, end: number, fps: number, name: string) => {
-            let frames = await media.sampleFrames!(source.videoPath, start, end, fps, path.join(frameDir, name), controller.signal, 768);
+            let frames = await media.sampleFrames!(source.videoPath, start, end, fps, path.join(frameDir, name), taskSignal(controller.signal)!, 768);
             if (frames.length > 48) frames = frames.filter((_, index) => index % Math.ceil(frames.length / 48) === 0).slice(0, 48);
             if (!frames.length) throw new SfxError("描述式补声没有抽取到可分析的画面");
             return frames;
@@ -721,15 +753,17 @@ export class SfxService {
           const prompt = [
             "你是游戏视频声音导演。用户描述了一个缺失的声音，请扫描完整视频，只返回画面中真正出现该动作的所有候选时间段。",
             `缺失声音描述：${input.description}`,
+            `已有动作点位仅作定位参考，不是新增声音清单：${JSON.stringify(source.events.slice(0,120).map(({start,end,type,description})=>({start,end,type,description})))}`,
+            '区分画面定位的锚点与要新增的声音：例如“在猩猩吼叫时加一点风声”，用吼叫动作定位时间，但新增事件必须是风声，query应检索wind/gust，不要再次添加吼叫或要求画面必须出现可见的风。原有声音保持不变。辅助氛围作为detail层，轻于锚点的关键动作。',
             "不要因为镜头切换、静止或推测画外动作添加事件。每个可见动作单独返回，时间使用视频开头起算的绝对秒数。query必须是适合本地音效文件名检索的中英文关键词，包含动作、主体和材质；description写实际画面行为。",
-            "category只能是foley/impact/whoosh/ambience/music/other；phase可用preparation/motion/contact/aftermath；返回JSON：{\"events\":[{\"start\":0,\"end\":1,\"type\":\"monster_bite\",\"description\":\"猩猩张嘴咬住角色\",\"query\":\"gorilla bite jaw attack\",\"category\":\"impact\",\"confidence\":0.9,\"evidence\":\"中文画面证据\",\"actor\":\"boss\",\"phase\":\"contact\"}]}。没有看到动作时返回空数组。"
+            "category只能是foley/impact/whoosh/ambience/music/other；phase可用preparation/motion/contact/aftermath；importance为key/support/detail，烘托氛围使用detail；返回JSON：{\"events\":[{\"start\":0,\"end\":1,\"type\":\"monster_bite\",\"description\":\"猩猩张嘴咬住角色\",\"query\":\"gorilla bite jaw attack\",\"category\":\"impact\",\"confidence\":0.9,\"evidence\":\"中文画面证据\",\"actor\":\"boss\",\"phase\":\"contact\"}]}。没有看到动作时返回空数组。"
           ].join("\n");
-          const coarse = DescribedEventsResultSchema.parse(await provider.locateEvents(overviewFrames, prompt+creativeContext(child), controller.signal));
+          const coarse = DescribedEventsResultSchema.parse(await provider.locateEvents(overviewFrames, prompt+creativeContext(child), taskSignal(controller.signal)!));
           if (!coarse.events.length) throw new SfxError(`Gemini 未找到“${input.description}”对应的可见动作`);
           const addedEvents: SfxRun["events"] = [];
           const locationReport: unknown[] = [];
           for (let i = 0; i < coarse.events.length; i++) {
-            controller.signal.throwIfAborted();
+            taskSignal(controller.signal)!.throwIfAborted();
             const candidate = coarse.events[i];
             const focusStart = Math.max(0, candidate.start - 1.2);
             const focusEnd = Math.min(source.duration, Math.max(candidate.end + 1.2, focusStart + .5));
@@ -738,10 +772,11 @@ export class SfxService {
             const refinePrompt = [
               "你是 Gemini 视频音效时间编辑器。请逐帧精定位下面这个已发现的动作，只修正它的真实开始、接触和结束时间。",
               `用户描述：${input.description}`,
+              '只定位用户要求的声音应跟随的动作锚点；用户要求添加的辅助氛围不必肉眼可见。例如吼叫时加风声，以吼叫的开始结束为锚点，不能因风不可见而丢弃。',
               `候选事件：${JSON.stringify(candidate)}`,
               `检查范围：${focusStart.toFixed(3)}–${focusEnd.toFixed(3)} 秒。不要把镜头切换或静止当成动作。只返回JSON：{\"start\":0,\"end\":1,\"confidence\":0.0,\"evidence\":\"中文画面证据\",\"timingPrecision\":0.083}`
             ].join("\n");
-            const timing = EventTimingResultSchema.parse(await provider.locateEvent(frames, refinePrompt, controller.signal));
+            const timing = EventTimingResultSchema.parse(await provider.locateEvent(frames, refinePrompt, taskSignal(controller.signal)!));
             if (timing.start < focusStart - .001 || timing.end > focusEnd + .001) {
               locationReport.push({ candidate, rejected: "精定位结果超出检查窗口", timing, focus: { start: focusStart, end: focusEnd } });
               continue;
@@ -755,9 +790,9 @@ export class SfxService {
           if (!addedEvents.length) throw new SfxError(`Gemini 未能确认“${input.description}”的有效动作点位`);
           child.events = [...source.events, ...addedEvents].sort((a, b) => a.start - b.start);
           const index = this.runIndex(child);
-          await planAllEventCandidatesResponsive(addedEvents,index,controller.signal,message=>{child.progress=message;});
-          await prepareCandidates(addedEvents, index, message => { child.progress = message; }, controller.signal);
-          await this.selectAudioForEvents(child, addedEvents, controller.signal);
+          await planAllEventCandidatesResponsive(addedEvents,index,taskSignal(controller.signal)!,message=>{child.progress=message;});
+          await prepareCandidates(addedEvents, index, message => { child.progress = message; }, taskSignal(controller.signal)!);
+          await this.selectAudioForEvents(child, addedEvents, taskSignal(controller.signal)!);
           const uncovered = addedEvents.filter(event => !(event.layers || []).some(layer => layer.candidates.length) && event.candidates.length === 0);
           if (uncovered.length) {
             for (const event of uncovered) event.requiresHumanReview = true;
@@ -766,7 +801,7 @@ export class SfxService {
           const newPlacements = createPlacements(addedEvents, child.assets, child.duration,child);
           child.placements = [...source.placements, ...newPlacements];
           const reviewRun = { ...child, events: addedEvents, placements: newPlacements };
-          const reviewed = await usagePhase("audio-source-edit", () => reviewSourceEdits(reviewRun, this.audioProvider(child), new AudioCandidateClips(), this.store.directory(child.id), controller.signal));
+          const reviewed = await usagePhase("audio-source-edit", () => reviewSourceEdits(reviewRun, this.audioProvider(child), new AudioCandidateClips(), this.store.directory(child.id), taskSignal(controller.signal)!));
           child.warnings.push(...reviewed.warnings);
           const reviewedIds = new Set(addedEvents.map(event => event.id));
           child.placements = [...source.placements, ...child.placements.filter(placement => reviewedIds.has(placement.eventId))];
@@ -843,10 +878,21 @@ export class SfxService {
     } finally { this.locks.delete(id); }
   }
   private launch(run: SfxRun, work: () => Promise<void>, operation = "analyze-and-render") {
+    let previousStatus:SfxRun['status']=run.status,stage=run.progress;
+    const control=new TaskControl(async state=>{
+      if(state==='pausing') {previousStatus=run.status;stage=run.progress;}
+      run.taskControl={state,stage,operation,updatedAt:new Date().toISOString()};
+      if(state==='paused'){run.status='paused';run.progress=`已停止，点击继续 · ${stage}`;}
+      if(state==='running'){run.status=previousStatus==='rendering'?'rendering':'analyzing';run.progress=stage;}
+      await this.store.save(run);
+    });
+    this.controls.set(run.id,control);
+    run.taskControl={state:'running',stage,operation,updatedAt:new Date().toISOString()};
     this.active.set(run.id, run);
-    const task = withModelUsage(run.id, this.store.directory(run.id), operation, work).catch(async e => {
+    const task = control.run(()=>withModelUsage(run.id, this.store.directory(run.id), operation, async()=>{await taskCheckpoint();await work();control.controller.signal.throwIfAborted();})).catch(async e => {
       const lastStage=run.progress;
-      run.status = "failed"; run.progress = "处理失败，可查看原因后重试"; run.error = `${String(e instanceof Error ? e.message : e)}${lastStage?`；中断阶段：${lastStage}`:""}`.slice(0, 1500);
+      if(control.controller.signal.aborted){run.status='cancelled';run.progress='本次任务已终止，原版本保持不变';delete run.error;run.taskControl={state:'cancelled',stage:lastStage,operation,updatedAt:new Date().toISOString()};}
+      else {run.status = "failed"; run.progress = "处理失败，可查看原因后点击继续重试"; run.error = `${String(e instanceof Error ? e.message : e)}${lastStage?`；中断阶段：${lastStage}`:""}`.slice(0, 1500);}
       try { await this.store.save(run); }
       catch (storageError) {
         run.error += `；错误状态无法写盘：${String(storageError instanceof Error ? storageError.message : storageError).slice(0, 300)}`;
@@ -854,7 +900,7 @@ export class SfxService {
       }
     }).finally(async () => {
       try {const usage=JSON.parse(await fs.readFile(path.join(this.store.directory(run.id),"usage-report.json"),"utf8"));await writeJson(path.join(this.store.directory(run.id),"workflow-report.json"),buildWorkflowReport(run,usage));} catch { /* export route can reconstruct the report if a write was interrupted */ }
-      this.pending.delete(run.id); this.active.delete(run.id);
+      this.pending.delete(run.id); this.active.delete(run.id);this.controls.delete(run.id);
     });
     this.pending.set(run.id, task);
   }
@@ -964,7 +1010,7 @@ export class SfxService {
         originalGainDb: source.originalGainDb
       }));
       Object.assign(child.workflow, { operation: "reidentify", timing: "fresh", selection: "reused", source: "reused" });
-      child.workflow.options = { ...child.workflow.options, operation: "reidentify-event", eventId: event.id };
+      child.workflow.options = { ...child.workflow.options, operation: "reidentify-event", eventId: event.id,description:input.description,startHint:input.startHint,endHint:input.endHint };
       child.warnings = [...source.warnings, "本版本只重新定位一个事件的时间点；音效素材、源音频区间、增益、淡入淡出和混音均沿用上一版。"];
       child.progress = "准备 Gemini 重新定位当前事件";
       for (const file of ["analysis-review.json", "source-edit-report.json", "name-stage-review.json"]) {
@@ -999,7 +1045,7 @@ export class SfxService {
           const sampleFrames = media.sampleFrames;
           if (!sampleFrames) throw new SfxError("当前媒体工具不支持按事件抽取画面帧");
           const sample = async (start: number, end: number, fps: number, name: string) => {
-            let frames = await sampleFrames.call(media, source.videoPath, start, end, fps, path.join(frameDir, name), controller.signal, 768);
+            let frames = await sampleFrames.call(media, source.videoPath, start, end, fps, path.join(frameDir, name), taskSignal(controller.signal)!, 768);
             if (frames.length > 48) {
               const stride = Math.ceil(frames.length / 48);
               frames = frames.filter((_, index) => index % stride === 0).slice(0, 48);
@@ -1010,14 +1056,14 @@ export class SfxService {
           let result: z.infer<typeof EventTimingResultSchema>;
           if (hasHint) {
             const frames = await sample(focusStart, focusEnd, SFX_WORKFLOW.timing.reviewFps, "hint");
-            result = EventTimingResultSchema.parse(await provider.locateEvent(frames, buildPrompt("refine", focusStart, focusEnd), controller.signal));
+            result = EventTimingResultSchema.parse(await provider.locateEvent(frames, buildPrompt("refine", focusStart, focusEnd), taskSignal(controller.signal)!));
           } else {
             const coarseFrames = await sample(0, source.duration, Math.min(1.5, 48 / Math.max(1, source.duration)), "coarse");
-            const coarse = EventTimingResultSchema.parse(await provider.locateEvent(coarseFrames, buildPrompt("coarse", 0, source.duration), controller.signal));
+            const coarse = EventTimingResultSchema.parse(await provider.locateEvent(coarseFrames, buildPrompt("coarse", 0, source.duration), taskSignal(controller.signal)!));
             const refineStart = Math.max(0, coarse.start - 1.5);
             const refineEnd = Math.min(source.duration, Math.max(coarse.end + 1.5, refineStart + .5));
             const refineFrames = await sample(refineStart, refineEnd, SFX_WORKFLOW.timing.reviewFps, "refine");
-            result = EventTimingResultSchema.parse(await provider.locateEvent(refineFrames, buildPrompt("refine", refineStart, refineEnd), controller.signal));
+            result = EventTimingResultSchema.parse(await provider.locateEvent(refineFrames, buildPrompt("refine", refineStart, refineEnd), taskSignal(controller.signal)!));
           }
           const located = applyEventTiming(event, source.placements, { ...result, description: input.description?.trim() }, source.duration);
           child.events = child.events.map(item => item.id === event.id ? located.event : item);

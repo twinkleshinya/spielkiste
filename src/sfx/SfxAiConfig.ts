@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import {modelGatewayError} from './ModelGatewayError.js';
 
 export type AiReasoningEffort = "high" | "xhigh";
 export type AiWireApi = "responses" | "chat_completions";
@@ -352,8 +353,7 @@ function responseText(body: any): string {
 function safeGatewayError(body: any, status: number): string {
   // Do not echo arbitrary gateway error text into the browser: proxies may
   // include request headers or credential fragments in their diagnostics.
-  if (body?.error?.message || body?.error) return `网关拒绝请求（HTTP ${status}）`;
-  return `网关请求失败（HTTP ${status}）`;
+  return modelGatewayError('Gemini ',body,status).message;
 }
 
 function safeError(error: unknown): string {

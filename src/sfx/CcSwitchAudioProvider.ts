@@ -1,6 +1,7 @@
 import { readConfig } from "./CcSwitchVisionProvider.js";
 import type { AudioSample, AudioSelectionModel, SelectionTask } from "./GeminiAudioSelector.js";
 import { modelJson } from "./ModelUsage.js";
+import {modelGatewayError} from './ModelGatewayError.js';
 import type { SourceEditTask } from "./GeminiSourceEditor.js";
 import { AiConfigService, type AiReasoningEffort } from "./SfxAiConfig.js";
 
@@ -33,7 +34,7 @@ export class CcSwitchAudioProvider implements AudioSelectionModel {
     if (config.bearer && config.bearer !== "PROXY_MANAGED") headers.authorization = `Bearer ${config.bearer}`;
     // Audio uses the gateway's OpenAI-compatible audio input contract, tested independently of its Responses image path.
     const { response, body } = await modelJson(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, { method: "POST", headers, signal, body: JSON.stringify({ model: config.model, reasoning_effort: config.reasoningEffort || "high", temperature: .1, messages: [{ role: "user", content }] }) }, phase, config.model);
-    if (!response.ok) throw new Error(`Gemini 音频选材请求失败（HTTP ${response.status}）`);
+    if (!response.ok) throw modelGatewayError('Gemini 音频选材 ',body,response.status);
     const value = body.choices?.[0]?.message?.content;
     const text = typeof value === "string" ? value : Array.isArray(value) ? value.map(part => part.text || "").join("\n") : "";
     if (!text) throw new Error("Gemini 音频选材未返回可解析结果");
