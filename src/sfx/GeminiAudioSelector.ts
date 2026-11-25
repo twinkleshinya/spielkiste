@@ -140,6 +140,20 @@ export class GeminiAudioSelector {
           report.decisions.push({ taskId: task.taskId, eventIds: group.events.map(e => e.id), assetId: task.previousAssetId, reason, basis: "fallback" });
           continue;
         }
+        // Keep visible actions audible when Gemini rejects every shortlisted
+        // file because the local shortlist is imperfect. The best local
+        // candidate remains available for audition and the fallback is shown
+        // in the report; explicit no-fit responses remain silent.
+        if (!strictDescription && choice?.assetId === null && task.candidates.length && group.events[0].category !== "music"
+          && /候选|声学|时长|素材缺口|无法匹配|不匹配/.test(choice.reason || "")
+          && !/^(?:不适合|没有合适|无合适|不选)/.test((choice.reason || "").trim())) {
+          const retained = task.candidates[0];
+          for (const layer of group.layers) layer.candidates = [{ assetId: retained.assetId, score: .5, reason: `Gemini 未确认完全匹配，保留本地最佳候选供试听：${choice.reason}` }, ...layer.candidates.filter(c => c.assetId !== retained.assetId)];
+          report.fallbackLayers += group.layers.length;
+          report.warnings.push(`${task.event.start.toFixed(3)}秒 ${task.event.description}：Gemini 拒绝全部候选但保留本地最佳候选，需试听确认。`);
+          report.decisions.push({ taskId: task.taskId, eventIds: group.events.map(e => e.id), assetId: retained.assetId, reason: `保留本地最佳候选：${choice.reason}`, basis: "fallback" });
+          continue;
+        }
         if (!choice || choice.assetId !== null && !task.candidates.some(c => c.assetId === choice.assetId)) {
           report.fallbackLayers += group.layers.length;
           report.decisions.push({ taskId: task.taskId, eventIds: group.events.map(e => e.id), assetId: null, basis: "fallback", reason: "未获得有效音频选材决策，保留文件名规则候选" });
