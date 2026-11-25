@@ -204,6 +204,7 @@ await audioSelectionTests.testSelectionKeepsCompatibleBaseline();
 await audioSelectionTests.testUiSweepRejection();
 await audioSelectionTests.testGeminiAudioSelection();
 await audioSelectionTests.testGeminiAudioSelectionBoundaries();
+await audioSelectionTests.testGeminiRejectKeepsBestVisibleActionCandidate();
 await audioSelectionTests.testGeminiAudioReselectRun();
 await audioSelectionTests.testGeminiAudioDistinctLayers();
 await audioSelectionTests.testGeminiCandidateOnset();
