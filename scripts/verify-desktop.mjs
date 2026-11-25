@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 const exec=promisify(execFile);
 const root=path.resolve('.output/desktop-acceptance',String(Date.now())),workspace=path.join(root,'workspace'),release=process.env.SPIELKISTE_TEST_EXE?path.dirname(path.resolve(process.env.SPIELKISTE_TEST_EXE)):path.resolve('.output/desktop-release/win-unpacked');
 await fs.mkdir(workspace,{recursive:true});await fs.rm(path.join(workspace,'desktop-smoke.json'),{force:true});
-const child=spawn(process.env.SPIELKISTE_TEST_EXE||path.join(release,'Spielkiste.exe'),['--spielkiste-smoke'],{windowsHide:true,stdio:'ignore',env:{...process.env,SPIELKISTE_DATA_DIR:workspace,SPIELKISTE_SMOKE_HOLD:'1'}});
+const launchEnv={...process.env,SPIELKISTE_DATA_DIR:workspace,SPIELKISTE_SMOKE_HOLD:'1'};
+const executable=process.env.SPIELKISTE_TEST_EXE||path.join(release,'Spielkiste.exe');
+const child=spawn(executable,['--spielkiste-smoke','--remote-debugging-port=0'],{windowsHide:true,stdio:'ignore',env:launchEnv});
 const report={started:new Date().toISOString(),checks:[]};
 let boot;
 try{
@@ -34,6 +36,28 @@ try{
  const placement={id:'charge-sound',eventId:'charge',assetId:run.assets[0].id,start:0.5,duration:1.25,sourceOffset:0.05,gainDb:-12,fadeIn:0.02,fadeOut:0.1,category:'foley',enabled:true};
  const edited=await api(`/api/sfx/runs/${run.id}/edit-preview`,{revision:run.revision,events:[event],placements:[placement],originalGainDb:-60,originalMuted:true,musicEnabled:false});
  const preview=await wait(edited.runId);assert.ok(preview.render);for(const [key,value] of Object.entries(placement))assert.deepEqual(preview.placements[0][key],value,key);report.checks.push('explicit edit preview renders with saved placement and fades');
+ if(process.argv.includes('--multiwindow')) {
+  assert.equal(boot.newProjectWindow,true);
+  const debugPort=Number((await fs.readFile(path.join(workspace,'.desktop-state/DevToolsActivePort'),'utf8')).split('\n')[0]);
+  const targets=()=>fetch(`http://127.0.0.1:${debugPort}/json/list`).then(r=>r.json()).then(rows=>rows.filter(t=>t.type==='page'&&t.url.startsWith(base+'/sfx')));
+  const target=(await targets())[0],socket=new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});
+  let sequence=0;const waiting=new Map();
+  socket.addEventListener('message',event=>{const message=JSON.parse(event.data);const call=waiting.get(message.id);if(call){waiting.delete(message.id);message.error?call.reject(new Error(JSON.stringify(message.error))):call.resolve(message.result);}});
+  const cdp=(method,params={})=>new Promise((resolve,reject)=>{const id=++sequence;waiting.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
+  const evaluate=async expression=>{const result=await cdp('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(result.exceptionDetails)throw new Error(JSON.stringify(result.exceptionDetails));return result.result?.value;};
+  try {
+   await cdp('Page.navigate',{url:base+`/sfx?run=${preview.id}`});
+   let opened=false;for(let n=0;n<120;n++){opened=await evaluate(`document.getElementById('project-title')?.textContent?.length>0`);if(opened)break;await new Promise(r=>setTimeout(r,250));}assert.ok(opened,'actual project editor loads');
+   const layout=await evaluate(`(async()=>{const list=document.getElementById('event-list'),editor=document.getElementById('event-editor'),panel=document.querySelector('.inspector');for(let n=0;n<40;n++){const row=document.createElement('div');row.style.height='65px';row.textContent='滚动检查';list.append(row);}const spacer=document.createElement('div');spacer.style.height='1600px';editor.append(spacer);document.querySelector('.workspace-grid').scrollIntoView({block:'start'});await new Promise(r=>requestAnimationFrame(r));list.scrollTop=120;editor.scrollTop=0;const before={left:list.scrollTop,page:scrollY};editor.scrollTop=200;await new Promise(r=>requestAnimationFrame(r));const right={left:list.scrollTop,page:scrollY,editor:editor.scrollTop};list.scrollTop=240;await new Promise(r=>requestAnimationFrame(r));const after={left:list.scrollTop,page:scrollY,editor:editor.scrollTop};return {before,right,after,contain:getComputedStyle(editor).overscrollBehaviorY,height:editor.clientHeight,overflow:editor.scrollHeight,panelHeight:panel.clientHeight};})()`);
+   assert.ok(layout.right.editor>0,'right editor actually scrolls');assert.equal(layout.right.left,layout.before.left,'right scroll leaves sound list fixed');assert.equal(layout.right.page,layout.before.page,'right scroll leaves page fixed');assert.ok(layout.after.left>layout.right.left);assert.equal(layout.after.editor,layout.right.editor,'sound list scroll leaves editor fixed');assert.equal(layout.contain,'contain');report.layout=layout;report.checks.push('real Chromium layout: independent sound list and placement editor scrolling');
+   await evaluate('window.spielkisteDesktop.newWindow()');assert.equal((await targets()).length,2,'button opens another project window');
+   const second=spawn(executable,['--spielkiste-smoke'],{windowsHide:true,stdio:'ignore',env:launchEnv});second.on('error',()=>{});
+   let count=0;for(let n=0;n<60;n++){count=(await targets()).length;if(count===3)break;await new Promise(r=>setTimeout(r,250));}assert.equal(count,3,'relaunching EXE opens a third window');
+   const pages=await targets();assert.ok(pages.every(p=>new URL(p.url).origin===base),'all windows share one backend');
+   await cdp('Page.close');assert.equal((await api('/api/sfx/health')).ok,true,'closing first editor keeps backend alive');assert.equal((await targets()).length,2,'other editors remain open');report.checks.push('EXE relaunch and new-window button share backend; closing one editor preserves other windows');
+  }finally{socket.close();}
+ }
  const probe=JSON.parse((await exec(ffprobe,['-v','error','-show_format','-show_streams','-of','json',preview.render.video],{windowsHide:true})).stdout);assert.ok(probe.streams.some(s=>s.codec_type==='video'));assert.ok(probe.streams.some(s=>s.codec_type==='audio'));report.preview={duration:probe.format.duration,video:preview.render.video};
  const ranged=await fetch(base+`/api/sfx/runs/${preview.id}/media/preview`,{headers:{range:'bytes=0-1023'}});assert.equal(ranged.status,206);report.rangeStatus=ranged.status;
  const projectId=preview.projectId;

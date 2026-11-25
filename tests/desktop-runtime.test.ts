@@ -17,10 +17,11 @@ export async function testDesktopAllowsMultipleInstancesAndIndependentPanels() {
   const main = await fs.readFile(path.resolve("desktop/main.cjs"), "utf8");
   const backend = await fs.readFile(path.resolve("desktop/backend.cjs"), "utf8");
   const css = await fs.readFile(path.resolve("src/ui/public/sfx.css"), "utf8");
-  assert.doesNotMatch(main, /requestSingleInstanceLock\s*\(/, "desktop EXE must allow multiple windows");
-  assert.match(backend, /process\.env\.PORT\s*=\s*['\"]0['\"]/, "each desktop backend must request a random port");
-  assert.match(css, /\.events-panel,\.inspector\{height:calc\(100vh - 170px\)/, "event and placement panels need independent desktop heights");
-  assert.match(css, /\.event-list\{flex:1;min-height:0;max-height:none;overflow:auto/, "event list needs its own scroll area");
-  assert.match(css, /\.inspector-sound-selection\{flex:1 1 45%;min-height:120px;overflow:auto/, "sound selection needs its own scroll area");
-  assert.match(css, /\.inspector-placement-scroll\{flex:1 1 35%;min-height:110px;overflow:auto/, "placement editor needs its own scroll area");
+  assert.match(main, /app.on\('second-instance', \(\) => \{ void openProjectWindow\(\)/, "relaunch must create another editor");
+  assert.match(main, /const windows = new Set/, "all windows must stay registered");
+  assert.equal((main.match(/utilityProcess.fork\(/g)||[]).length,1,"all windows share a backend");
+  assert.match(backend, /desktop-port\.json/, "shared backend retains the origin for saved edit drafts");
+  assert.match(css, /\.events-panel,\.inspector\{position:sticky;top:16px;height:calc\(100dvh - 32px\)/);
+  assert.match(css, /\.event-list\{flex:1;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain/);
+  assert.match(css, /\.inspector form\{[^}]*overflow:auto;overscroll-behavior:contain/);
 }

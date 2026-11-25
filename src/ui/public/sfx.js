@@ -870,6 +870,10 @@ $("open-new-project").onclick = guard(() => {
   $("new-project-setup").hidden=false;
   $("new-project-setup").scrollIntoView({behavior:"smooth",block:"start"});
 });
+$("open-project-window").onclick = guard(async () => {
+  if(window.spielkisteDesktop?.newWindow)await window.spielkisteDesktop.newWindow();
+  else window.open("/sfx?new=1","_blank","noopener");
+});
 $("switch-project").onclick = () => { $("history").focus(); $("saved-projects").scrollIntoView({behavior:"smooth",block:"center"}); };
 window.addEventListener("beforeunload", event => { if (dirty && !persistDraft()) { event.preventDefault(); event.returnValue = ""; } });
 const initialParams=new URLSearchParams(location.search),initialId = initialParams.get("run");

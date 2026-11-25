@@ -52,7 +52,8 @@ export async function testNativeFolderSelection() {
   const preload=await fs.readFile('desktop/preload.cjs','utf8');
   vm.runInNewContext(preload,{require:(name:string)=>{assert.equal(name,'electron');return {contextBridge:{exposeInMainWorld:(...args:any[])=>exposed.push(args)},ipcRenderer:{invoke:async(...args:any[])=>args}};}});
   assert.equal(exposed[0][0],'spielkisteDesktop');
-  assert.deepEqual(Object.keys(exposed[0][1]),['chooseFolder'],'preload exposes only the folder operation');
+  assert.deepEqual(Object.keys(exposed[0][1]),['chooseFolder','newWindow'],'preload exposes only folder selection and new editor window');
+  assert.equal((await exposed[0][1].newWindow())[0],'spielkiste:new-window');
   assert.equal((await exposed[0][1].chooseFolder({initialPath:'Z:\\'}))[0],'spielkiste:choose-folder');
   const {createFolderPicker}=require(path.resolve('desktop/folder-picker.cjs'));
   const frame={url:'http://127.0.0.1:4320/sfx?new=1'};
