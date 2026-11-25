@@ -40,7 +40,7 @@ function makeAsset(file: string) {
   };
 }
 
-export async function testAddDescribedEventApiLocatesAndPreservesExistingTimeline(simulateLongWait = false) {
+export async function testAddDescribedEventApiLocatesAndPreservesExistingTimeline(simulateLongWait = false, scenario?: "scoped" | "missing" | "filtered") {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "sfx-described-event-"));
   const video = path.join(root, "source.mp4");
   const audio = path.join(root, "gorilla_bite.wav");
@@ -87,9 +87,15 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
   };
   const fakeSelector = {
     model: "test-gemini",
-    async select(events: any[]) {
+    async select(events: any[], index: any) {
+      if (scenario === "scoped") {
+        assert.equal(index.videoDescription, undefined, "historical exclusive description must not veto an explicit supplement");
+        assert.match(index.soundRequirements, /猩猩啃咬角色/);
+        assert.doesNotMatch(JSON.stringify(index.descriptionConstraints), /只要吼叫/);
+        assert.equal(index.audioOutputMode, "sfx");
+      }
       for (const event of events) for (const layer of event.layers || []) {
-        layer.candidates = [{ assetId: "bite-asset", score: 99, reason: "Gemini 听到低沉咬合冲击" }];
+        layer.candidates = scenario === "missing" ? [] : [{ assetId: "bite-asset", score: 99, reason: "Gemini 听到低沉咬合冲击" }];
       }
       return {
         model: "test-gemini",
@@ -105,7 +111,9 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
       };
     }
   };
+  let renders = 0;
   const renderer = { renderPreview: async (run: any, outputDir: string) => {
+    renders++;
     const videoOut = path.join(outputDir, "preview.mp4");
     const audioOut = path.join(outputDir, "preview.wav");
     await fs.copyFile(video, videoOut);
@@ -123,6 +131,7 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
     placements: [existingPlacement],
     render: { video, audio, revision: 0 }
   });
+  if (scenario) Object.assign(source, {videoDescription:"只要吼叫", soundRequirements:"叫声轻一点", audioOutputMode:scenario === "filtered" ? "music" : "sfx", descriptionConstraints:{exclusive:true,restrictions:["只要吼叫"],requirements:[],conflicts:[]}});
   await service.store.save(source);
   const parent = await service.readRun(source.id);
   const parentEvent = structuredClone(parent.events[0]);
@@ -142,6 +151,14 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
     const result = await response.json() as { runId: string };
     assert.notEqual(result.runId, parent.id);
     const child = await service.waitForIdle(result.runId);
+    if (scenario === "missing" || scenario === "filtered") {
+      assert.equal(child.status, "failed", "empty or output-filtered supplement must not report success");
+      assert.match(child.error || "", /未.*(?:音效|贴片|声音)|生成内容/);
+      assert.equal(renders, 0, "do not render an unchanged preview and label it supplemented");
+      assert.equal(child.render, undefined);
+      assert.deepEqual(child.placements.filter(p=>p.id===existingPlacement.id), [parentPlacement]);
+      return;
+    }
     assert.equal(child.status, "ready", child.error);
     assert.equal(child.parentRunId, parent.id);
     assert.equal(child.events.length, 2);
@@ -155,6 +172,7 @@ export async function testAddDescribedEventApiLocatesAndPreservesExistingTimelin
     assert.deepEqual(child.events.find(event => event.id === existingEvent.id), parentEvent);
     assert.deepEqual(child.placements.find(placement => placement.id === existingPlacement.id), parentPlacement);
     assert.ok(child.render?.video);
+    assert.match(child.progress, /1 个.*贴片/);
     const usage = JSON.parse(await fs.readFile(path.join(service.store.directory(child.id), "usage-report.json"), "utf8"));
     assert.equal(usage.operation, "add-described-event");
   } finally {
