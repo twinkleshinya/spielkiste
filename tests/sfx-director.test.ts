@@ -77,6 +77,9 @@ export function testDirectorSemanticSafety() {
   const raise = event({ type: "player_weapon_raise", actor: "player", phase: "motion", category: "foley", description: "玩家举起武器", query: "sword weapon foley" });
   planEventCandidates(raise, { ...index, assets: [asset("bad", "sword_foley_impact.wav"), asset("good", "sword_foley_ready.wav")] });
   assert.equal(raise.candidates[0]?.assetId, "good", "preparing a weapon cannot select a collision just because its name also says foley");
+  const bodyShift = event({ type: "boss_stance_shift", actor: "boss", phase: "motion", category: "foley", description: "巨兽重心移动并转身", query: "heavy creature body shift" });
+  planEventCandidates(bodyShift, { ...index, assets: [asset("movement", "efx_apesstonehand_bodyturn_movement_01.wav")] });
+  assert.equal(bodyShift.candidates[0]?.assetId, "movement", "visible body movement must recall movement/bodyturn assets even when the model query says body shift");
 }
 
 export function testMusicCandidatesRequireIndependentLibrary() {
