@@ -17,6 +17,9 @@ export async function testDesktopAllowsMultipleInstancesAndIndependentPanels() {
   const main = await fs.readFile(path.resolve("desktop/main.cjs"), "utf8");
   const backend = await fs.readFile(path.resolve("desktop/backend.cjs"), "utf8");
   const css = await fs.readFile(path.resolve("src/ui/public/sfx.css"), "utf8");
+  const {createRequire}=await import('node:module');
+  const config=createRequire(import.meta.url)(path.resolve('electron-builder.cjs'));
+  assert.equal(config.portable.unpackDirName,true,'portable launches must not overwrite the first running extraction');
   assert.match(main, /app.on\('second-instance', \(\) => \{ void openProjectWindow\(\)/, "relaunch must create another editor");
   assert.match(main, /const windows = new Set/, "all windows must stay registered");
   assert.equal((main.match(/utilityProcess.fork\(/g)||[]).length,1,"all windows share a backend");

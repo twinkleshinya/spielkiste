@@ -53,7 +53,9 @@ try{
    assert.ok(layout.right.editor>0,'right editor actually scrolls');assert.equal(layout.right.left,layout.before.left,'right scroll leaves sound list fixed');assert.equal(layout.right.page,layout.before.page,'right scroll leaves page fixed');assert.ok(layout.after.left>layout.right.left);assert.equal(layout.after.editor,layout.right.editor,'sound list scroll leaves editor fixed');assert.equal(layout.contain,'contain');report.layout=layout;report.checks.push('real Chromium layout: independent sound list and placement editor scrolling');
    await evaluate('window.spielkisteDesktop.newWindow()');assert.equal((await targets()).length,2,'button opens another project window');
    const second=spawn(executable,['--spielkiste-smoke'],{windowsHide:true,stdio:'ignore',env:launchEnv});second.on('error',()=>{});
-   let count=0;for(let n=0;n<60;n++){count=(await targets()).length;if(count===3)break;await new Promise(r=>setTimeout(r,250));}assert.equal(count,3,'relaunching EXE opens a third window');
+   // Portable launchers unpack their bundled runtime before delivering the
+   // second-instance event; allow that startup work on slower Windows disks.
+   let count=0;for(let n=0;n<480;n++){count=(await targets()).length;if(count===3)break;await new Promise(r=>setTimeout(r,250));}assert.equal(count,3,'relaunching EXE opens a third window');
    const pages=await targets();assert.ok(pages.every(p=>new URL(p.url).origin===base),'all windows share one backend');
    await cdp('Page.close');assert.equal((await api('/api/sfx/health')).ok,true,'closing first editor keeps backend alive');assert.equal((await targets()).length,2,'other editors remain open');report.checks.push('EXE relaunch and new-window button share backend; closing one editor preserves other windows');
   }finally{socket.close();}
