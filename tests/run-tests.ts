@@ -308,7 +308,7 @@ import { testWindowsFfmpegInvocationUsesBinaryDirectly, testWindowsFfmpegPermiss
 await testWindowsFfmpegInvocationUsesBinaryDirectly();
 await testWindowsFfmpegPermissionFallbacks();
 
-import { testDesktopRuntimeResources } from "./desktop-runtime.test.js";
+import { testDesktopRuntimeResources, testDesktopAllowsMultipleInstancesAndIndependentPanels } from "./desktop-runtime.test.js";
 import { testNativeFolderSelection, testWindowsFolderRootsMergeMappedAndNetworkPaths, testNetworkShareRootsParseNetUseOutput, testBrowserFolderSelectionExplainsSystemPathLimit, testFolderPickerReportsHelperExit } from "./sfx-native-folders.test.js";
 testWindowsFolderRootsMergeMappedAndNetworkPaths();
 testNetworkShareRootsParseNetUseOutput();
@@ -319,6 +319,7 @@ import { testProjectGit } from "./project-git.test.js";
 import { testToolCodeGit } from "./tool-git.test.js";
 import { testWebStartupUsesSharedGitWatcher } from "./sfx-web-git-startup.test.js";
 await testDesktopRuntimeResources();
+await testDesktopAllowsMultipleInstancesAndIndependentPanels();
 await testProjectGit();
 await testToolCodeGit();
 await testWebStartupUsesSharedGitWatcher();

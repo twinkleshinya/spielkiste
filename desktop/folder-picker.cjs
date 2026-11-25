@@ -1,7 +1,7 @@
 // Only the workbench's own top-level page may request a native folder dialog.
 function createFolderPicker({getWindow,origin,showOpenDialog}) {
   return async (event,input={}) => {
-    const owner=getWindow();
+    const owner=getWindow(event);
     if(!owner||owner.isDestroyed()||event.sender!==owner.webContents||event.senderFrame!==owner.webContents.mainFrame)throw new Error('只允许当前工作台选择文件夹。');
     const url=new URL(event.senderFrame.url);
     if(url.origin!==origin||url.pathname!=='/sfx')throw new Error('只允许当前工作台选择文件夹。');

@@ -8,11 +8,9 @@ const userData=smoke&&process.env.SPIELKISTE_DATA_DIR?path.join(process.env.SPIE
 fs.mkdirSync(userData,{recursive:true});
 app.setPath('userData',userData);
 let backend, window, quitting = false;
-if (!app.requestSingleInstanceLock()) app.quit();
-else {
-  app.on('second-instance', () => { if (window) { window.restore(); window.focus(); } });
-  app.whenReady().then(start).catch(fail);
-}
+// 每次双击都启动一个独立窗口和后端实例。后端使用随机端口，多个项目
+// 可以在多个 Spielkiste 窗口中同时运行；项目数据仍写入当前本机工作区。
+app.whenReady().then(start).catch(fail);
 function fail(error) {
   const message = error instanceof Error ? error.stack : String(error);
   try { fs.appendFileSync(path.join(app.getPath('userData'), 'desktop.log'), `${new Date().toISOString()} ${message}\n`); } catch {}
