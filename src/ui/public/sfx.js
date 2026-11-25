@@ -375,6 +375,7 @@ function renderWorkspace(keepVideo = false) {
   }
 }
 async function poll(id, afterRender = false, playback, {recoverDraft = true, onProgress} = {}) {
+  history.replaceState(null,'',`/sfx?run=${id}`);
   setBusy(true);taskPolling=true;renderTaskControls(id,{status:'analyzing',progress:'正在读取任务进度…'});
   try {
     for (;;) {
