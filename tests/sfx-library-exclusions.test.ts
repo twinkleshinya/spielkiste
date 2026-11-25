@@ -33,6 +33,17 @@ export function testLibraryExclusionsSearchAndPlanner() {
   assert.deepEqual(indexer.search(unc,"roar",20).map(r=>r.asset.id),["yes"],"UNC boundaries and case must be respected");
   const literal={...lib,assets:[asset("literal","E:/Library/roar_[old].wav"),asset("safe","E:/Library/roar_old.wav")],excludedLibraryPaths:[],excludedKeywords:["[ＯＬＤ]"]};
   assert.deepEqual(indexer.search(literal,"roar",20).map(r=>r.asset.id),["safe"],"keywords are NFKC literal substrings, not regex or synonyms");
+  const staleEmpty = event();
+  staleEmpty.type = "boss_move";
+  staleEmpty.description = "巨兽低伏游走并迈步";
+  staleEmpty.query = "heavy monster prowl step";
+  staleEmpty.actor = "boss";
+  staleEmpty.phase = "motion";
+  staleEmpty.category = "foley";
+  staleEmpty.layers = [{ id: "old-layer-id", role: "foley", query: staleEmpty.query, offset: 0, candidates: [] }];
+  staleEmpty.candidates = [];
+  repairEventCandidates(staleEmpty, { ...lib, assets: [asset("movement", "efx_apesstonehand_bodyturn_movement_01.wav")] });
+  assert.equal(staleEmpty.layers[0].candidates[0]?.assetId, "movement", "empty persisted layers must be replenished even when replanning creates a new layer id");
 }
 
 export async function testExclusionsCandidateAndGeminiBoundaries() {
