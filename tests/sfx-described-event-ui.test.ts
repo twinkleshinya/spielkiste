@@ -74,7 +74,7 @@ export async function testDescribedEventButtonFeedbackAndRecovery() {
   await retry;
   assert.equal(ui.getRun().id, child.id);
   assert.match(ui.$("described-event-status").textContent, /找到 1 个动作点位/);
-  assert.equal(ui.$("described-event-description").value, "");
+  assert.equal(ui.$("described-event-description").value, "", ui.$("described-event-status").textContent);
   assert.equal(requests[0].body.description,"猩猩啃咬角色");
 
   // Legacy servers may report ready with empty new events: never claim success.
