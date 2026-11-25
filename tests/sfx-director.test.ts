@@ -80,6 +80,9 @@ export function testDirectorSemanticSafety() {
   const bodyShift = event({ type: "boss_stance_shift", actor: "boss", phase: "motion", category: "foley", description: "巨兽重心移动并转身", query: "heavy creature body shift" });
   planEventCandidates(bodyShift, { ...index, assets: [asset("movement", "efx_apesstonehand_bodyturn_movement_01.wav")] });
   assert.equal(bodyShift.candidates[0]?.assetId, "movement", "visible body movement must recall movement/bodyturn assets even when the model query says body shift");
+  const prowl = event({ type: "boss_move", actor: "boss", phase: "motion", category: "foley", description: "巨兽低伏游走并迈步", query: "heavy monster prowl step" });
+  planEventCandidates(prowl, { ...index, assets: [asset("movement", "efx_apesstonehand_bodyturn_movement_01.wav"), asset("footstep", "efx_yetuga_run_foley_01.wav")] });
+  assert.ok(prowl.candidates.length, "prowl/step movement must recall a usable movement or footstep asset");
 }
 
 export function testMusicCandidatesRequireIndependentLibrary() {
