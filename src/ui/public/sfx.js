@@ -540,6 +540,8 @@ async function submitDescribedEvent() {
     status("补声分析已开始，正在定位动作、匹配素材并生成新预览…");
     await poll(result.runId, true, playback, {onProgress: message => describedEventStatus(message)});
     const addedEvents = run.events.filter(event => !previousIds.has(event.id)).sort((a, b) => a.start - b.start);
+    const addedIds = new Set(addedEvents.filter(e=>!e.muted).map(e=>e.id));
+    const activeAdded = run.placements.filter(p=>addedIds.has(p.eventId)&&p.enabled&&((run.audioOutputMode||"all")==="sfx"?p.category!=="music":run.audioOutputMode==="music"?p.category==="music":p.category!=="music"||run.musicEnabled!==false));
     if (addedEvents.length) {
       $("event-filter").value = "all";
       selectEvent(addedEvents[0].id, false);
@@ -548,9 +550,15 @@ async function submitDescribedEvent() {
       else $("video").addEventListener("loadedmetadata", seekToAddedEvent, { once: true });
       document.querySelector(`[data-event-id="${CSS.escape(addedEvents[0].id)}"]`)?.scrollIntoView({ block: "nearest" });
     }
+    if (!activeAdded.length) {
+      const message = `已找到 ${addedEvents.length} 个动作点位，但未添加可播放音效。请查看选材缺口，不能视为补声完成。`;
+      describedEventStatus(message, true); status(message, true);
+      return;
+    }
     $("described-event-description").value = "";
-    const message = addedEvents.length ? `已根据“${input}”找到 ${addedEvents.length} 个动作点位，已选中第一个并生成新预览。` : `已根据“${input}”生成新预览，请试听确认。`;
-    describedEventStatus(message); status(message);
+    const completed = new Set(activeAdded.map(p=>p.eventId)).size;
+    const message = `已根据“${input}”找到 ${addedEvents.length} 个动作点位，添加 ${activeAdded.length} 个启用音效贴片（覆盖 ${completed}/${addedEvents.length} 个点位），已生成新预览，请试听确认。`;
+    describedEventStatus(message, completed<addedEvents.length); status(message, completed<addedEvents.length);
   } catch (error) { if (!submitted) updatePreviewStatus(); throw error; }
   finally { setBusy(false); if (button) button.textContent = originalLabel; }
 }

@@ -49,6 +49,7 @@ export async function testDescribedEventButtonFeedbackAndRecovery() {
   const child = ui.getRun(); child.id = "new-described-run"; child.revision++;
   child.render.revision = child.revision;
   child.events.push({...child.events[0], id:"new-bite", description:"猩猩啃咬角色", start:1.25,end:1.75});
+  child.placements.push({...child.placements[0],id:"new-bite-clip",eventId:"new-bite",enabled:true,category:"impact"});
   const requests: any[] = [];
   let resolveStatus!: (value: any) => void;
   let signalStarted!: () => void;
@@ -75,4 +76,14 @@ export async function testDescribedEventButtonFeedbackAndRecovery() {
   assert.match(ui.$("described-event-status").textContent, /找到 1 个动作点位/);
   assert.equal(ui.$("described-event-description").value, "");
   assert.equal(requests[0].body.description,"猩猩啃咬角色");
+
+  // Legacy servers may report ready with empty new events: never claim success.
+  ui.$("described-event-description").value="加风声";
+  const empty=ui.getRun(); empty.id="empty-supplement"; empty.revision++;empty.render.revision=empty.revision;
+  empty.events.push({...empty.events[0],id:"empty-wind",description:"风声"});
+  ui.context.fetch=async(url:string)=>({ok:true,json:async()=>url.endsWith('/add-described-event')?{runId:empty.id}:url.endsWith('/status')?{status:'ready'}:url.endsWith('/runs/'+empty.id)?empty:[]});
+  await click();
+  assert.match(ui.$("described-event-status").textContent,/未添加可播放音效/);
+  assert.equal(ui.$("described-event-status").dataset.state,"error");
+  assert.equal(ui.$("described-event-description").value,"加风声");
 }
