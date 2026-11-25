@@ -48,6 +48,9 @@ export async function testDescriptionConstraints(){
     assert.equal(saved.analysisReport?.descriptionReview?.requirements.length,2,'coverage evidence survives persisted schema validation');
     assert.equal(saved.events.find(e=>e.type==='boss_roar')?.descriptionAllowed,true);
     assert.equal(buildWorkflowReport(saved).quality.checks.find(c=>c.id==='description-coverage')?.status,'review','located points without playable assets cannot be reported as fulfilled');
+    const emptyLinks=structuredClone(saved);
+    for(const requirement of emptyLinks.analysisReport!.descriptionReview!.requirements){requirement.status='located';requirement.eventIds=[];}
+    assert.equal(buildWorkflowReport(emptyLinks).quality.checks.find(c=>c.id==='description-coverage')?.status,'review','an empty requirement mapping cannot pass by claiming located');
     const conflict={analyzeFrames:async()=>({exclusive:true,restrictions:[],requirements:[],conflicts:['仅音乐与只要叫声冲突']})};
     await assert.rejects(analyzeTemporal('fixture',3,root,media,conflict,{videoDescription:'只要叫声',audioOutputMode:'music'}),/描述要求冲突/);
     let describedCalls=0;

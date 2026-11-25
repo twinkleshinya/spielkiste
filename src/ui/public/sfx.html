@@ -7,6 +7,7 @@
 <body>
   <header class="topbar"><a class="brand" href="/sfx"><img class="brand-mark" src="/assets/spielkiste-icon.png" width="40" height="40" alt=""><span class="brand-name">Spiel<span class="brand-name-accent">kiste</span></span><span class="brand-dots" aria-hidden="true"><i></i><i></i></span></a><a href="#saved-projects">已保存项目</a><a href="/">外包文档工具 ↗</a><button id="ai-config-open" class="ai-status-button" type="button"><i id="ai-config-dot"></i><span>AI 连接</span><strong id="ai-config-status">检查中</strong></button><button id="git-settings-open" class="secondary" type="button">Git 设置</button><span class="local-badge"><i></i> 本地工作空间</span></header>
   <main>
+    <div class="history" id="saved-projects"><label>切换项目<select id="history"><option value="">正在读取已保存项目…</option></select></label><button class="text-button" id="refresh-history">刷新</button><button id="switch-project" class="secondary project-entry-button" type="button">切换项目</button><button id="open-new-project" class="project-entry-button" type="button">新建项目</button><button id="open-project-window" class="secondary project-entry-button" type="button">新窗口</button><span id="status" role="status" aria-live="polite">正在读取本机项目…</span></div>
     <section class="panel setup" id="new-project-setup" hidden>
       <form id="create-form">
         <div class="setup-title"><h1>新建项目</h1><span>01 导入 · 02 分析 · 03 编排 · 04 预览</span></div>
@@ -28,7 +29,7 @@
         <div class="setup-bottom"><p>自动分析动作、UI、环境和音乐点位，匹配素材并混音。描述的动作与声音逐项复核；明确的限制严格执行。描述留空时按画面自动分析。</p><div class="setup-actions"><button type="button" id="new-project" class="secondary">新建项目</button><button type="button" id="analyze">分析并生成视频 <span>↗</span></button></div></div>
       </form>
     </section>
-    <div class="history" id="saved-projects"><label>切换项目<select id="history"><option value="">正在读取已保存项目…</option></select></label><button class="text-button" id="refresh-history">刷新</button><button id="switch-project" class="secondary project-entry-button" type="button">切换项目</button><button id="open-new-project" class="project-entry-button" type="button">新建项目</button><button id="open-project-window" class="secondary project-entry-button" type="button">新窗口</button><span id="status" role="status" aria-live="polite">正在读取本机项目…</span></div>
+
     <p id="project-storage" class="project-storage" aria-live="polite">项目与预览保存在本机；每次打开工作台默认新建项目，选择“已保存项目”才会继续编辑。</p>
     <section id="task-controls" class="panel task-controls" hidden aria-label="当前任务控制"><div><strong id="task-control-title">任务进行中</strong><p id="task-control-note" role="status" aria-live="polite"></p></div><div class="task-control-actions"><button id="resume-task" type="button" class="secondary" hidden>继续</button><button id="pause-task" type="button" class="secondary" title="在当前请求或处理步骤结束后暂停，保留进度">停止</button><button id="terminate-task" type="button" class="secondary">终止</button></div></section>
     <section id="workspace" hidden>

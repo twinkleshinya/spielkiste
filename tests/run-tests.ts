@@ -349,3 +349,8 @@ await testLibraryCacheReuseAndRefresh();await testLibraryCacheLegacyCorruptAndCo
 import {testDescriptionConstraints} from './sfx-description-constraints.test.js';
 await testDescriptionConstraints();
 console.log('Description constraint checks passed');
+
+const recoveryTests=await import("./sfx-retrieval-recovery.test.js");
+await recoveryTests.testVocalIntentRetrieval();
+await recoveryTests.testAudioRecoveryHearsUnnamedAndHonorsExclusions();
+await recoveryTests.testProjectSwitcherAtTop();

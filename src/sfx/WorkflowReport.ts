@@ -38,7 +38,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
   });
   const fallbackEvents=[...new Set(run.selectionReport?.decisions.filter(d=>d.basis==="fallback").flatMap(d=>d.eventIds)||[])].map(id=>events.get(id)).filter((e):e is NonNullable<typeof e>=>Boolean(e));
   const described=run.analysisReport?.descriptionReview;
-  const descriptionGaps=described?.requirements.filter(r=>r.status!=='located'||r.eventIds.some(id=>!covered.has(id)));
+  const descriptionGaps=described?.requirements.filter(r=>r.status!=='located'||!r.eventIds.length||r.eventIds.some(id=>!covered.has(id)));
   const checks:Check[]=[
     ...(described?[{id:'description-coverage',status:descriptionGaps?.length?'review' as const:'pass' as const,count:descriptionGaps?.length||0,detail:descriptionGaps?.length?`描述要求未完整配声：${descriptionGaps.map(r=>r.text).join('；')}`:`描述要求 ${described.requirements.length} 项均有对应点位和启用贴片；声音范围已复核，仍需试听确认`}]:[]),
     ...(run.status==="failed"?[{id:"execution",status:"fail" as const,detail:`生成失败：${run.error||run.progress||"任务未完成"}`}]:[]),

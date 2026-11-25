@@ -11,13 +11,16 @@ import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 import {keywordPreferenceResolver,pathPreference,referenceStylesFor} from "./LibraryPreferences.js";
 import { chargeContinuityAdvice } from "./SoundIntentReview.js";
 import {eligibleAssets,filterEventCandidates} from "./AssetExclusions.js";
+import {AudioLibraryIndexer} from './AudioLibraryIndexer.js';
 
 export type AudioSample = { assetId: string; data: string; format: "wav"; segments: { start: number; end: number }[] };
 export type AudioDescription = { assetId: string; summary: string; tags: string[]; energy: number; hasMusic: boolean; hasSpeech: boolean };
 export type SelectionTask = { creativeBrief?:CreativeBrief; taskId: string; event: Pick<SoundEvent, "id" | "category" | "description" | "query" | "type" | "start" | "end" | "actor" | "phase" | "evidence" | "musicStage" | "intensity">; role: string; layerQuery: string; previousAssetId?: string; candidates: (AudioDescription & { fileName: string; duration?: number; pathPreference?: {path:string;weight:number}; keywordPreference?: NonNullable<AudioLibraryIndex["keywordPreferences"]>[number]; pitchSweep?: boolean; nameAdvice?: ReturnType<typeof assetNameAdvice>; continuityAdvice?: ReturnType<typeof chargeContinuityAdvice> })[] };
-export type AudioSelectionModel = { model: string; reasoningEffort?: "high" | "xhigh"; initialize?(): Promise<void>; describe(samples: AudioSample[], signal?: AbortSignal): Promise<unknown>; choose(tasks: SelectionTask[], signal?: AbortSignal): Promise<unknown> };
+export type RecoveryTask = {taskId:string;query:string;description:string;reason:string};
+export type RecoveryAsset = {assetId:string;fileName:string;relativePath:string;acoustics?:AudioAsset['acoustics']};
+export type AudioSelectionModel = { model: string; reasoningEffort?: "high" | "xhigh"; initialize?(): Promise<void>; describe(samples: AudioSample[], signal?: AbortSignal): Promise<unknown>; choose(tasks: SelectionTask[], signal?: AbortSignal,samples?:AudioSample[]): Promise<unknown>; discover?(tasks:RecoveryTask[],catalogue:RecoveryAsset[],signal?:AbortSignal):Promise<unknown> };
 export type AudioClipSource = { sample(asset: AudioAsset, music: boolean, outputDir: string, signal?: AbortSignal): Promise<AudioSample>; inspect?(asset: AudioAsset, signal?: AbortSignal): Promise<boolean> };
-export type SelectionOptions = { outputDir: string; cacheDir: string; signal?: AbortSignal; progress?: (message: string) => void; previousPlacements?: SoundPlacement[] };
+export type SelectionOptions = { outputDir: string; cacheDir: string; signal?: AbortSignal; progress?: (message: string) => void; previousPlacements?: SoundPlacement[]; recoveryAttempt?:boolean };
 export type SelectionReport = { elapsedMs?: number; model: string; status: "complete" | "partial" | "fallback" | "skipped"; analyzedAssets: number; cachedAssets: number; selectedLayers: number; rejectedLayers: number; fallbackLayers: number; warnings: string[]; decisions: { eventIds: string[]; taskId: string; assetId: string | null; reason: string; basis: "audio-context" | "fallback" }[]; audio: AudioDescription[] };
 
 const descriptionSchema = z.object({ assetId: z.string(), summary: z.string().min(1).max(2000), tags: z.array(z.string().max(100)).max(20), energy: z.number().min(0).max(1), hasMusic: z.boolean(), hasSpeech: z.boolean() });
@@ -36,7 +39,7 @@ export class GeminiAudioSelector {
     const groups: Group[] = [];
     const unlocked = events.filter(e => !e.locked);
     for (const event of unlocked.filter(e => e.category !== "music")) {
-      if (!event.layers?.length && event.candidates.length) event.layers = [{ id: "default", role: event.category === "other" ? "texture" : event.category, query: event.query, offset: 0, candidates: [...event.candidates] }];
+      if (!event.layers?.length) event.layers = [{ id: "default", role: event.category === "other" ? "texture" : event.category, query: event.query, offset: 0, candidates: [...event.candidates] }];
       for (const layer of event.layers || []) {
         layer.candidates = layer.candidates.filter(c => assets.get(c.assetId)?.usable);
         const ids = layer.candidates.slice(0, 4).map(c => c.assetId);
@@ -51,6 +54,7 @@ export class GeminiAudioSelector {
     }
     const wanted = [...new Set(groups.flatMap(g => g.ids))].slice(0, SFX_WORKFLOW.selection.maxAudioAssets);
     const descriptions = new Map<string, AudioDescription>();
+    const auditionSamples=new Map<string,AudioSample>();
     const keys = new Map<string, string>();
     await fs.mkdir(options.cacheDir, { recursive: true });
     for (const id of wanted) {
@@ -75,6 +79,7 @@ export class GeminiAudioSelector {
         catch { options.signal?.throwIfAborted();const asset=assets.get(id)!;asset.usable=false;asset.warning ||= "候选片段解码失败，本次选材已排除";report.warnings.push(`候选 ${asset.fileName} 无法制作音频片段，已排除并使用其余有效候选。`); }
       }
       if (!samples.length) continue;
+      for(const sample of samples)auditionSamples.set(sample.assetId,sample);
       options.progress?.(`Gemini 分析本地候选声音：${Math.min(i + 3, pending.length)}/${pending.length}，另有 ${report.cachedAssets} 份缓存`);
       try {
         const parsed = z.object({ assets: z.array(descriptionSchema).max(10) }).parse(await this.model.describe(samples, options.signal));
@@ -107,7 +112,14 @@ export class GeminiAudioSelector {
       let choices: z.infer<typeof choicesSchema>["choices"] = [];
       if (batch.length) {
         options.progress?.(`Gemini 结合画面选择音效与音乐：${Math.min(i + 8, tasks.length)}/${tasks.length} 层`);
-        try { choices = choicesSchema.parse(await this.model.choose(batch, options.signal)).choices; }
+        try {
+          const audio:AudioSample[]=[];
+          for(const id of new Set(batch.flatMap(t=>t.candidates.map(c=>c.assetId)))){
+            if(!auditionSamples.has(id))auditionSamples.set(id,await this.clips.sample(assets.get(id)!,batch.some(t=>t.event.category==='music'&&t.candidates.some(c=>c.assetId===id)),options.outputDir,options.signal));
+            audio.push(auditionSamples.get(id)!);
+          }
+          choices = choicesSchema.parse(await this.model.choose(batch, options.signal,audio)).choices;
+        }
         catch { options.signal?.throwIfAborted(); report.warnings.push("Gemini 选材决策失败，本批候选保留文件名规则。" ); }
       }
       for (const task of tasks.slice(i, i + 8)) {
@@ -138,20 +150,6 @@ export class GeminiAudioSelector {
           report.fallbackLayers += group.layers.length;
           report.warnings.push("部分重新选材未找到替代素材，已保留上一版已用贴片，避免仅因名称差异让动作声消失。");
           report.decisions.push({ taskId: task.taskId, eventIds: group.events.map(e => e.id), assetId: task.previousAssetId, reason, basis: "fallback" });
-          continue;
-        }
-        // Keep visible actions audible when Gemini rejects every shortlisted
-        // file because the local shortlist is imperfect. The best local
-        // candidate remains available for audition and the fallback is shown
-        // in the report; explicit no-fit responses remain silent.
-        if (!strictDescription && choice?.assetId === null && task.candidates.length && group.events[0].category !== "music"
-          && /候选|声学|时长|素材缺口|无法匹配|不匹配/.test(choice.reason || "")
-          && !/^(?:不适合|没有合适|无合适|不选)/.test((choice.reason || "").trim())) {
-          const retained = task.candidates[0];
-          for (const layer of group.layers) layer.candidates = [{ assetId: retained.assetId, score: .5, reason: `Gemini 未确认完全匹配，保留本地最佳候选供试听：${choice.reason}` }, ...layer.candidates.filter(c => c.assetId !== retained.assetId)];
-          report.fallbackLayers += group.layers.length;
-          report.warnings.push(`${task.event.start.toFixed(3)}秒 ${task.event.description}：Gemini 拒绝全部候选但保留本地最佳候选，需试听确认。`);
-          report.decisions.push({ taskId: task.taskId, eventIds: group.events.map(e => e.id), assetId: retained.assetId, reason: `保留本地最佳候选：${choice.reason}`, basis: "fallback" });
           continue;
         }
         if (!choice || choice.assetId !== null && !task.candidates.some(c => c.assetId === choice.assetId)) {
@@ -196,7 +194,65 @@ export class GeminiAudioSelector {
         report.warnings.push(`${group.events[0].start.toFixed(3)}秒 ${assets.get(selectedId!)?.fileName}：${advice.warnings.join("；")}`);
       }
     }
-    report.status = !groups.length ? "skipped" : report.fallbackLayers === 0 ? "complete" : report.selectedLayers + report.rejectedLayers > 0 ? "partial" : "fallback";
+    // A rejected shortlist is a retrieval gap, not proof the library lacks that sound.
+    // One recovery pass broadens intent and hears new recordings; never force a rejected pick.
+    const missing=unlocked.flatMap(event=>(event.layers||[]).filter(layer=>!layer.candidates.length).map(layer=>({event,layer,taskId:`${event.id}:${layer.id}`})));
+    if(missing.length&&!options.recoveryAttempt&&this.model.discover){
+      options.progress?.(`Gemini 扩展声音意图检索：${missing.length} 个缺声层`);
+      const recoverySchema=z.object({recoveries:z.array(z.object({taskId:z.string(),queries:z.array(z.string().max(300)).max(6),assetIds:z.array(z.string()).max(8)})).max(100)});
+      // A bounded, distributed catalogue includes opaque names; it is a discovery sample,
+      // never a claim that Gemini listened to the entire library.
+      const available=[...assets.values()].filter(a=>a.usable),catalogue:RecoveryAsset[]=[];
+      for(let i=0;i<Math.min(240,available.length);i++){const a=available[Math.floor(i*available.length/Math.min(240,available.length))];catalogue.push({assetId:a.id,fileName:a.fileName,relativePath:a.relativePath,acoustics:a.acoustics});}
+      const retryEvents:SoundEvent[]=[];
+      try{
+        for(let offset=0;offset<missing.length;offset+=8){
+          const batch=missing.slice(offset,offset+8);
+          const discovered=recoverySchema.parse(await this.model.discover(batch.map(({event,layer,taskId})=>({taskId,query:`${event.query}; ${layer.query}`,description:event.description,reason:report.decisions.find(d=>d.taskId===taskId)?.reason||'初筛无候选'})),catalogue,options.signal));
+          for(const {event,layer,taskId} of batch){
+            const recovery=discovered.recoveries.filter(r=>r.taskId===taskId);if(recovery.length!==1)continue;
+            const tried=new Set(groups.find(g=>g.taskId===taskId)?.ids||[]);
+            const ranked=recovery[0].queries.flatMap(query=>new AudioLibraryIndexer().search(index,query,24,event));
+            const direct=recovery[0].assetIds.flatMap(id=>{const a=assets.get(id);return a?.usable?[{asset:a,score:1,reason:'Gemini 扩展目录候选，待听取验证'}]:[];});
+            // Include model-discovered opaque filenames; a large lexical list must not
+            // consume every listening slot before these recordings can be heard.
+            const pool=[...direct.slice(0,2),...ranked.sort((a,b)=>b.score-a.score),...direct.slice(2)];
+            const seen=new Set<string>();
+            const candidates=diverseCandidates(pool.filter(r=>!tried.has(r.asset.id)&&!seen.has(r.asset.id)&&Boolean(seen.add(r.asset.id))),4).map(r=>({assetId:r.asset.id,score:r.score,reason:r.reason}));
+            if(candidates.length){
+              const existing=retryEvents.find(e=>e.id===event.id);
+              if(existing)existing.layers!.push({...layer,candidates});
+              else retryEvents.push({...event,layers:[{...layer,candidates}],candidates});
+            }
+          }
+        }
+        if(retryEvents.length){
+          const retry=await this.select(retryEvents,index,{...options,recoveryAttempt:true,outputDir:path.join(options.outputDir,'retrieval-recovery')});
+          const taskIds=new Set(retryEvents.flatMap(e=>e.layers!.map(l=>`${e.id}:${l.id}`)));
+          for(const taskId of taskIds){
+            const old=report.decisions.find(d=>d.taskId===taskId),decision=retry.decisions.find(d=>d.taskId===taskId);
+            if(old){if(old.basis==='fallback')report.fallbackLayers--;else if(old.assetId===null)report.rejectedLayers--;else report.selectedLayers--;}
+            report.decisions=report.decisions.filter(d=>d.taskId!==taskId);
+            if(decision)report.decisions.push({...decision,reason:`扩展检索后试听：${decision.reason}`});
+          }
+          for(const e of retryEvents)for(const recovered of e.layers!){const original=unlocked.find(v=>v.id===e.id)!,layer=original.layers!.find(l=>l.id===recovered.id)!;layer.candidates=recovered.candidates;}
+          report.selectedLayers+=retry.selectedLayers;report.rejectedLayers+=retry.rejectedLayers;report.fallbackLayers+=retry.fallbackLayers;
+          report.cachedAssets+=retry.cachedAssets;report.analyzedAssets+=retry.analyzedAssets;report.audio=[...new Map([...report.audio,...retry.audio].map(a=>[a.assetId,a])).values()];report.warnings.push(...retry.warnings);
+        }
+      }catch(error){options.signal?.throwIfAborted();report.warnings.push(`扩展检索未完成：${error instanceof Error?error.message:'模型请求失败'}；缺项保留，不能视为已配声。`);}
+    }
+    for(const event of unlocked){
+      const used=new Set<string>();
+      for(const layer of event.layers||[]){layer.candidates=layer.candidates.filter(c=>!used.has(c.assetId));if(layer.candidates[0])used.add(layer.candidates[0].assetId);}
+      event.candidates=(event.layers||[]).flatMap(l=>l.candidates).slice(0,8);
+    }
+    const remaining=unlocked.flatMap(event=>(event.layers||[]).filter(l=>!l.candidates.length).map(l=>`${event.start.toFixed(3)}秒 ${event.description}（${l.query}）`));
+    report.warnings=report.warnings.filter(w=>!unlocked.some(e=>(e.layers||[]).every(l=>l.candidates.length)&&w.startsWith(`${e.start.toFixed(3)}秒 ${e.description}：素材未通过描述要求复核`)));
+    for(const {event,taskId} of missing)if(!report.decisions.some(d=>d.taskId===taskId)){
+      report.rejectedLayers++;report.decisions.push({taskId,eventIds:[event.id],assetId:null,basis:'audio-context',reason:'初筛及扩展检索均未获得可验证候选，声音尚未匹配'});
+    }
+    if(remaining.length)report.warnings.push(`声音尚未匹配，需补充素材或重试：${remaining.join('；')}`);
+    report.status = !groups.length&&!missing.length ? "skipped" : remaining.length ? "partial" : report.fallbackLayers === 0 ? "complete" : report.selectedLayers + report.rejectedLayers > 0 ? "partial" : "fallback";
     report.warnings = [...new Set(report.warnings)];
     if (wanted.length < new Set(groups.flatMap(g => g.ids)).size) report.warnings.push("候选音频分析达到160份上限，未分析的候选保留规则匹配。");
     report.elapsedMs = Date.now() - selectionStarted;

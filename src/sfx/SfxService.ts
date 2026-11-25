@@ -335,7 +335,7 @@ export class SfxService {
         run.warnings.push(...reviewed.warnings);
       }
       await hydratePlacements(run);
-      const descriptionGaps=run.analysisReport?.descriptionReview?.requirements.filter(r=>r.status!=='located'||r.eventIds.some(id=>!run.events.some(e=>e.id===id&&!e.muted)||!run.placements.some(p=>p.eventId===id&&p.enabled)));
+      const descriptionGaps=run.analysisReport?.descriptionReview?.requirements.filter(r=>r.status!=='located'||!r.eventIds.length||r.eventIds.some(id=>!run.events.some(e=>e.id===id&&!e.muted)||!run.placements.some(p=>p.eventId===id&&p.enabled)));
       if(descriptionGaps?.length)run.warnings.push(`描述要求尚未完整配声：${descriptionGaps.map(r=>r.text).join('；')}。请补充画面说明或更换素材库后重新分析。`);
       if (parsed.autoRender && run.placements.length) {
         run.progress = "已识别动作和声音层，正在生成带音效视频";

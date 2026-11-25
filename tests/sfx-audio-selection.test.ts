@@ -161,8 +161,8 @@ export async function testGeminiRejectKeepsBestVisibleActionCandidate() {
       async choose(tasks) { return { choices: tasks.map(t => ({ taskId: t.taskId, assetId: null, reason: "现有候选声学与时长不完全匹配，存在素材缺口", confidence: .8 })) }; }
     };
     const report = await new GeminiAudioSelector(model, { async sample(a) { return { assetId: a.id, data: "d2F2", format: "wav", segments: [{ start: 0, end: 2 }] }; } }).select(events, index, { outputDir: root, cacheDir: path.join(root, "cache") });
-    assert.equal(events[0].layers![0].candidates[0].assetId, "a", "a visible action must retain the best local candidate when Gemini rejects an imperfect shortlist");
-    assert.equal(report.fallbackLayers, 1);
+    assert.equal(events[0].layers![0].candidates.length, 0, "a rejected recording must not be forced into a visible action");
+    assert.equal(report.rejectedLayers, 1);
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 }
 

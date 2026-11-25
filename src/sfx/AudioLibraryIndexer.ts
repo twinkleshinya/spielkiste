@@ -26,7 +26,7 @@ const aliases: Array<[string, string]> = [
   ["施法", "cast spell magic"], ["法术", "cast spell magic"], ["释放", "cast release"], ["蓄力", "charge power up"], ["充能", "charge power up"],
   ["挥砍", "swing slash whoosh"], ["斩击", "slash sword"], ["挥刀", "sword swing"], ["挥拳", "fist swing punch"], ["破空", "whoosh swish"],
   ["命中", "hit impact strike"], ["击中", "hit impact strike"], ["重击", "heavy hit impact thud"], ["砸地", "ground smash impact"], ["碎石", "rock debris rubble"],
-  ["投掷", "throw launch whoosh"], ["飞行", "fly flight whoosh"], ["咆哮", "roar growl monster"], ["怒吼", "roar growl monster"], ["火花", "spark metal"],
+  ["投掷", "throw launch whoosh"], ["飞行", "fly flight whoosh"], ["吼叫", "roar growl grunt bellow vocal"], ["低吼", "growl grunt roar vocal"], ["叫声", "vocal cry roar grunt"], ["咆哮", "roar growl monster"], ["怒吼", "roar growl monster"], ["火花", "spark metal"],
   ["施放", "cast spell magic"], ["技能", "skill cast"], ["能量", "energy magic"], ["冲击", "impact hit blast"], ["爆发", "burst explosion blast"],
   ["spell", "cast magic"], ["magic", "cast spell"], ["channel", "cast charge"], ["charging", "charge"], ["swing", "whoosh slash"], ["slash", "swing hit"], ["strike", "hit impact"], ["thud", "impact hit"],
   ["body", "body movement foley"], ["shift", "body movement turn weight"], ["movement", "body movement foley"], ["move", "body movement foley"], ["limb", "arm movement foley"], ["lower", "arm movement down"], ["turn", "body turn movement"], ["prowl", "creature movement footstep"], ["stalk", "creature movement footstep"], ["step", "footstep movement"], ["walk", "footstep movement"], ["idle", "idle movement body foley"], ["heavy", "heavy movement foley"], ["monster", "creature movement foley"],
@@ -60,7 +60,7 @@ const searchGroups = [
   ["charge", "charging", "蓄力", "充能"],
   ["swing", "whoosh", "swish", "slash", "throw", "flying", "flight", "projectile", "挥刀", "挥砍", "破空"],
   ["impact", "hit", "strike", "smash", "slam", "命中", "击中", "砸地", "冲击"],
-  ["roar", "growl", "咆哮", "怒吼"], ["jump", "leap", "跳跃"], ["land", "landing", "落地"],
+  ["roar", "growl", "grunt", "bellow", "howl", "snarl", "vocal", "voice", "vocalization", "scream", "吼叫", "叫声", "低吼", "咆哮", "怒吼"], ["jump", "leap", "跳跃"], ["land", "landing", "落地"],
   ["footstep", "foot", "walk", "run", "脚步"], ["warning", "iconwarning", "预警", "危险提示"], ["ui", "click", "interface", "提示"],
   ["amb", "ambience", "ambient", "environment", "环境"], ["debris", "rubble", "碎石", "碎屑"],
   ["sword", "gsword", "blade", "大剑", "长剑", "刀"], ["ape", "gorilla", "猩猩", "巨猿"],
@@ -182,7 +182,13 @@ export class AudioLibraryIndexer {
       const combatMusicBoost = music && /boss|battle|combat/.test(queryText) && /(?:^|[_\s])(?:battle|boss|combat)(?:[_\s.]|$)/i.test(filename) ? 6 : 0;
       const relevant = hits.length || matchedGroups.length || pathHits.length || weakHits.length;
       if(!relevant)continue;
-      const relevance=relevant?Math.max(.01,score-voicePenalty-stagePenalty-uiPenalty+combatMusicBoost):0;
+      const vocalGroup=groups.find(g=>g.includes("roar"));
+      const vocalMatch=vocalGroup?.some(w=>contains(filename,w)||contains(pathText,w));
+      // grunt/roar/growl are alternate vocal labels. Literal "grunt" or "light"
+      // must not outweigh the user's actor/library preference for a real roar.
+      const vocalLabel=/(?:^|[^a-z])(?:vo|voice|vocal)(?:[^a-z]|$)|吼叫|叫声|咆哮/.test(filename);
+      const vocalScore=vocalMatch?12+hits.filter(w=>!vocalGroup!.includes(w)&&!['light','low','deep','heavy','short','long','soft'].includes(w)).length*2+(vocalLabel?3:0)-(/foley|拟音/.test(filename)?4:0):undefined;
+      const relevance=relevant?Math.max(.01,vocalScore??score-voicePenalty-stagePenalty-uiPenalty+combatMusicBoost):0;
       const preference=preferredPath(asset.path);
       const keyword=preferredKeyword(asset);
       const preferenceSteps=(preference?preference.weight-1:0)+(keyword?keyword.weight-1:0);

@@ -6,7 +6,8 @@ export function selectReviewEvents(events: SoundEvent[], scope: "selective" | "f
   const unlocked = events.filter(e => !e.locked);
   if (scope === "full") return unlocked;
   const key = (event: SoundEvent) => Boolean(event.descriptionRequirementIds?.length) || ["music", "impact"].includes(event.category) || /^ui_|charge|cast|warning|telegraph|roar|预警|蓄力|施法/.test(event.type)
-    || /张嘴.*(?:咆哮|吼)|发出.*(?:咆哮|吼)/.test(event.description);
+    || /grunt|growl|roar|vocal|bellow|howl|snarl|吼叫|低吼|叫声|咆哮/i.test(`${event.type} ${event.query} ${event.description}`)
+    || (event.layers?.length ? event.layers.some(l=>!l.candidates.length) : !event.candidates.length);
   const ambiguous = unlocked.filter(event => {
     if (key(event)) return false;
     const layers = event.layers?.length ? event.layers : [{ candidates: event.candidates }];
