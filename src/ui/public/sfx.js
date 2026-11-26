@@ -323,6 +323,7 @@ function selectEvent(id, seek = false) {
   if (seek) $("video").currentTime = event.start;
 }
 const alternativeLoads = new Map();
+const alternativeSearchQueues = new Map();
 async function loadEventAlternatives(event) {
   if(!run||!['ready','failed'].includes(run.status))return;
   const currentRun=run;
@@ -332,7 +333,11 @@ async function loadEventAlternatives(event) {
     const key=JSON.stringify([run.id,event.id,layer.id,layer.query,settings]);
     if((layer.alternatives||layer.candidates||[]).length>=5||alternativeLoads.has(key))continue;
     const loading=(async()=>{
-      const results=await api(`/api/sfx/runs/${currentRun.id}/search`,{query:layer.query||event.query,category:event.category,eventId:event.id,...settings});
+      const previous=alternativeSearchQueues.get(currentRun.id)||Promise.resolve();
+      const request=previous.catch(()=>{}).then(()=>api(`/api/sfx/runs/${currentRun.id}/search`,{query:layer.query||event.query,category:event.category,eventId:event.id,...settings}));
+      alternativeSearchQueues.set(currentRun.id,request);
+      let results;
+      try{results=await request;}finally{if(alternativeSearchQueues.get(currentRun.id)===request)alternativeSearchQueues.delete(currentRun.id);}
       if(run!==currentRun||!run.events.includes(event))return;
       const alternatives=[];const seen=new Set();
       for(const result of [...layer.alternatives||[],...layer.candidates||[],...results]){
