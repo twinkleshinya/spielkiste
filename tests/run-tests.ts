@@ -360,3 +360,11 @@ await alternativeTests.testAlternativeCardsKeepPreviewAndStageReplacement();
 await alternativeTests.testLegacyAlternativesLoadWithoutEditing();
 await alternativeTests.testAlternativeSearchesAreSerialized();
 console.log('Audition alternatives and preserved preview checks passed');
+
+const versionTests=await import('./sfx-save-version-ui.test.js');
+await versionTests.testNamedVersionDialog();
+await versionTests.testNamedVersionFailureCanRetryAndCancel();
+await versionTests.testNamedVersionExplainsPendingEdits();
+await versionTests.testNamedVersionReloadRetryDoesNotSaveTwice();
+await versionTests.testNamedVersionHttpPersistence();
+console.log('Named version dialog, retries and persisted history checks passed');
