@@ -345,7 +345,7 @@ export class ReaperExporter {
       ? defaultOutputPath(defaultRoot, { ...run, name: path.parse(requestedOutput).name })
       : path.resolve(requestedOutput || defaultOutputPath(options.templatePath ? templatePath : defaultRoot, run));
     const outputPath = !requestedOutput || nameOnly
-      ? await reserveProjectDirectory(suggestedPath)
+      ? await reserveProjectDirectory(nameOnly ? path.join(path.dirname(suggestedPath),requestedOutput) : suggestedPath)
       : suggestedPath;
     if (path.normalize(templatePath).toLowerCase() === path.normalize(outputPath).toLowerCase()) throw new Error("Reaper 模板和输出文件不能相同");
     const template = await fs.readFile(templatePath, "utf8");
