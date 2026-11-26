@@ -252,7 +252,10 @@ export class GeminiAudioSelector {
     }
     for(const event of unlocked){
       const used=new Set<string>();
-      for(const layer of event.layers||[]){layer.candidates=layer.candidates.filter(c=>!used.has(c.assetId));if(layer.candidates[0])used.add(layer.candidates[0].assetId);}
+      for(const layer of event.layers||[]){
+        layer.candidates=layer.candidates.filter(c=>!used.has(c.assetId));if(layer.candidates[0])used.add(layer.candidates[0].assetId);
+        layer.alternatives=diverseCandidates((layer.alternatives||[]).flatMap(c=>{const asset=assets.get(c.assetId);return asset?.usable?[{asset,...c}]:[];}),SFX_WORKFLOW.candidates.alternatives).map(({asset,score,reason})=>({assetId:asset.id,score,reason}));
+      }
       event.candidates=(event.layers||[]).flatMap(l=>l.candidates).slice(0,8);
     }
     const remaining=unlocked.flatMap(event=>(event.layers||[]).filter(l=>!l.candidates.length).map(l=>`${event.start.toFixed(3)}秒 ${event.description}（${l.query}）`));

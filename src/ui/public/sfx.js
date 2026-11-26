@@ -864,18 +864,17 @@ $("search").onclick = guard(async () => {
     const allLayers = event.layers?.length ? event.layers : [{ id: "default", role: event.category === "other" ? "texture" : event.category, offset: 0, query: event.query, candidates: [] }];
     if (!event.layers?.length) event.layers = allLayers;
     const layers = [allLayers.find(l => l.id === selectedLayerId) || allLayers[0]];
-    layers[0].query = $("query").value;
+    const searchQuery = $("query").value;
     for (const layer of layers) {
-      const results = await api(`/api/sfx/runs/${run.id}/search`, { query: layer.query || event.query, category: event.category,eventId:event.id,keywordPreferences:keywordPreferences.read(),...exclusionSettings() });
+      const results = await api(`/api/sfx/runs/${run.id}/search`, { query: searchQuery || layer.query || event.query, category: event.category,eventId:event.id,keywordPreferences:keywordPreferences.read(),...exclusionSettings() });
       for (const result of results) if (result.asset) {
         const asset = run.assets.find(a => a.id === result.assetId);
         if (asset) Object.assign(asset, result.asset);
         else run.assets.push(result.asset);
       }
-      layer.candidates = results.map(({ assetId, score, reason }) => ({ assetId, score, reason }));
+      layer.alternatives = results.map(({ assetId, score, reason }) => ({ assetId, score, reason: `待试听备选（非自动选用）：${reason}` }));
     }
-    event.candidates = layers.flatMap(layer => layer.candidates || []).slice(0, 3);
-    markDirty(); renderCandidates(); status(`已为 ${(event.layers || []).length || 1} 个 layer 找到候选音效。`);
+    renderCandidates(); status(`找到 ${layers[0].alternatives.length} 个备选，试听后点击“选用”替换。`);
   } finally { setBusy(false); }
 });
 function addEvent(music = false) {
