@@ -751,19 +751,54 @@ $("save-as-project").onclick = guard(async()=>{requireUpdatedPreview();const nam
 $("sync-project").onclick = guard(async()=>{if(!run?.projectId||busy)return;requireUpdatedPreview();const config=await api('/api/sfx/git-config');if(!config.configured){$("git-settings-open").click();return;}const includeMedia=$("git-include-media").checked;if(!window.confirm(`上传当前项目的历史清单${includeMedia?'、视频、预览及已用音频':''}到 ${config.repository}？`))return;setBusy(true);status("正在上传项目到 Git…");try{const result=await api(`/api/sfx/projects/${run.projectId}/sync`,{includeMedia});await refreshHistory();status(result.git.status==='synced'?`项目已上传 · ${result.git.commit?.slice(0,8)} · ${result.git.mediaCount} 个媒体文件`:`本机项目已保留，上传未完成：${result.git.error||'请重试'}`,result.git.status!=='synced');}finally{setBusy(false);}});
 $("open-version").onclick = guard(async()=>{const id=$("version-history").value;if(id&&id!==run?.id){keepDraftBeforeLeaving();selectedId=null;await poll(id,true,{time:$('video').currentTime||0,playing:false});status("已打开历史版本；当前项目指针未改变。");}});
 $("restore-version").onclick = guard(async()=>{const id=$("version-history").value;if(!id||id===run?.id)return;keepDraftBeforeLeaving();if(!window.confirm("回退会创建一个新的当前版本，旧版本仍保留。继续吗？"))return;await projectAction("restore",{runId:id});status("已回退并生成新的项目版本。");});
+let versionDraft=null,versionSaving=false;
+function closeVersionDialog(){
+  if(versionSaving)return;
+  $("save-version-dialog").close();versionDraft=null;
+}
+$("save-version-cancel").onclick=closeVersionDialog;
+$("save-version-dialog").addEventListener("cancel",event=>{if(versionSaving)event.preventDefault();else versionDraft=null;});
 $("preserve").onclick=guard(async()=>{
   if(!run||busy)return;
   requireUpdatedPreview();
-  const name=window.prompt("新版本名称",`${run.name || "视频音效"} · 新版本`);
-  if(!name||!name.trim())return;
-  setBusy(true);
-  try {
-    const result=await api(`/api/sfx/projects/${run.projectId}/save-version`,{name:name.trim(),runId:run.id});
-    if(result?.runId){await poll(result.runId,true,{time:$("video").currentTime||0,playing:false});}
-    await refreshHistory();
-    status(`已保存为新版本：${name.trim()}。可在“版本”中打开或回退。`);
-  } finally{setBusy(false);}
+  if(!run.projectId)throw new Error("当前项目记录未就绪，请重新打开项目后保存版本。");
+  versionDraft={projectId:run.projectId,runId:run.id,savedRunId:null,name:null,playback:{time:$("video").currentTime||0,playing:false}};
+  $("save-version-name").value="";$("save-version-name").disabled=false;
+  $("save-version-message").textContent="";$("save-version-message").className="ai-config-message";
+  $("save-version-submit").textContent="保存版本";
+  $("save-version-dialog").showModal();$("save-version-name").focus();
 });
+$("save-version-form").onsubmit=async event=>{
+  event.preventDefault();
+  if(versionSaving||busy||!versionDraft)return;
+  const name=versionDraft.name||$("save-version-name").value.trim();
+  const message=$("save-version-message");
+  if(!name||name.length>120){message.className="ai-config-message error";message.textContent="请填写 1–120 个字符的版本名称。";$("save-version-name").focus();return;}
+  versionSaving=true;setBusy(true);
+  for(const id of ["save-version-submit","save-version-cancel","save-version-name"])$(id).disabled=true;
+  message.className="ai-config-message";message.textContent=versionDraft.savedRunId?"正在打开已保存的版本…":"正在保存版本…";
+  try {
+    if(!versionDraft.savedRunId){
+      const result=await api(`/api/sfx/projects/${versionDraft.projectId}/save-version`,{name,runId:versionDraft.runId});
+      if(!result?.runId)throw new Error("保存接口未返回版本记录，请刷新版本历史确认保存结果。");
+      versionDraft.savedRunId=result.runId;versionDraft.name=name;
+    }
+    await poll(versionDraft.savedRunId,true,versionDraft.playback);
+    await loadVersionHistory();
+    await refreshHistory();
+    $("save-version-dialog").close();versionDraft=null;
+    status(`已保存为新版本：${name}。可在“版本”中打开或回退。`);
+  } catch(error){
+    message.className="ai-config-message error";
+    message.textContent=versionDraft?.savedRunId?`版本已保存，打开失败：${error.message}。点击“重新打开版本”重试。`:`保存失败：${error.message}`;
+    status(message.textContent,true);
+  } finally{
+    versionSaving=false;setBusy(false);
+    $("save-version-submit").disabled=false;$("save-version-cancel").disabled=false;
+    $("save-version-name").disabled=Boolean(versionDraft?.savedRunId);
+    $("save-version-submit").textContent=versionDraft?.savedRunId?"重新打开版本":"保存版本";
+  }
+};
 $("render").onclick = guard(async () => {
   if (!run || busy) return;
   if (!$("event-editor").reportValidity())throw new Error("请检查事件与贴片参数");

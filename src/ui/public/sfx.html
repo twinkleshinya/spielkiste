@@ -91,6 +91,17 @@
       </div>
     </form>
   </dialog>
+  <dialog id="save-version-dialog" class="ai-config-dialog" aria-labelledby="save-version-title">
+    <form id="save-version-form">
+      <div class="panel-heading"><h3 id="save-version-title">保存为新版本</h3></div>
+      <div class="ai-config-settings">
+        <p>在当前项目中保存一个本机版本，保留当前点位、音效和视频预览。之后可按名称打开或回退。</p>
+        <label>版本名称<input id="save-version-name" maxlength="120" required autocomplete="off" placeholder="例如：吼叫调整版"></label>
+        <div id="save-version-message" class="ai-config-message" role="status" aria-live="polite"></div>
+        <div class="ai-config-actions"><button id="save-version-cancel" class="secondary" type="button">取消</button><button id="save-version-submit" type="submit">保存版本</button></div>
+      </div>
+    </form>
+  </dialog>
   <dialog id="ai-config-dialog" class="ai-config-dialog" aria-labelledby="ai-config-title">
     <form id="ai-config-form" method="dialog">
       <div class="panel-heading"><h3 id="ai-config-title">AI 连接设置</h3><button id="ai-config-close" class="text-button" type="button">关闭</button></div>
