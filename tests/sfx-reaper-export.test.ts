@@ -191,8 +191,19 @@ export async function testReaperNamesWithoutExtension() {
     }
     const named = await exporter.exportRun(run, { outputPath: "只输入名字" });
     assert.equal(path.basename(named.outputPath), "只输入名字.rpp");
+    assert.equal(path.basename(named.projectDirectory), "只输入名字", "portable folder must use the requested name without internal IDs");
     assert.equal(path.dirname(named.projectDirectory), path.join(root, "workbench", "reaper-projects"), "a name must create its own portable folder under the export root");
     assert.deepEqual((await fs.readdir(named.projectDirectory)).sort(), ["Audio", "Video", "只输入名字.rpp"]);
+    const original = await fs.readFile(named.outputPath);
+    const again = await exporter.exportRun(run, { outputPath: "只输入名字" });
+    assert.equal(path.basename(again.projectDirectory), "只输入名字（2）");
+    assert.equal(path.basename(again.outputPath), "只输入名字.rpp");
+    assert.deepEqual(await fs.readFile(named.outputPath), original, "repeat export must preserve the previous project");
+    const simultaneous = await Promise.all([exporter.exportRun(run,{outputPath:'并行导出'}),exporter.exportRun(run,{outputPath:'并行导出'})]);
+    assert.deepEqual(simultaneous.map(r=>path.basename(r.projectDirectory)).sort(),['并行导出','并行导出（2）']);
+    const automatic = await exporter.exportRun({...run,name:'大招',revision:8});
+    assert.equal(path.basename(automatic.projectDirectory),'大招');
+    assert.equal(path.basename(automatic.outputPath),'大招.rpp');
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 }
 
