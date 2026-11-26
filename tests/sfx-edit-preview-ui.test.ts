@@ -12,7 +12,7 @@ export async function editorHarness(storage = new Map<string, string>()) {
   const elements = new Map<string, any>();
   const node = () => ({ value: "", textContent: "", hidden: false, disabled: false, checked: false, dataset: {}, style: {}, children: [] as any[], paused: true, currentTime: .7, src: "accepted-preview.mp4", elements: [],
     classList: { toggle() {}, add() {}, remove() {} }, append(...values: any[]) { this.children.push(...values); }, replaceChildren(...values: any[]) { this.children = values; },
-    addEventListener() {}, setAttribute() {}, removeAttribute() {}, scrollIntoView() {}, focus() {}, load() {}, showModal() {}, close() {}, reportValidity: () => true,
+    addEventListener() {}, setAttribute() {}, removeAttribute() {}, scrollIntoView() {}, focus() {}, load() {}, showModal() { this.open=true; }, close() { this.open=false; }, open:false, reportValidity: () => true,
     pause() { this.paused = true; }, async play() { this.paused = false; }, add(value: any) { this.children.push(value); }
   });
   const $ = (id: string) => { if (!elements.has(id)) elements.set(id, node()); return elements.get(id); };
@@ -22,6 +22,7 @@ export async function editorHarness(storage = new Map<string, string>()) {
   let nextRun = structuredClone(initial);
   let failUpdate = false;
   let failRender = false;
+  let failSaveVersion=false;
   const keywords = { values: [] as any[], read() { return this.values; }, load(values: any[] = []) { this.values = values; }, setBusy() {} };
   const directories = { values: [] as any[], read() { return this.values; }, load(values: any[] = []) { this.values = values; }, setBusy() {} };
   const exclusions:Record<string,any>={};
@@ -37,6 +38,12 @@ export async function editorHarness(storage = new Map<string, string>()) {
       const body = options?.body ? JSON.parse(options.body) : undefined;
       calls.push({ url, body });
       const response = (data: any, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => data });
+      if(url.endsWith('/save-version')){
+        if(failSaveVersion)return response({error:'test save failure'},false);
+        nextRun=JSON.parse(JSON.stringify(vm.runInContext('run',context)));
+        nextRun.id='22222222-2222-4222-8222-222222222222';nextRun.name=body.name;nextRun.revision++;
+        nextRun.render={...nextRun.render!,revision:nextRun.revision};return response({runId:nextRun.id,projectId:nextRun.projectId});
+      }
       if (/\/(edit-preview|quick-edit|render)$/.test(url)) {
         if (failUpdate) return response({ error: "test update failure" }, false);
         const current = vm.runInContext("run", context);
@@ -65,7 +72,7 @@ export async function editorHarness(storage = new Map<string, string>()) {
   $("reaper-sample-rate").value = "0";
   $("reaper-dither").value = "auto";
   vm.runInContext('selectEvent("boss-event");', context);
-  return { $, calls, storage, context, exclusions, exec: (code: string) => vm.runInContext(code, context), getRun: () => JSON.parse(JSON.stringify(vm.runInContext("run", context))), isDirty: () => vm.runInContext("dirty", context), failUpdate: () => { failUpdate = true; }, failRender: () => { failRender = true; }, setNextRun: (value: typeof initial) => { nextRun = structuredClone(value); } };
+  return { $, calls, storage, context, exclusions, exec: (code: string) => vm.runInContext(code, context), getRun: () => JSON.parse(JSON.stringify(vm.runInContext("run", context))), isDirty: () => vm.runInContext("dirty", context), failSaveVersion:(value=true)=>{failSaveVersion=value;}, failUpdate: () => { failUpdate = true; }, failRender: () => { failRender = true; }, setNextRun: (value: typeof initial) => { nextRun = structuredClone(value); } };
 }
 
 export async function testGenerateRequiresExplicitClick() {
