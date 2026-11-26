@@ -354,3 +354,8 @@ const recoveryTests=await import("./sfx-retrieval-recovery.test.js");
 await recoveryTests.testVocalIntentRetrieval();
 await recoveryTests.testAudioRecoveryHearsUnnamedAndHonorsExclusions();
 await recoveryTests.testProjectSwitcherAtTop();
+const alternativeTests=await import('./sfx-alternatives.test.js');
+await alternativeTests.testAlternativesSurviveStrictSelection();
+await alternativeTests.testAlternativeCardsKeepPreviewAndStageReplacement();
+await alternativeTests.testLegacyAlternativesLoadWithoutEditing();
+console.log('Audition alternatives and preserved preview checks passed');

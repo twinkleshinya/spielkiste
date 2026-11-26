@@ -34,7 +34,6 @@ export async function testAlternativesSurviveStrictSelection(){
 export async function testAlternativeCardsKeepPreviewAndStageReplacement(){
  const ui=await editorHarness();
  ui.exec(`run.events[0].layers=[{id:'main',role:'foley',query:'roar',offset:0,candidates:[{assetId:'boss-roar',score:1,reason:'selected'}],alternatives:[{assetId:'player-charge',score:0,reason:'待试听'}]}];renderCandidates();`);
- const cards=ui.$('candidates').children[0].children.filter((n:any)=>String(n.className||'').includes('candidate'));
  // The DOM harness retains text nodes and buttons as ordinary objects.
  const names=JSON.stringify(ui.$('candidates').children);
  assert.ok(names.includes('player_charge.wav'),'audition alternatives must be visible next to selected clip');
@@ -44,4 +43,21 @@ export async function testAlternativeCardsKeepPreviewAndStageReplacement(){
  assert.equal(ui.isDirty(),true);assert.deepEqual(ui.getRun().placements.filter((p:any)=>p.eventId!=='boss-event'),before);
  assert.equal(ui.calls.some(c=>c.url.endsWith('/edit-preview')),false);
  assert.equal(ui.$('video').src,'accepted-preview.mp4');
+}
+
+export async function testLegacyAlternativesLoadWithoutEditing(){
+ const ui=await editorHarness();
+ ui.exec(`run.events[0].layers=[{id:'main',role:'foley',query:'roar',offset:0,candidates:[]}];`);
+ const before=ui.getRun();
+ const asset=before.assets[1];
+ ui.context.searchResult={assetId:asset.id,score:5,reason:'名称参考',asset};
+ ui.exec(`fetch=async()=>({ok:true,json:async()=>[searchResult]});`);
+ await ui.exec(`loadEventAlternatives(run.events[0])`);
+ assert.equal(ui.getRun().events[0].layers[0].alternatives[0].assetId,asset.id);
+ assert.equal(ui.getRun().events[0].layers[0].candidates.length,0,'legacy metadata repair must not create automatic choices');
+ assert.deepEqual(ui.getRun().placements,before.placements);
+ assert.equal(ui.isDirty(),false);assert.equal(ui.$('video').src,'accepted-preview.mp4');
+ await ui.$('search').onclick();
+ assert.equal(ui.isDirty(),false,'manual candidate search must not edit the saved timeline');
+ assert.deepEqual(ui.getRun().placements,before.placements);
 }
