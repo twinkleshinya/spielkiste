@@ -34,7 +34,9 @@ export const PerspectiveSchema = z.object({version:z.literal(1),range:DistanceSc
   basis:z.enum(["visual","unknown","exempt"]),distanceGainDb:z.number().finite().min(-24).max(0)});
 export const SoundLayerSchema = z.object({
   id: z.string(), role: LayerRoleSchema, query: z.string().max(2000), offset: z.number().finite().nonnegative(),
-  candidates: z.array(CandidateSchema).default([])
+  candidates: z.array(CandidateSchema).default([]),
+  // Audition choices are never an automatic placement fallback.
+  alternatives: z.array(CandidateSchema).optional()
 });
 export type SoundLayer = z.infer<typeof SoundLayerSchema>;
 export const EventSchema = z.object({

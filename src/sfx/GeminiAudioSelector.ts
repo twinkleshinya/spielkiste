@@ -38,6 +38,15 @@ export class GeminiAudioSelector {
     type Group = { taskId: string; events: SoundEvent[]; layers: NonNullable<SoundEvent["layers"]>; ids: string[] };
     const groups: Group[] = [];
     const unlocked = events.filter(e => !e.locked);
+    // Keep manual audition choices apart from the shortlist that may be used
+    // automatically. Strict rejection and cross-layer dedup must not erase them.
+    for(const event of unlocked) {
+      if(!event.layers?.length)event.layers=[{id:'default',role:event.category==='other'?'texture':event.category,query:event.query,offset:0,candidates:[...event.candidates]}];
+      for(const layer of event.layers){
+        const seen=new Set<string>();
+        layer.alternatives=diverseCandidates([...layer.candidates,...layer.alternatives||[]].flatMap(c=>{const asset=assets.get(c.assetId);return asset?.usable&&!seen.has(asset.id)&&Boolean(seen.add(asset.id))?[{asset,score:c.score,reason:`待试听备选（非自动选用）：${c.reason}`}]:[];}),SFX_WORKFLOW.candidates.alternatives).map(({asset,score,reason})=>({assetId:asset.id,score,reason}));
+      }
+    }
     for (const event of unlocked.filter(e => e.category !== "music")) {
       if (!event.layers?.length) event.layers = [{ id: "default", role: event.category === "other" ? "texture" : event.category, query: event.query, offset: 0, candidates: [...event.candidates] }];
       for (const layer of event.layers || []) {
@@ -235,7 +244,7 @@ export class GeminiAudioSelector {
             report.decisions=report.decisions.filter(d=>d.taskId!==taskId);
             if(decision)report.decisions.push({...decision,reason:`扩展检索后试听：${decision.reason}`});
           }
-          for(const e of retryEvents)for(const recovered of e.layers!){const original=unlocked.find(v=>v.id===e.id)!,layer=original.layers!.find(l=>l.id===recovered.id)!;layer.candidates=recovered.candidates;}
+          for(const e of retryEvents)for(const recovered of e.layers!){const original=unlocked.find(v=>v.id===e.id)!,layer=original.layers!.find(l=>l.id===recovered.id)!;layer.candidates=recovered.candidates;layer.alternatives=recovered.alternatives;}
           report.selectedLayers+=retry.selectedLayers;report.rejectedLayers+=retry.rejectedLayers;report.fallbackLayers+=retry.fallbackLayers;
           report.cachedAssets+=retry.cachedAssets;report.analyzedAssets+=retry.analyzedAssets;report.audio=[...new Map([...report.audio,...retry.audio].map(a=>[a.assetId,a])).values()];report.warnings.push(...retry.warnings);
         }

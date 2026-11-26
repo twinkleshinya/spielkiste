@@ -118,7 +118,7 @@ export function clientRunPayload(run: SfxRun): SfxRun {
   for (const placement of run.placements) referenced.add(placement.assetId);
   for (const event of run.events) {
     for (const candidate of event.candidates) referenced.add(candidate.assetId);
-    for (const layer of event.layers || []) for (const candidate of layer.candidates) referenced.add(candidate.assetId);
+    for (const layer of event.layers || []) for (const candidate of [...layer.candidates,...layer.alternatives||[]]) referenced.add(candidate.assetId);
   }
   for (const decision of run.selectionReport?.decisions || []) if (decision.assetId) referenced.add(decision.assetId);
   for (const audio of run.selectionReport?.audio || []) referenced.add(audio.assetId);

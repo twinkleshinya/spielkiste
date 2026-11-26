@@ -255,8 +255,10 @@ function renderCandidates() {
       section.append(controls);
     }
     const excluded=assetExclusionReasonResolver(exclusionSettings());
-    let candidates = [...(layer.candidates || [])].filter(candidate=>{const asset=run.assets.find(a=>a.id===candidate.assetId);return asset&&(!excluded(asset)||candidate.assetId===placement?.assetId);});
+    const seen = new Set();
+    let candidates = [...(layer.candidates || []),...(layer.alternatives || [])].filter(candidate=>{const asset=run.assets.find(a=>a.id===candidate.assetId);return asset&&!seen.has(asset.id)&&Boolean(seen.add(asset.id))&&(!excluded(asset)||candidate.assetId===placement?.assetId);});
     if (placement && !candidates.some(c => c.assetId === placement.assetId)) candidates.unshift({ assetId: placement.assetId, reason: "当前已选择素材", score: 0 });
+    candidates.sort((a,b)=>Number(b.assetId===placement?.assetId)-Number(a.assetId===placement?.assetId));
     if (!candidates.length) section.append(text("p", "暂无符合当前筛选条件的候选，可调整排除设置或填写声音意图后搜索。", "no-results"));
     candidates.forEach(candidate => {
       const asset = run.assets.find(a => a.id === candidate.assetId); if (!asset) return;
@@ -317,7 +319,32 @@ function selectEvent(id, seek = false) {
   $("music-event-fields").hidden = event.category !== "music"; $("music-stage").value = event.musicStage || "enter"; $("music-intensity").value = event.intensity ?? .5;
   $("event-evidence").hidden = !event.evidence; $("event-evidence").textContent = event.evidence ? `画面依据：${event.evidence}${event.timingPrecision ? ` · 采样间隔 ${event.timingPrecision.toFixed(3)} 秒` : ""}` : "";
   renderCandidates(); renderPlacement();
+  void loadEventAlternatives(event).catch(error=>{if(selectedId===event.id)status(`备选补查未完成：${error.message}。可点击搜索重试。`,true);});
   if (seek) $("video").currentTime = event.start;
+}
+const alternativeLoads = new Map();
+async function loadEventAlternatives(event) {
+  if(!run||!['ready','failed'].includes(run.status))return;
+  const currentRun=run;
+  const layers=event.layers?.length?event.layers:[];
+  const settings={keywordPreferences:keywordPreferences.read(),...exclusionSettings()};
+  for(const layer of layers) {
+    const key=JSON.stringify([run.id,event.id,layer.id,layer.query,settings]);
+    if((layer.alternatives||layer.candidates||[]).length>=5||alternativeLoads.has(key))continue;
+    const loading=(async()=>{
+      const results=await api(`/api/sfx/runs/${currentRun.id}/search`,{query:layer.query||event.query,category:event.category,eventId:event.id,...settings});
+      if(run!==currentRun||!run.events.includes(event))return;
+      const alternatives=[];const seen=new Set();
+      for(const result of [...layer.alternatives||[],...layer.candidates||[],...results]){
+        if(result.asset){const old=run.assets.find(a=>a.id===result.assetId);if(old)Object.assign(old,result.asset);else run.assets.push(result.asset);}
+        if(!seen.has(result.assetId)){seen.add(result.assetId);alternatives.push({assetId:result.assetId,score:result.score,reason:`待试听备选（非自动选用）：${result.reason}`});}
+      }
+      layer.alternatives=alternatives.slice(0,5);
+      if(selectedId===event.id)renderCandidates();
+    })();
+    alternativeLoads.set(key,loading);
+    try{await loading;}catch(error){alternativeLoads.delete(key);throw error;}
+  }
 }
 function renderWorkspace(keepVideo = false) {
   const projectUrl = new URL(location.href); projectUrl.searchParams.delete("new");projectUrl.searchParams.set("run", run.id); history.replaceState(null, "", projectUrl);

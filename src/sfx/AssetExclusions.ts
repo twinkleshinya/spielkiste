@@ -49,6 +49,9 @@ export function filterEventCandidates(events:SoundEvent[],assets:AudioAsset[],po
   const allowed=new Set(eligibleAssets(assets,policy).filter(a=>a.usable).map(a=>a.id));
   for(const event of events) {
     event.candidates=event.candidates.filter(c=>allowed.has(c.assetId));
-    for(const layer of event.layers||[])layer.candidates=layer.candidates.filter(c=>allowed.has(c.assetId));
+    for(const layer of event.layers||[]){
+      layer.candidates=layer.candidates.filter(c=>allowed.has(c.assetId));
+      if(layer.alternatives)layer.alternatives=layer.alternatives.filter(c=>allowed.has(c.assetId));
+    }
   }
 }
