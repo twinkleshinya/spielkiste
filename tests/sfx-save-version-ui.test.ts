@@ -9,6 +9,8 @@ import {handleSfxRequest} from '../src/ui/sfx-routes.js';
 import {fixtureRun} from './sfx-reaper-export.test.js';
 
 export async function testNamedVersionDialog(){
+ const html=await fs.readFile(path.resolve('src/ui/public/sfx.html'),'utf8');
+ for(const id of ['save-version-dialog','save-version-form','save-version-name','save-version-message','save-version-cancel','save-version-submit'])assert.ok(html.includes(`id="${id}"`),`real page must contain ${id}`);
  const ui=await editorHarness();
  ui.context.window.prompt=()=>{throw new Error('prompt unsupported');};
  ui.exec(`run.projectId='33333333-3333-4333-8333-333333333333';`);
