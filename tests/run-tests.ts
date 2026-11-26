@@ -358,4 +358,5 @@ const alternativeTests=await import('./sfx-alternatives.test.js');
 await alternativeTests.testAlternativesSurviveStrictSelection();
 await alternativeTests.testAlternativeCardsKeepPreviewAndStageReplacement();
 await alternativeTests.testLegacyAlternativesLoadWithoutEditing();
+await alternativeTests.testAlternativeSearchesAreSerialized();
 console.log('Audition alternatives and preserved preview checks passed');

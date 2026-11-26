@@ -61,3 +61,13 @@ export async function testLegacyAlternativesLoadWithoutEditing(){
  assert.equal(ui.isDirty(),false,'manual candidate search must not edit the saved timeline');
  assert.deepEqual(ui.getRun().placements,before.placements);
 }
+
+export async function testAlternativeSearchesAreSerialized(){
+ const ui=await editorHarness();
+ ui.exec(`for(const e of run.events.slice(0,2))e.layers=[{id:'main',role:'foley',query:'roar',offset:0,candidates:[]}];`);
+ let active=0,maxActive=0;
+ ui.context.fetch=async()=>{active++;maxActive=Math.max(maxActive,active);await new Promise(resolve=>setTimeout(resolve,5));active--;return {ok:true,json:async()=>[]};};
+ await ui.exec(`Promise.all([loadEventAlternatives(run.events[0]),loadEventAlternatives(run.events[1])])`);
+ assert.equal(maxActive,1,'fast point switching must not issue competing searches against the same project lock');
+ assert.equal(ui.isDirty(),false);
+}
