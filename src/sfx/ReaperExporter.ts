@@ -341,9 +341,12 @@ export class ReaperExporter {
     const requestedOutput = normalizeReaperOutputPath(options.outputPath);
     const defaultRoot = path.join(path.dirname(this.manifestRoot), "reaper-projects", "Spielkiste.rpp");
     const nameOnly = requestedOutput && !/[/\\:]/.test(requestedOutput);
-    const outputPath = nameOnly
-      ? path.join(path.dirname(defaultOutputPath(defaultRoot, { ...run, name: path.parse(requestedOutput).name })), requestedOutput)
+    const suggestedPath = nameOnly
+      ? defaultOutputPath(defaultRoot, { ...run, name: path.parse(requestedOutput).name })
       : path.resolve(requestedOutput || defaultOutputPath(options.templatePath ? templatePath : defaultRoot, run));
+    const outputPath = !requestedOutput || nameOnly
+      ? await reserveProjectDirectory(suggestedPath)
+      : suggestedPath;
     if (path.normalize(templatePath).toLowerCase() === path.normalize(outputPath).toLowerCase()) throw new Error("Reaper 模板和输出文件不能相同");
     const template = await fs.readFile(templatePath, "utf8");
     const settings=normalizeReaperSettings(options),channelMode=settings.channelMode;
@@ -431,6 +434,16 @@ function folderTracks(descriptors: TrackDescriptor[]): TrackDescriptor[] {
 export function defaultOutputPath(templatePath: string, run?: Pick<SfxRun, "name" | "revision">) {
   const parsed = path.parse(templatePath);
   const label = (run?.name || parsed.name).replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").replace(/[. ]+$/, "").slice(0, 40) || "Spielkiste";
-  const name = `${label}_Spielkiste_r${run?.revision || 0}_${new Date().toISOString().replace(/[-:TZ.]/g, "")}_${randomUUID().slice(0, 8)}`;
-  return path.join(parsed.dir, name, `${label}_Spielkiste.rpp`);
+  return path.join(parsed.dir, label, `${label}.rpp`);
+}
+
+/** Reserve the folder atomically so concurrent exports cannot overwrite one another. */
+async function reserveProjectDirectory(suggestedPath:string) {
+  const directory=path.dirname(suggestedPath),root=path.dirname(directory),label=path.basename(directory);
+  await fs.mkdir(root,{recursive:true});
+  for(let number=1;;number++) {
+    const target=path.join(root,number===1?label:`${label}（${number}）`);
+    try { await fs.mkdir(target); return path.join(target,path.basename(suggestedPath)); }
+    catch(error) { if((error as NodeJS.ErrnoException).code!=="EEXIST")throw error; }
+  }
 }
