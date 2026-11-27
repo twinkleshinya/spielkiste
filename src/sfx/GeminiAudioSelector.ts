@@ -37,7 +37,7 @@ export class GeminiAudioSelector {
     const assets = new Map(eligibleAssets(index.assets,index).map(a => [a.id, a]));
     type Group = { taskId: string; events: SoundEvent[]; layers: NonNullable<SoundEvent["layers"]>; ids: string[] };
     const groups: Group[] = [];
-    const unlocked = events.filter(e => !e.locked);
+    const unlocked = events.filter(e => !e.locked && (index.audioOutputMode === 'sfx' ? e.category !== 'music' : index.audioOutputMode === 'music' ? e.category === 'music' : true));
     // Keep manual audition choices apart from the shortlist that may be used
     // automatically. Strict rejection and cross-layer dedup must not erase them.
     for(const event of unlocked) {

@@ -310,7 +310,7 @@ export class SfxService {
       const result = await usagePhase("video-timing", () => new SfxVideoAnalyzer(new MediaTools(), provider).analyze(video, this.store.directory(run.id), { ...creativeFields(run),signal: taskSignal(controller.signal)!, musicEnabled: parsed.musicEnabled, progress: message => { run.progress = message; } }));
       if (parsed.analysisMode === "auto" && !["gemini", "ccswitch"].includes(result.mode)) throw new SfxError(`Gemini 未完成动作点位分析，请检查连接后重试。${result.warnings.slice(0, 2).join("；")}`);
       taskSignal(controller.signal)!.throwIfAborted();
-      run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length || result.report?.descriptionReview ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
+      run.duration = result.duration; run.scenes = result.scenes; run.events = result.events.length || result.report ? result.events : buildEventTimeline({ duration: result.duration, scenes: result.scenes }, { includeReviewEvents: true, previous: run.events });
       // The selected output is also an analysis scope. This prevents a
       // "仅音效" run from creating music events and a "仅音乐" run from
       // creating action/ambience candidates that can leak into exports.
@@ -632,7 +632,7 @@ export class SfxService {
       Object.assign(run.workflow,{operation:"reselect",timing:"reused",selection:"fresh",source:"fresh"});
       Object.assign(run.workflow.options,{selectionScope:input.selectionScope,aiSelection:true});
       run.parentRunId = source.id;
-      run.warnings = source.warnings.filter(w=>/动作查漏部分失败|部分短窗复查失败|局部接触复核失败/.test(w)); run.progress = "保留画面点位，使用 Gemini 分析候选音频并重新选材";
+      run.warnings = source.warnings.filter(w=>/动作查漏部分失败|角色局部复查失败|部分短窗复查失败|局部接触复核失败/.test(w)); run.progress = "保留画面点位，使用 Gemini 分析候选音频并重新选材";
       const lockedIds = new Set(source.placements.filter(p => p.locked).map(p => p.eventId));
       const originalLocks = new Map(run.events.map(e => [e.id, e.locked]));
       for (const e of run.events) if (lockedIds.has(e.id)) e.locked = true;
@@ -855,7 +855,7 @@ export class SfxService {
       run.workflow.options.autoMix=true;
       if(!input.reviewSource)try {await fs.copyFile(path.join(this.store.directory(source.id),"source-edit-report.json"),path.join(this.store.directory(run.id),"source-edit-report.json"));}catch { /* legacy source */ }
       run.parentRunId = source.id;
-      run.warnings = ["复用上一版点位和选材；名称仅作匹配参考，本次保留实际已选素材并记录名称疑点。自动混音不新增模型请求，选材报告为继承记录。",...source.warnings.filter(w=>/动作查漏部分失败|部分短窗复查失败|局部接触复核失败/.test(w))];
+      run.warnings = ["复用上一版点位和选材；名称仅作匹配参考，本次保留实际已选素材并记录名称疑点。自动混音不新增模型请求，选材报告为继承记录。",...source.warnings.filter(w=>/动作查漏部分失败|角色局部复查失败|部分短窗复查失败|局部接触复核失败/.test(w))];
       run.progress = input.reviewSource?"复核源音频段落并自动混音":"保留已选素材和截取范围，仅调整混音";
       try { await fs.copyFile(path.join(this.store.directory(id), "analysis-review.json"), path.join(this.store.directory(run.id), "analysis-review.json")); } catch { /* older manually edited timeline */ }
       await this.store.save(run);
