@@ -3,6 +3,8 @@ import { AudioAsset, SoundEvent, SoundPlacement, round } from "./models.js";
 import { isChargeSustain, isLoopAsset } from "./AssetIntent.js";
 import { planSourceEdit } from "./ClipEdit.js";
 import {eligibleAssets,type AssetExclusions} from "./AssetExclusions.js";
+import { isOrdinaryFootstep } from "./MixPerspective.js";
+import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
 export function createPlacements(events: SoundEvent[], assets: AudioAsset[], videoDuration: number,exclusions:AssetExclusions={}): SoundPlacement[] {
   const ordered = events.filter(e=>e.descriptionAllowed!==false).sort((a, b) => a.start - b.start);
@@ -26,8 +28,9 @@ export function createPlacements(events: SoundEvent[], assets: AudioAsset[], vid
     const duration = music ? Math.floor(Math.min(intended, videoDuration - start) * 1000) / 1000 : edit.duration;
     if (duration <= 0) return [];
     const role = ["ambience", "music", "foley", "impact", "whoosh", "texture", "tail"].includes(layer.role) ? layer.role as never : undefined;
-    const target = music ? -30 + (event.intensity ?? .5) * 7 : event.category === "ambience" ? -33 : layer.role === "texture" || layer.role === "tail" ? -27 : event.category === "impact" ? -19 : /charge/.test(event.type) ? -24 : -23;
-    const gainDb = asset.rmsDb !== undefined ? round(Math.max(-35, Math.min(9, target - asset.rmsDb, -3 - (asset.peakDb ?? 0)))) : music ? -17 + (event.intensity ?? .5) * 6 : layer.role === "ambience" ? -18 : -6;
+    const footstep = isOrdinaryFootstep(event,asset), foot=SFX_WORKFLOW.mix.footsteps;
+    const target = footstep ? foot.targetRmsDb : music ? -30 + (event.intensity ?? .5) * 7 : event.category === "ambience" ? -33 : layer.role === "texture" || layer.role === "tail" ? -27 : event.category === "impact" ? -19 : /charge/.test(event.type) ? -24 : -23;
+    const gainDb = asset.rmsDb !== undefined ? round(Math.max(footstep ? -60 : -35, Math.min(footstep ? 6 : 9, target - asset.rmsDb, (footstep ? foot.peakCeilingDb : -3) - (asset.peakDb ?? 0)))) : footstep ? foot.fallbackGainDb : music ? -17 + (event.intensity ?? .5) * 6 : layer.role === "ambience" ? -18 : -6;
     return [{ id: randomUUID(), eventId: event.id, layerId: layer.id, role, locked: Boolean(event.locked), assetId: asset.id, start: round(start), duration, sourceOffset: round(sourceOffset), gainDb, fadeIn: Math.min(music ? (start === musicAnchor ? .65 : .18) : event.category === "ambience" ? .3 : edit.fadeIn, duration / 3), fadeOut: Math.min(music ? hasNextCue ? .18 : event.musicStage === "exit" ? duration * .7 : .8 : event.category === "ambience" ? .5 : edit.fadeOut, duration / 3), category: event.category, enabled: true, ...(sustained && asset.duration !== undefined && sourceOffset + duration > asset.duration ? { loop: true } : {}) }];
   }));
 }

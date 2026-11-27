@@ -3,7 +3,7 @@ import { isChargeSustain } from "./AssetIntent.js";
 import { round } from "./models.js";
 import { edgeFades, planSourceEdit, isCharacterVocal } from "./ClipEdit.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
-import { mixImportance, planPerspective, perspectiveSummary } from "./MixPerspective.js";
+import { isOrdinaryFootstep, mixImportance, planPerspective, perspectiveSummary } from "./MixPerspective.js";
 export { isCharacterVocal } from "./ClipEdit.js";
 
 export type DuckWindow = { start: number; full: number; hold: number; end: number };
@@ -16,6 +16,7 @@ function targetLevel(event: SoundEvent | undefined, p: SoundPlacement, asset?: P
   const levels=SFX_WORKFLOW.mix.levels;
   if (p.category === "music") return levels.musicBase + (event?.intensity ?? .5) * levels.musicIntensity;
   if (p.category === "ambience") return levels.ambience;
+  if (isOrdinaryFootstep(event,asset)) return SFX_WORKFLOW.mix.footsteps.targetRmsDb;
   if (mixImportance(event,p,asset)==="detail") return levels.detail;
   if (isCharacterVocal(event, p, asset)) return levels.vocal;
   if (/warning|telegraph|预警/i.test(event?.type || "")) return levels.warning;
@@ -49,8 +50,9 @@ export function planAutoMix(run: MixInput,options:{preserveSourceEdits?:boolean;
     }
     if(!options.preserveLevels && !preservePlacement) {
     const target = targetLevel(event, p, a);
-    const gain = a.rmsDb === undefined ? p.category === "music" ? -18 : p.category === "ambience" ? -24 : isForeground(event, p, a) ? -9 : -15 : target - a.rmsDb;
-    const peakCeiling = isForeground(event, p, a) ? -6 : -11;
+    const footstep=isOrdinaryFootstep(event,a);
+    const gain = a.rmsDb === undefined ? footstep ? SFX_WORKFLOW.mix.footsteps.fallbackGainDb : p.category === "music" ? -18 : p.category === "ambience" ? -24 : mixImportance(event,p,a)==="detail" ? -24 : isForeground(event, p, a) ? -9 : -15 : target - a.rmsDb;
+    const peakCeiling = footstep ? SFX_WORKFLOW.mix.footsteps.peakCeilingDb : isForeground(event, p, a) ? -6 : -11;
     const baseGain=Math.max(-60, Math.min(6, gain, peakCeiling - (a.peakDb ?? 0)));
     const perspective=planPerspective(event,p,a);
     p.gainDb = round(Math.max(-60,baseGain+perspective.distanceGainDb));

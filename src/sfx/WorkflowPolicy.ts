@@ -11,6 +11,7 @@ export const SFX_WORKFLOW = {
   mix: {addedReverb:false,preservePitch:true,preserveSpeed:true,originalGainDb:-60,originalMuted:true,targetLufs:-20,truePeakDb:-1.5,loudnessRange:11,
     density:{foregroundConcurrencyReview:6,consecutiveBossGapSeconds:.75,bossSecondaryLayers:1},
     perspective:{minConfidence:.65,distanceDb:{near:0,mid:-4,far:-10},importanceScale:{key:.8,support:1,detail:1.2}},
+    footsteps:{targetRmsDb:-44,peakCeilingDb:-24,fallbackGainDb:-28},
     levels:{musicBase:-37,musicIntensity:4,ambience:-40,detail:-36,vocal:-23,warning:-22,foreground:-23,charge:-28,ui:-32,whoosh:-29,foley:-34},
     duck:{music:.36,ambience:.5,detail:.56,attackSeconds:.08,holdSeconds:.12,releaseSeconds:.5},limiter:.84},
   output:{sampleRate:48000,channels:2,audioCodec:"pcm_s24le",videoCodec:"libx264",previewAudioCodec:"aac"}

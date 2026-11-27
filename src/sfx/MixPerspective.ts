@@ -4,6 +4,15 @@ import { isCharacterVocal } from "./ClipEdit.js";
 import { SFX_WORKFLOW } from "./WorkflowPolicy.js";
 
 type Importance = "key" | "support" | "detail";
+/** Classify the visible action first; an asset filename alone cannot turn a landing into a routine step. */
+export function isOrdinaryFootstep(event: SoundEvent | undefined, asset?: Pick<AudioAsset,"fileName">) {
+  if (!event || ["music","ambience"].includes(event.category) || /^(?:ui|hud)$/i.test(event.actor || "")) return false;
+  const action=[event.type,event.description].join(" ");
+  if (/land(?:ing)?|stomp|ground.?slam|foot.?slam|落地|着地|踩踏|跺脚|命中|重击|捶地/i.test(event.type)
+    || /跳.*落地|落地冲击|踩踏攻击|跺地|捶地|命中|重击/i.test(event.description)) return false;
+  return /foot.?step|footfall|(?:^|[_\s])step(?:[_\s]|$)|脚步|行走|走路|普通迈步/i.test(action)
+    || /foot.?step|footfall|脚步/i.test([event.query,asset?.fileName].join(" "));
+}
 export function isScreenOrBed(event: SoundEvent | undefined, p: Pick<SoundPlacement,"category">) {
   return ["music","ambience"].includes(p.category) || /^(?:ui|hud)$/i.test(event?.actor || "") || /^(?:ui|hud)_/i.test(event?.type || "");
 }
@@ -18,10 +27,7 @@ export function mixImportance(event: SoundEvent | undefined, p: SoundPlacement, 
   // the event as key.  This keeps footsteps from competing with a visible
   // attack, vocal cue, warning, or contact.  A true landing/impact remains
   // eligible for a separate key event and is not covered by this rule.
-  const text = [event?.type, event?.description, event?.query, asset?.fileName].filter(Boolean).join(" ");
-  const ordinaryMovement = /footstep|footfall|脚步|行走|走路|普通移动/i.test(text)
-    && !/landing|land(?:ing)? impact|ground impact|踩踏攻击|落地冲击|命中|重击|捶地/i.test(text);
-  if (ordinaryMovement) return "detail";
+  if (isOrdinaryFootstep(event,asset)) return "detail";
   if (/debris|rubble|pebble|dust|recover_stance|weapon_handling|碎屑/i.test(event?.type || "")) return "detail";
   if (event?.importance) return event.importance;
   return "support";
