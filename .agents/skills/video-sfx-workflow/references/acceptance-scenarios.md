@@ -58,4 +58,5 @@ python -X utf8 C:/Users/jiangxy2/.codex/skills/.system/skill-creator/scripts/qui
 - 普通脚步：单层，不因 ground 字样叠碎石；同次快速连续脚步保留，跨窗 step/footstep 合并。
 - 短窗纠错：同角色的脚步不能替换蓄力；必须同类动作并重叠，原有发声不被无关动作删除。
 - 仅音乐混音：排除的动作声不能触发音乐避让。
+- 普通脚步过响回归：模型误标 key、player/boss 前缀、generic move 描述、未测源电平、近脚步对中景捶地都保持次要层；真实关键落地不受误降级。见 testOrdinaryFootstepsStaySecondary。实片重混只改脚步增益，原点位/素材/区间/fade及其他层不动，原版可回看。
 - 真实测试与模型差异、待试听缺口见 docs/Spielkiste-验收记录-2026-11-27.md；不以事件数或自动检查代替画面准确性和最终听感。
