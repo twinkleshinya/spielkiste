@@ -29,9 +29,10 @@ export async function reviewSourceEdits(run: SfxRun, model: SourceEditModel, cli
   if(tasks.length)try{decisions=schema.parse(await model.editSources(tasks,[...samples.values()],signal)).edits;}catch{signal?.throwIfAborted();report.warnings.push("Gemini 源音频剪辑复核失败，已保留有界剪辑和短淡入淡出；不能视为模型已确认。");}
   for(const p of wanted) {
     const e=events.get(p.eventId)!,a=assets.get(p.assetId)!, matches=decisions.filter(d=>d.placementId===p.id), d=matches.length===1?matches[0]:undefined;
-    const action=e.end-p.start, sample=samples.get(a.id);
+    const action=e.end-p.start, sample=samples.get(a.id),contact=e.category==='impact'&&e.phase==='contact';
+    const maxLength=contact?Math.max(p.duration,action+SFX_WORKFLOW.editing.maxModelExtensionSeconds):action+SFX_WORKFLOW.editing.maxModelExtensionSeconds;
     const inSample=d&&sample?.segments.some(s=>d.sourceStart>=s.start-.001&&d.releaseEnd<=s.end+.001);
-    const valid=d&&d.assetId===p.assetId&&d.confidence>=.5&&d.sourceStart>=0&&d.bodyEnd>d.sourceStart&&d.releaseEnd>=d.bodyEnd&&d.releaseEnd-d.sourceStart>=.01&&d.releaseEnd-d.sourceStart<=action+SFX_WORKFLOW.editing.maxModelExtensionSeconds&&d.releaseEnd-d.bodyEnd<=SFX_WORKFLOW.editing.maxModelReleaseSeconds&&d.releaseEnd<=(a.duration??0)+.001&&p.start+d.releaseEnd-d.sourceStart<=run.duration+.001&&inSample;
+    const valid=d&&d.assetId===p.assetId&&d.confidence>=.5&&d.sourceStart>=0&&d.bodyEnd>d.sourceStart&&d.releaseEnd>=d.bodyEnd&&d.releaseEnd-d.sourceStart>=.01&&d.releaseEnd-d.sourceStart<=maxLength&&d.releaseEnd-d.bodyEnd<=(contact?Math.max(p.duration,SFX_WORKFLOW.editing.maxModelReleaseSeconds):SFX_WORKFLOW.editing.maxModelReleaseSeconds)&&d.releaseEnd<=(a.duration??0)+.001&&p.start+d.releaseEnd-d.sourceStart<=run.duration+.001&&inSample;
     if(valid&&d) {
       p.sourceOffset=Math.ceil((d.sourceStart-1e-9)*1000)/1000;
       p.duration=Math.floor((d.releaseEnd-p.sourceOffset+1e-9)*1000)/1000;

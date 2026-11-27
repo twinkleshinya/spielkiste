@@ -51,10 +51,11 @@ export async function testContactSourceReviewIsolatesOneImpact(){
   const event=EventSchema.parse({id:'hit',start:3,end:3.2,type:'ground_slam',actor:'boss',phase:'contact',category:'impact',description:'拳地一次撞击',query:'hand impact',source:'vision',confidence:.9,requiresHumanReview:true,candidates:[{assetId:'hand',score:1,reason:'name'}]});
   const run={duration:6,events:[event],assets:[asset],placements:createPlacements([event],[asset],6)} as SfxRun;
   let reviewed=0;
-  const report=await sourceEditor.reviewSourceEdits(run,{model:'fixture',async editSources(tasks){reviewed+=tasks.length;return {edits:tasks.map(t=>({placementId:t.placementId,assetId:t.assetId,sourceStart:.27,bodyEnd:.45,releaseEnd:.8,confidence:.9,reason:'避开前一拍，只保留一次撞击和自然尾音'}))};}},{async sample(){return {assetId:'hand',data:'wav',format:'wav',segments:[{start:0,end:2}]};}},folder);
+  const report=await sourceEditor.reviewSourceEdits(run,{model:'fixture',async editSources(tasks){reviewed+=tasks.length;return {edits:tasks.map(t=>({placementId:t.placementId,assetId:t.assetId,sourceStart:.27,bodyEnd:.45,releaseEnd:1.3,confidence:.9,reason:'避开前一拍，只保留一次撞击和自然尾音'}))};}},{async sample(){return {assetId:'hand',data:'wav',format:'wav',segments:[{start:0,end:2}]};}},folder);
   assert.equal(reviewed,1,'contact recordings need actual source phrase review, not just vocal recordings');
   assert.equal(run.placements[0].sourceOffset,.27);
   assert.equal(run.placements[0].start,3,'visual contact cannot move to the source energy peak');
+  assert.equal(run.placements[0].duration,1.03,'short visual contact must not truncate the natural impact decay');
   assert.equal(report.status,'complete');
  }finally{await fs.rm(folder,{recursive:true,force:true});}
 }
