@@ -63,6 +63,18 @@ export async function testAnalysisUsesReadableFrames(){
   }finally{await fs.rm(root,{recursive:true,force:true});}
 }
 
+export async function testFocusedReviewAddsMissingKeyAction(){
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-focus-'));let focusCalls=0;
+ try{
+  const frames=[{start:0,end:2,thumbnail:'f.jpg'}];
+  const media:any={sampleFrames:async()=>frames,sampleRegionFrames:async()=>{focusCalls++;return frames;}};
+  const director={analyzeFrames:async(_frames:unknown[],prompt:string)=>prompt.includes('先理解完整视频')?{context:'远处巨兽',focusRegions:[{actor:'boss',x:.4,y:.3,width:.4,height:.4,reason:'头部较小'}],events:[]}:prompt.includes('角色局部动作查漏')?{events:[cue({type:'boss_roar',phase:'motion',category:'other',description:'巨兽张嘴吼叫'})]}:{events:[]}};
+  const result=await analyzeTemporal('fixture',2,root,media,director,{musicEnabled:false});
+  assert.ok(focusCalls>0,'small visible actors need a focused review rather than another whole-frame prompt');
+  assert.ok(result.events.some(e=>e.type==='boss_roar'),'focused visible action must reach final events');
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
 export async function testAudioSelectionDoesNotInventPurityScope(){
   const provider=new CcSwitchAudioProvider();
   let payload:any;
