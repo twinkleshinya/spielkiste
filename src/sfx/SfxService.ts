@@ -379,8 +379,8 @@ export class SfxService {
       excludedLibraryPaths: source.excludedLibraryPaths,
       excludedKeywords: source.excludedKeywords,
       videoDescription: input.mode === "visual" ? undefined : input.videoDescription,
-      soundRequirements: input.soundRequirements,
-      style: input.style,
+      soundRequirements: input.soundRequirements ?? source.soundRequirements,
+      style: input.style ?? source.style,
       referenceWorks:input.referenceWorks??referenceWorksFrom(source),
       reusePreserved: false
     });

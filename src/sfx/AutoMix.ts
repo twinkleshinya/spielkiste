@@ -7,7 +7,7 @@ import { mixImportance, planPerspective, perspectiveSummary } from "./MixPerspec
 export { isCharacterVocal } from "./ClipEdit.js";
 
 export type DuckWindow = { start: number; full: number; hold: number; end: number };
-type MixInput = Pick<SfxRun, "duration" | "events" | "assets" | "placements" | "musicEnabled">;
+type MixInput = Pick<SfxRun, "duration" | "events" | "assets" | "placements" | "musicEnabled" | "audioOutputMode">;
 export function isForeground(event: SoundEvent | undefined, p: SoundPlacement, asset?: Pick<AudioAsset, "fileName">) {
   if (["music","ambience"].includes(p.category) || mixImportance(event,p,asset)==="detail") return false;
   return mixImportance(event,p,asset)==="key" || p.role === "impact" || event?.phase === "contact" && p.category === "impact";
@@ -31,9 +31,10 @@ export function planAutoMix(run: MixInput,options:{preserveSourceEdits?:boolean;
   const events = new Map(run.events.map(e => [e.id, e]));
   const assets = new Map(run.assets.map(a => [a.id, a]));
   const placements = structuredClone(run.placements);
+  const audible = (p:SoundPlacement) => p.enabled && !events.get(p.eventId)?.muted && (run.audioOutputMode === 'music' ? p.category === 'music' : run.audioOutputMode === 'sfx' ? p.category !== 'music' : p.category !== 'music' || run.musicEnabled !== false);
   const original = new Map(run.placements.map(p => [p.id, p]));
   let extendedTails = 0, naturalTailClips = 0;
-  for (const p of placements.filter(p => p.enabled && !p.locked && !events.get(p.eventId)?.locked)) {
+  for (const p of placements.filter(p => audible(p) && !p.locked && !events.get(p.eventId)?.locked)) {
     const a = assets.get(p.assetId), event = events.get(p.eventId);
     if (!a || !event) continue;
     const preservePlacement = options.preservePlacementIds?.has(p.id) === true;
@@ -57,9 +58,9 @@ export function planAutoMix(run: MixInput,options:{preserveSourceEdits?:boolean;
     }
     if(!options.preserveSourceEdits && !preservePlacement)Object.assign(p, edgeFades(p.duration, p.sourceOffset+p.duration < (a.duration ?? Infinity)-.001, p.fadeIn, p.fadeOut));
   }
-  const foreground = placements.filter(p => p.enabled && !events.get(p.eventId)?.muted && isForeground(events.get(p.eventId), p, assets.get(p.assetId)));
+  const foreground = placements.filter(p => audible(p) && isForeground(events.get(p.eventId), p, assets.get(p.assetId)));
   // Preserve each action, but lower secondary detail during crowded main contacts.
-  for (const p of placements.filter(p => p.enabled && !p.locked && !events.get(p.eventId)?.locked && !options.preservePlacementIds?.has(p.id) && !["music", "ambience"].includes(p.category) && !isForeground(events.get(p.eventId), p, assets.get(p.assetId)))) {
+  for (const p of placements.filter(p => audible(p) && !p.locked && !events.get(p.eventId)?.locked && !options.preservePlacementIds?.has(p.id) && !["music", "ambience"].includes(p.category) && !isForeground(events.get(p.eventId), p, assets.get(p.assetId)))) {
     const count = foreground.filter(main => main.start < p.start + p.duration && main.start + Math.min(main.duration, .5) > p.start).length;
     if (!options.preserveLevels && count >= 2) p.gainDb = round(Math.max(-60, p.gainDb - Math.min(8, 3 * Math.log2(count))));
   }
@@ -76,10 +77,10 @@ export function planAutoMix(run: MixInput,options:{preserveSourceEdits?:boolean;
     else ducks.push(w);
   }
   let peakConcurrency = 0;
-  for (const time of placements.filter(p => p.enabled && !events.get(p.eventId)?.muted).flatMap(p => [p.start, p.start + .01])) {
-    peakConcurrency = Math.max(peakConcurrency, placements.filter(p => p.enabled && !events.get(p.eventId)?.muted && !["music","ambience"].includes(p.category) && p.start <= time && p.start + p.duration > time).length);
+  for (const time of placements.filter(audible).flatMap(p => [p.start, p.start + .01])) {
+    peakConcurrency = Math.max(peakConcurrency, placements.filter(p => audible(p) && !["music","ambience"].includes(p.category) && p.start <= time && p.start + p.duration > time).length);
   }
-  const perspective=perspectiveSummary({...run,placements});
+  const perspective=perspectiveSummary({...run,placements:placements.filter(audible)});
   return { placements, ducks, report: { workflow: "sound-aware-distance-priority-duck-v4", extendedTails, naturalTailClips,
     adjustedClips: placements.filter(p => p.gainDb !== original.get(p.id)?.gainDb || p.duration !== original.get(p.id)?.duration).length,
     peakConcurrency, duckWindows: ducks.length, targetLufs: round(SFX_WORKFLOW.mix.targetLufs+perspective.energyReserveDb), truePeakDb: SFX_WORKFLOW.mix.truePeakDb, perspective } };

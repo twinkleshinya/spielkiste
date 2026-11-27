@@ -459,20 +459,20 @@ async function reanalyzeProject(mode) {
   requireUpdatedPreview();
   hideStyleConflict();
   const description = mode === "visual" ? "" : $("reanalyze-video-description").value.trim();
-  const soundRequirements = mode === "visual" ? "" : $("reanalyze-sound-requirements").value.trim();
-  const style = mode === "visual" ? "" : $("reanalyze-sound-style").value.trim();
+  const soundRequirements = $("reanalyze-sound-requirements").value.trim();
+  const style = $("reanalyze-sound-style").value.trim();
   const loadedReferenceText = referenceWorksFrom(run).join("；");
   const mainReferenceText = $("reference-works").value.trim();
   const reanalyzeReferenceText = $("reanalyze-reference-works").value.trim();
   // An explicit edit in the main project input, including clearing it, wins over the loaded value.
   const referenceText = mainReferenceText !== loadedReferenceText ? mainReferenceText : reanalyzeReferenceText;
-  const referenceWorks = mode === "visual" ? [] : referenceText.split(/[；;\n]+/u).map(value=>value.trim()).filter(Boolean);
+  const referenceWorks = referenceText.split(/[；;\n]+/u).map(value=>value.trim()).filter(Boolean);
   const playback = { time: $("video").currentTime || 0, playing: false };
   $("video").pause(); setBusy(true);
   status(mode === "visual" ? "Gemini 正在重新分析整段画面和声音点位…" : "Gemini 正在结合新描述要求重新分析画面、点位和音效…");
   let submitted = false;
   try {
-    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements: soundRequirements || undefined, style: style || undefined,referenceWorks,keywordPreferences:keywordPreferences.read() });
+    const result = await api(`/api/sfx/runs/${run.id}/reanalyze`, { mode, videoDescription: description || undefined, soundRequirements, style,referenceWorks,keywordPreferences:keywordPreferences.read() });
     submitted = true;
     await poll(result.runId, true, playback, { recoverDraft: false });
     loadProjectInputs();
