@@ -18,7 +18,10 @@ export function mixImportance(event: SoundEvent | undefined, p: SoundPlacement, 
   // the event as key.  This keeps footsteps from competing with a visible
   // attack, vocal cue, warning, or contact.  A true landing/impact remains
   // eligible for a separate key event and is not covered by this rule.
-  if (/^(?:footstep|footfall|step|walk|run)(?:_|$)|脚步|行走|走路/i.test(event?.type || "")) return "detail";
+  const text = [event?.type, event?.description, event?.query, asset?.fileName].filter(Boolean).join(" ");
+  const ordinaryMovement = /footstep|footfall|脚步|行走|走路|普通移动/i.test(text)
+    && !/landing|land(?:ing)? impact|ground impact|踩踏攻击|落地冲击|命中|重击|捶地/i.test(text);
+  if (ordinaryMovement) return "detail";
   if (/debris|rubble|pebble|dust|recover_stance|weapon_handling|碎屑/i.test(event?.type || "")) return "detail";
   if (event?.importance) return event.importance;
   return "support";

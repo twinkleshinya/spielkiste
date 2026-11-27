@@ -109,6 +109,11 @@ export function testOrdinaryFootstepsStaySecondary() {
   const stepClip = mixed.placements.find(p => p.eventId === step.id)!;
   assert.equal(isForeground(step, stepClip, assets[1]), false, "ordinary footsteps must remain secondary even when a vision model overstates importance");
   assert.ok(slamClip.gainDb >= stepClip.gainDb + 8, "ordinary footsteps must sit clearly below the main contact");
+
+  const genericStep = cue({ id: "generic-step", type: "player_move", phase: "motion", category: "foley", actor: "player", importance: "key",
+    start: 3, end: 3.2, description: "角色普通移动，脚步落在地面", query: "body movement footstep", candidates: [{ assetId: "step", score: 1, reason: "name" }] });
+  const genericPlacement = createPlacements([genericStep], assets, 6)[0];
+  assert.equal(isForeground(genericStep, genericPlacement, assets[1]), false, "footstep cues hidden in a generic movement event must remain secondary");
 }
 
 export async function testAutoMixFork() {
