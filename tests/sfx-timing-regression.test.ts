@@ -82,6 +82,28 @@ export async function testFocusedReviewAddsMissingKeyAction(){
  }finally{await fs.rm(root,{recursive:true,force:true});}
 }
 
+export async function testContactReviewUsesActorDetailAndContactBoundary(){
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-contact-detail-'));let contactCrops=0;
+ try{
+  const contact=cue({type:'ground_slam',phase:'contact',category:'impact',start:3,end:3.2,description:'巨拳触地'});
+  const media:any={sampleFrames:async(_v:string,start:number,end:number)=>[{start,end,thumbnail:'full.jpg'}],sampleRegionFrames:async(_v:string,start:number,end:number,_fps:number,out:string)=>{if(out.includes('contact-'))contactCrops++;return [{start,end,thumbnail:'actor.jpg'}];}};
+  const director={analyzeFrames:async(frames:any[],prompt:string)=>{
+   if(prompt.includes('先理解完整视频'))return {context:'远景石拳',focusRegions:[{actor:'boss',x:.4,y:.3,width:.5,height:.4}],events:[]};
+   if(prompt.includes('逐帧复核')){assert.equal(frames[0].thumbnail,'actor.jpg','contact must use the known actor region');assert.match(prompt,/最后.*悬空/);assert.match(prompt,/阴影/);return {visible:true,start:3.033,end:3.15,confidence:.9,evidence:'3.000仍有空隙，3.033首次闭合'};}
+   if(prompt.includes('完整场景'))return {events:[contact]};
+   return {events:[]};
+  }};
+  const result=await analyzeTemporal('fixture',4,root,media,director,{musicEnabled:false});
+  assert.ok(contactCrops>0,'contact refinement must not discard the actor crop used for detection');
+  assert.equal(result.events.find(e=>e.type==='ground_slam')?.start,3.033);
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
+export function testBossMotionRequiresAudioReview(){
+ const motion=cue({type:'boss_move',phase:'motion',category:'foley',actor:'boss',importance:'support',candidates:[{assetId:'boat',score:10,reason:'heavy movement'},{assetId:'arm',score:4,reason:'arm'}]});
+ assert.ok(selectReviewEvents([motion],'selective').includes(motion),'a high filename score cannot bypass listening to boss motion');
+}
+
 export async function testAudioSelectionDoesNotInventPurityScope(){
   const provider=new CcSwitchAudioProvider();
   let payload:any;
