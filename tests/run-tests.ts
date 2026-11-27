@@ -19,7 +19,7 @@ import { buildSkillSheetRowsForTest, parseSheetIdsFromSheetInfoOutput, parseSkil
 import { markdownToBlocks } from "../src/renderers/MarkdownRenderer.js";
 import { AudioDesignPlan, ReferencePack } from "../src/schemas/index.js";
 import { testSfxComparison } from "./sfx-comparison.test.js";
-import { testFilenameStageConstraints, testNaturalOneShotTails, testAutoMixHierarchy, testAutoMixFork, testSelectiveAudioPolicy, testGeminiTimingRequired, testCharacterVocalPriority, testBossLayerBudgetAndDenseChain, testWorkflowDensityReview } from "./sfx-stage-mix.test.js";
+import { testFilenameStageConstraints, testNaturalOneShotTails, testAutoMixHierarchy, testOrdinaryFootstepsStaySecondary, testAutoMixFork, testSelectiveAudioPolicy, testGeminiTimingRequired, testCharacterVocalPriority, testBossLayerBudgetAndDenseChain, testWorkflowDensityReview } from "./sfx-stage-mix.test.js";
 import { testDistanceMixHierarchy, testDistanceAnalysisAndPersistence, testDistanceRenderedHeadroom, testDistanceEditPersistence } from "./sfx-distance-mix.test.js";
 import { testGenerationHttpKeepsCallerCancellation, testSfxUsageIsolation } from "./sfx-usage.test.js";
 import { testSoundAwareSourceLengths, testCroppedEdgeFades, testMeaningfulFilenameAlternatives, testMeasuredCandidateSimilarity } from "./sfx-editing.test.js";
@@ -233,6 +233,7 @@ testSfxComparison();
 testFilenameStageConstraints();
 testNaturalOneShotTails();
 testAutoMixHierarchy();
+testOrdinaryFootstepsStaySecondary();
 testDistanceMixHierarchy();
 await testDistanceAnalysisAndPersistence();
 await testDistanceEditPersistence();

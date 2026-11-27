@@ -3,7 +3,7 @@ import { fitsAssetIntent } from "../src/sfx/AssetIntent.js";
 import { planEventCandidates } from "../src/sfx/CandidatePlanner.js";
 import { createPlacements } from "../src/sfx/PlacementEngine.js";
 import { AudioAsset, EventSchema } from "../src/sfx/models.js";
-import { planAutoMix, duckGainAt } from "../src/sfx/AutoMix.js";
+import { planAutoMix, duckGainAt, isForeground } from "../src/sfx/AutoMix.js";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -95,6 +95,20 @@ export function testAutoMixHierarchy() {
   const unknown = assets.map(a => { const copy = { ...a }; delete copy.rmsDb; return copy; });
   const first = planAutoMix({ duration: 6, events: [hit, debris, music], assets: unknown, placements });
   assert.deepEqual(planAutoMix({ duration: 6, events: [hit, debris, music], assets: unknown, placements: first.placements }).placements, first.placements, "missing source level measurements must not cause repeated attenuation");
+}
+
+export function testOrdinaryFootstepsStaySecondary() {
+  const slam = cue({ id: "slam", type: "ground_slam", phase: "contact", category: "impact", actor: "boss", importance: "key",
+    start: 2, end: 2.2, description: "Boss捶地", query: "boss ground slam", candidates: [{ assetId: "slam", score: 1, reason: "name" }] });
+  const step = cue({ id: "step", type: "footstep", phase: "contact", category: "foley", actor: "player", importance: "key",
+    start: 2.05, end: 2.2, description: "角色普通脚步落地", query: "player footstep", candidates: [{ assetId: "step", score: 1, reason: "name" }] });
+  const assets = [asset("slam", "boss_ground_slam.wav"), asset("step", "player_footstep.wav")];
+  const placements = createPlacements([slam, step], assets, 6);
+  const mixed = planAutoMix({ duration: 6, events: [slam, step], assets, placements });
+  const slamClip = mixed.placements.find(p => p.eventId === slam.id)!;
+  const stepClip = mixed.placements.find(p => p.eventId === step.id)!;
+  assert.equal(isForeground(step, stepClip, assets[1]), false, "ordinary footsteps must remain secondary even when a vision model overstates importance");
+  assert.ok(slamClip.gainDb >= stepClip.gainDb + 8, "ordinary footsteps must sit clearly below the main contact");
 }
 
 export async function testAutoMixFork() {
