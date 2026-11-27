@@ -10,7 +10,7 @@ export type SourceEditModel = {model:string;editSources(tasks:SourceEditTask[],s
 export async function reviewSourceEdits(run: SfxRun, model: SourceEditModel, clips: AudioClipSource, outputDir: string, signal?: AbortSignal) {
   const assets=new Map(run.assets.map(a=>[a.id,a])),events=new Map(run.events.map(e=>[e.id,e]));
   const report={model:model.model,status:"skipped",decisions:[] as {placementId:string;assetId:string;sourceOffset:number;duration:number;basis:"gemini-audio"|"local-bounded";reason:string}[],warnings:[] as string[]};
-  const wanted=run.placements.filter(p=>p.enabled&&!p.locked&&!events.get(p.eventId)?.locked&&isCharacterVocal(events.get(p.eventId),p,assets.get(p.assetId))).slice(0,24);
+  const wanted=run.placements.filter(p=>{const e=events.get(p.eventId);return p.enabled&&!p.locked&&!e?.locked&&(isCharacterVocal(e,p,assets.get(p.assetId))||Boolean(e&&e.category==='impact'&&e.phase==='contact'));}).slice(0,24);
   const samples=new Map<string,Awaited<ReturnType<AudioClipSource["sample"]>>>();
   const tasks:SourceEditTask[]=[];
   for(const p of wanted) {

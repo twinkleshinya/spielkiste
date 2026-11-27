@@ -193,8 +193,12 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     const results = await Promise.allSettled(contacts.slice(i, i + 2).map(async (event, j) => {
       signal?.throwIfAborted(); progress(`Gemini 3/4：接触点复核 ${i + j + 1}/${contacts.length}（约 ${event.start} 秒）`);
       const start = Math.max(0, event.start - .5), end = Math.min(duration, event.start + .55);
-      const closeFrames = await media.sampleFrames!(video, start, end, SFX_WORKFLOW.timing.contactFps, path.join(outputDir, "frames", `contact-${i + j + 1}`), signal, 768);
-      const result = await director.analyzeFrames(closeFrames, `逐帧复核这一条接触事件：${JSON.stringify({ id: event.id, start: event.start, type: event.type, description: event.description, actor: event.actor,distance:event.distance,importance:event.importance })}。${guardrails}\n返回JSON {"visible":true,"start":0.0,"end":0.0,"confidence":0.8,"evidence":"中文说明第一张实际接触/地面破裂/命中闪光证据",${spatialShape}}。如没有看到这条接触，visible=false；不要替换成另一角色的动作。start/end整片绝对时间，精确按画面标签，end>start。`, signal);
+      const region=regions.find((r:z.infer<typeof regionSchema>)=>r.actor===event.actor);
+      const contactDir=path.join(outputDir,"frames",`contact-${i+j+1}`);
+      const closeFrames = region&&media.sampleRegionFrames
+        ? await media.sampleRegionFrames(video,start,end,SFX_WORKFLOW.timing.contactFps,contactDir,region,signal)
+        : await media.sampleFrames!(video,start,end,SFX_WORKFLOW.timing.contactFps,contactDir,signal,1024);
+      const result = await director.analyzeFrames(closeFrames, `逐帧复核这一条接触事件：${JSON.stringify({ id: event.id, start: event.start, type: event.type, description: event.description, actor: event.actor,distance:event.distance,importance:event.importance })}。${guardrails}\n${region?'这是角色局部放大图，距离仍沿用原全景判断。':''}逐张比较最后一张悬空帧与第一张实际接触帧，在evidence写明两张时间和接触部位。阴影重叠、拳头接近地面、身体最低点或随后压实都不能替代首次接触；无法看到接触时明确visible=false，不沿用原时间猜测。\n返回JSON {"visible":true,"start":0.0,"end":0.0,"confidence":0.8,"evidence":"中文说明最后悬空与首次实际接触/地面破裂/命中闪光证据",${spatialShape}}。如没有看到这条接触，visible=false；不要替换成另一角色的动作。start/end整片绝对时间，精确按画面标签，end>start。`, signal);
       const review = z.object({ visible: z.boolean(), start: z.number().finite().optional(), end: z.number().finite().optional(), confidence: z.number().min(0).max(1).optional(), evidence: z.string().max(2000),distance:DistanceSchema.optional(),importance:ImportanceSchema.optional() }).parse(result);
       await writeJson(path.join(outputDir, `analysis-contact-${i + j + 1}.json`), { eventId: event.id, originalStart: event.start, review });
       if (!review.visible) { event.confidence = Math.min(event.confidence, .35); event.evidence = `密集帧未确认接触：${review.evidence}`; return; }

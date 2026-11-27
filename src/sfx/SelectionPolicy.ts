@@ -6,6 +6,7 @@ export function selectReviewEvents(events: SoundEvent[], scope: "selective" | "f
   const unlocked = events.filter(e => !e.locked);
   if (scope === "full") return unlocked;
   const key = (event: SoundEvent) => event.importance === 'key' || Boolean(event.descriptionRequirementIds?.length) || ["music", "impact"].includes(event.category) || /^ui_|charge|cast|warning|telegraph|roar|预警|蓄力|施法/.test(event.type)
+    || event.actor==='boss' && event.phase!=='contact' && /move|motion|foley|swing|抬臂|下压|挥动/i.test(`${event.type} ${event.query} ${event.description}`)
     || /grunt|growl|roar|vocal|bellow|howl|snarl|吼叫|低吼|叫声|咆哮/i.test(`${event.type} ${event.query} ${event.description}`)
     || (event.layers?.length ? event.layers.some(l=>!l.candidates.length) : !event.candidates.length);
   const ambiguous = unlocked.filter(event => {
