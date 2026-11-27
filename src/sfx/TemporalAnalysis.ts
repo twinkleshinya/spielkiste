@@ -40,6 +40,29 @@ export function canReplaceReviewedEvent(original:Pick<SoundEvent,'type'|'actor'>
   return original.actor===replacement.actor && canonicalAction(original.type)===canonicalAction(replacement.type);
 }
 
+/**
+ * A distant boss contact is the perceptual anchor of the action.  The visual
+ * audit often reports a generic recovery/step immediately after that contact;
+ * keep the primary hit and retain later, independently timed actions, but do
+ * not turn the close recovery cluster into extra foreground noise without
+ * separate evidence.
+ */
+export function pruneUnsupportedBossAftermath(events: SoundEvent[]): SoundEvent[] {
+  const slams = events.filter(event =>
+    event.actor === "boss" && event.type === "ground_slam" &&
+    event.phase === "contact" && event.category === "impact"
+  );
+  if (!slams.length) return events;
+  return events.filter(event => {
+    if (event.actor !== "boss" || event.importance === "key") return true;
+    const slam = slams.find(candidate => event.start >= candidate.end - .02 && event.start <= candidate.end + .45);
+    if (!slam) return true;
+    if (event.phase === "aftermath" && event.importance === "detail") return false;
+    if (event.phase === "contact" && canonicalAction(event.type) === "footstep" && event.importance === "detail") return false;
+    return true;
+  });
+}
+
 export function mergeWindowEvents(windows: SoundEvent[][]): SoundEvent[] {
   const result: SoundEvent[] = [];
   for (const window of windows) {

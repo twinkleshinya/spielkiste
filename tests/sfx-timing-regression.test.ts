@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {EventSchema} from '../src/sfx/models.js';
 import {LayerPlanner} from '../src/sfx/LayerPlanner.js';
-import {analyzeTemporal,mergeWindowEvents,canReplaceReviewedEvent} from '../src/sfx/TemporalAnalysis.js';
+import {analyzeTemporal,mergeWindowEvents,canReplaceReviewedEvent,pruneUnsupportedBossAftermath} from '../src/sfx/TemporalAnalysis.js';
 import {eventsForOutputMode} from '../src/sfx/SfxRenderer.js';
 import {CcSwitchAudioProvider} from '../src/sfx/CcSwitchAudioProvider.js';
 import {planEventCandidates} from '../src/sfx/CandidatePlanner.js';
@@ -103,6 +103,15 @@ export async function testContactReviewUsesActorDetailAndContactBoundary(){
 export function testBossMotionRequiresAudioReview(){
  const motion=cue({type:'boss_move',phase:'motion',category:'foley',actor:'boss',importance:'support',candidates:[{assetId:'boat',score:10,reason:'heavy movement'},{assetId:'arm',score:4,reason:'arm'}]});
  assert.ok(selectReviewEvents([motion],'selective').includes(motion),'a high filename score cannot bypass listening to boss motion');
+}
+
+export function testBossGroundSlamDoesNotAddUnsupportedPostImpactNoise(){
+ const slam=cue({id:'slam',type:'ground_slam',actor:'boss',phase:'contact',category:'impact',start:2.57,end:2.95,description:'Boss右拳首次接触地面',query:'heavy hand ground impact',importance:'key'});
+ const aftermath=cue({id:'aftermath',type:'boss_move',actor:'boss',phase:'aftermath',category:'foley',start:2.95,end:3.8,description:'Boss收势恢复待机',query:'giant creature settle movement',importance:'detail'});
+ const step=cue({id:'step',type:'footstep',actor:'boss',phase:'contact',category:'foley',start:3.15,end:3.3,description:'Boss撤步',query:'monster footstep heavy',importance:'detail'});
+ const kept=cue({id:'later',type:'footstep',actor:'boss',phase:'contact',category:'foley',start:4.1,end:4.3,description:'Boss远处再次落脚',query:'monster footstep heavy',importance:'detail'});
+ const result=pruneUnsupportedBossAftermath([slam,aftermath,step,kept]);
+ assert.deepEqual(result.map(e=>e.id),['slam','later'],'a close post-slam recovery/step cluster must not become unexplained extra noise');
 }
 
 export function testFrameLabelsUseDecodedTimestamps(){

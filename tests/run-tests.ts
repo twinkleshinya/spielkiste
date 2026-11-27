@@ -377,6 +377,7 @@ await timingRegression.testAnalysisUsesReadableFrames();
 await timingRegression.testFocusedReviewAddsMissingKeyAction();
 await timingRegression.testContactReviewUsesActorDetailAndContactBoundary();
 timingRegression.testBossMotionRequiresAudioReview();
+timingRegression.testBossGroundSlamDoesNotAddUnsupportedPostImpactNoise();
 timingRegression.testFrameLabelsUseDecodedTimestamps();
 await (await import('./sfx-source-review.test.js')).testContactSourceReviewIsolatesOneImpact();
 await timingRegression.testVisualReanalysisRetainsSoundDirection();
