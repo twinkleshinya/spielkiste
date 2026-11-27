@@ -27,7 +27,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
   const mix=run.mixReport;
   const spatial=mix?.perspective;
   const timingOk=Boolean(run.analysisReport&&/^gemini(?:-|$)/i.test(run.analysisReport.model)&&["ccswitch","gemini"].includes(run.analysisMode));
-  const timingIssues=run.warnings.filter(w=>/动作查漏部分失败|部分短窗复查失败|局部接触复核失败/.test(w));
+  const timingIssues=run.warnings.filter(w=>/动作查漏部分失败|角色局部复查失败|部分短窗复查失败|局部接触复核失败/.test(w));
   const selectionOk=run.selectionReport?.status==="complete";
   const soundConflicts=enabled.flatMap(p=>{
     const event=events.get(p.eventId),description=run.selectionReport?.audio.find(a=>a.assetId===p.assetId);

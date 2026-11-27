@@ -92,6 +92,7 @@ export async function analyzeTemporal(video: string, duration: number, outputDir
   if (!media.sampleFrames) throw new Error("当前媒体工具不支持密集时间帧");
   if (duration > SFX_WORKFLOW.timing.maxVideoSeconds) throw new Error("精细动作分析当前支持 5 分钟以内视频，请先截取动作片段。");
   const warnings: string[] = [];
+  let focusedWindows=0;
   signal?.throwIfAborted();
   progress("Gemini 1/4：抽取带绝对时间的密集动作帧（5 FPS）");
   const frames = await media.sampleFrames(video, 0, duration, SFX_WORKFLOW.timing.fps, path.join(outputDir, "frames", "dense"), signal, SFX_WORKFLOW.timing.frameWidth);
@@ -141,6 +142,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
       const existing=actions.filter(e=>e.start<window.end&&e.end>window.start).map(({start,end,type,actor,description})=>({start,end,type,actor,description}));
       const result=await director.analyzeFrames(selected,`角色局部动作查漏。这是原画面区域 ${JSON.stringify(region)} 的放大图，角色标识${region.actor}，场景${context}，时间${window.start}–${window.end}。现有清单${JSON.stringify(existing)}。${guardrails} 重点复核头口张合、胸颈用力、预警、蓄力、手臂武器轨迹和真实接触，逐张对照，只补遗漏动作；静态张嘴或露齿不是连续吼叫证据。局部图不能推断画外命中，距离沿用原全景判断，不因放大改成近景。JSON {"events":[${eventShape}]}，不含环境音乐，最多25条。`,signal);
       await writeJson(path.join(outputDir,`analysis-focus-${regionIndex+1}-${i+1}.json`),{region,...window,result});
+      focusedWindows++;
       actions=mergeWindowEvents([actions,parseEvents(result,duration,.2).filter(e=>!["music","ambience"].includes(e.category)&&e.start>=window.start&&e.start<window.end)]);
     }catch(error){signal?.throwIfAborted();warnings.push(`角色局部复查失败，保留全景点位待复核：${String(error instanceof Error?error.message:error).slice(0,180)}`);}
   }
@@ -221,7 +223,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     await writeJson(path.join(outputDir,'description-review.json'),descriptionReview);
   }
   if (!descriptionConstraints && options.musicEnabled !== false && !events.some(e => e.category === "music")) warnings.push("模型未给出可靠的音乐结构，音乐点位留空，可在时间线添加。");
-  const report = { descriptionReview, workflow: "overview-window-audit-dense-contact-music-v3", model: director.model || process.env.SFX_CCSWITCH_MODEL || SFX_WORKFLOW.model, windows: windows.length, refinedContacts, timingNote: `动作按5 FPS分析，${reviewWindows.length}个短窗用12 FPS查漏纠错，接触点用30 FPS模型复核；画面采样精度不等于判断准确率，仍需试听复核。` };
+  const report = { descriptionReview, workflow: "overview-window-focus-audit-dense-contact-v4", model: director.model || process.env.SFX_CCSWITCH_MODEL || SFX_WORKFLOW.model, windows: windows.length, refinedContacts, timingNote: `动作按5 FPS、全景宽${SFX_WORKFLOW.timing.frameWidth}px分析，完成${focusedWindows}个角色局部复查、${reviewWindows.length}个12 FPS短窗查漏纠错，接触点用30 FPS模型复核；画面采样精度不等于判断准确率，仍需试听复核。` };
   await writeJson(path.join(outputDir, "analysis-review.json"), { ...report, context, warnings, events });
   return { events, scenes: overviewFrames, warnings, report };
 }
