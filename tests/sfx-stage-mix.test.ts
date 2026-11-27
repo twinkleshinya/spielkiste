@@ -114,6 +114,20 @@ export function testOrdinaryFootstepsStaySecondary() {
     start: 3, end: 3.2, description: "角色普通移动，脚步落在地面", query: "body movement footstep", candidates: [{ assetId: "step", score: 1, reason: "name" }] });
   const genericPlacement = createPlacements([genericStep], assets, 6)[0];
   assert.equal(isForeground(genericStep, genericPlacement, assets[1]), false, "footstep cues hidden in a generic movement event must remain secondary");
+  const nearStep = {...step, importance: "detail" as const, distance:{range:"near" as const,confidence:.9,evidence:"玩家在近景"}};
+  const midSlam = {...slam,distance:{range:"mid" as const,confidence:.9,evidence:"Boss在玩家前方中景"}};
+  const highCrest = assets.map(a=>({...a,rmsDb:-21.4,peakDb:-2.9}));
+  const realistic=planAutoMix({duration:6,events:[midSlam,nearStep],assets:highCrest,placements:createPlacements([midSlam,nearStep],highCrest,6)});
+  assert.ok(realistic.placements.find(p=>p.eventId==='slam')!.gainDb >= realistic.placements.find(p=>p.eventId==='step')!.gainDb+8,"a near ordinary step must not compete with a mid-distance main slam");
+  const dryStep=createPlacements([nearStep],highCrest,6)[0];
+  assert.ok(dryStep.gainDb + highCrest[1].peakDb <= -24,"initial placement must also bound footstep transients without waiting for automix");
+  const withoutLevels=highCrest.map(({rmsDb,peakDb,...a})=>a);
+  const fallback=planAutoMix({duration:6,events:[slam,step],assets:withoutLevels,placements});
+  assert.ok(fallback.placements.find(p=>p.eventId==='slam')!.gainDb >= fallback.placements.find(p=>p.eventId==='step')!.gainDb+8,"fallback gains must retain hierarchy when source measurements are missing");
+  const landing=cue({...step,id:'land',type:'player_land',description:'玩家跳下后重重落地',query:'footstep landing impact'});
+  assert.equal(isForeground(landing,createPlacements([landing],assets,6)[0],assets[1]),true,"a genuine key landing remains eligible for foreground");
+  const bossStep=cue({...step,id:'boss-step',type:'boss_footstep',description:'Boss普通迈步',query:'footstep'});
+  assert.equal(isForeground(bossStep,createPlacements([bossStep],assets,6)[0],assets[1]),false,"actor prefixes must not bypass ordinary-footstep handling");
 }
 
 export async function testAutoMixFork() {
