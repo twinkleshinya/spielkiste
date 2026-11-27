@@ -7,12 +7,20 @@ import {LayerPlanner} from '../src/sfx/LayerPlanner.js';
 import {analyzeTemporal,mergeWindowEvents} from '../src/sfx/TemporalAnalysis.js';
 import {eventsForOutputMode} from '../src/sfx/SfxRenderer.js';
 import {CcSwitchAudioProvider} from '../src/sfx/CcSwitchAudioProvider.js';
+import {planEventCandidates} from '../src/sfx/CandidatePlanner.js';
 const cue=(extra:Record<string,unknown>={})=>EventSchema.parse({id:'step',start:1,end:1.3,type:'boss_step',actor:'boss',phase:'contact',category:'impact',description:'巨兽正常迈步，踩在泥土地面',query:'monster footstep dirt ground',confidence:.9,source:'vision',candidates:[],requiresHumanReview:true,...extra});
 
 export function testOrdinaryStepsDoNotAddDebris(){
   for(const type of ['boss_step','monster_walk_step','boss_footstep'])assert.equal(new LayerPlanner().planLayers(cue({type})).length,1,'ordinary steps cannot add a debris impact just because the ground is mentioned');
   assert.equal(mergeWindowEvents([[cue({type:'boss_step'})],[cue({id:'other',type:'footstep',start:1.03})]]).length,1,'same foot contact cannot be doubled by step/footstep synonyms across passes');
   assert.equal(mergeWindowEvents([[cue(),cue({id:'next',start:1.15,end:1.45})]]).length,2,'rapid distinct footsteps from one pass must survive');
+}
+
+export function testChestMovementDoesNotSearchForImpact(){
+  const event=cue({type:'chest_pound',phase:'motion',category:'foley',description:'巨猿结束连续捶胸，上身前倾，手臂下垂收回',query:'heavy creature arm movement'});
+  const assets=['chestpound_impact.wav','monster_arm_movement.wav'].map((fileName,i)=>({id:String(i),fileName,path:fileName,relativePath:fileName,tags:[],usable:true,size:1,mtimeMs:1,duration:1}));
+  planEventCandidates(event,{version:1,root:'.',generatedAt:'now',assets,warnings:[]});
+  assert.equal(event.candidates[0]?.assetId,'1','a generic chest_pound type cannot override explicit noncontact recovery motion');
 }
 
 export async function testOutputModeTimingAndReviewSafety(){
