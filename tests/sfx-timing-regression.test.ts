@@ -12,6 +12,7 @@ import {SfxService} from '../src/sfx/SfxService.js';
 import {editorHarness} from './sfx-edit-preview-ui.test.js';
 import {planAutoMix} from '../src/sfx/AutoMix.js';
 import {createPlacements} from '../src/sfx/PlacementEngine.js';
+import {GeminiAudioSelector} from '../src/sfx/GeminiAudioSelector.js';
 const cue=(extra:Record<string,unknown>={})=>EventSchema.parse({id:'step',start:1,end:1.3,type:'boss_step',actor:'boss',phase:'contact',category:'impact',description:'巨兽正常迈步，踩在泥土地面',query:'monster footstep dirt ground',confidence:.9,source:'vision',candidates:[],requiresHumanReview:true,...extra});
 
 export function testOrdinaryStepsDoNotAddDebris(){
@@ -110,4 +111,21 @@ export function testExcludedAudioDoesNotAffectMix(){
   const expected=planAutoMix({duration:3,events:[sfx,music],assets,placements:placements.filter(p=>p.category==='music')});
   const actual=planAutoMix({duration:3,events:[sfx,music],assets,placements,audioOutputMode:'music'} as any);
   assert.equal(actual.ducks.length,expected.ducks.length,'excluded effects cannot duck a music-only output');
+}
+
+export async function testSfxSelectionRejectsEmbeddedMusic(){
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-no-music-'));let task:any;
+ try{
+  const event=cue({category:'other',phase:'motion',type:'boss_roar',distance:{range:'far',confidence:.9,evidence:'远处'},importance:'key',candidates:[{assetId:'mixed',score:1,reason:'素材'}]});
+  const asset={id:'mixed',fileName:'roar_mix.wav',path:'mixed.wav',relativePath:'mixed.wav',size:1,mtimeMs:1,tags:[],usable:true,duration:3};
+  const model:any={model:'fixture',describe:async()=>({assets:[{assetId:'mixed',summary:'吼叫混有连续配乐',tags:[],energy:.7,hasMusic:true,hasSpeech:false}]}),choose:async(tasks:any[])=>{task=tasks[0];return {choices:tasks.map(t=>({taskId:t.taskId,assetId:'mixed',confidence:.8,reason:'合适',meetsDescription:true}))};}};
+  const clips:any={sample:async()=>({assetId:'mixed',data:'data',format:'wav',segments:[{start:0,end:3}]})};
+  await new GeminiAudioSelector(model,clips).select([event],{version:1,root:'.',generatedAt:'now',assets:[asset],warnings:[],audioOutputMode:'sfx'},{outputDir:root,cacheDir:path.join(root,'cache')});
+  assert.equal(event.candidates.length,0,'sfx-only must not enable a sound with confirmed embedded music');
+  // A fresh non-musical description exercises the actual task handoff too.
+  event.layers=undefined;event.candidates=[{assetId:'mixed',score:1,reason:'素材'}];
+  model.describe=async()=>({assets:[{assetId:'mixed',summary:'纯吼叫',tags:[],energy:.7,hasMusic:false,hasSpeech:false}]});
+  await new GeminiAudioSelector(model,clips).select([event],{version:1,root:'.',generatedAt:'now',assets:[asset],warnings:[],audioOutputMode:'sfx'},{outputDir:root,cacheDir:path.join(root,'new-cache')});
+  assert.equal(task.creativeBrief.audioOutputMode,'sfx');assert.equal(task.event.distance.range,'far');assert.equal(task.event.importance,'key');
+ }finally{await fs.rm(root,{recursive:true,force:true});}
 }

@@ -376,4 +376,5 @@ await timingRegression.testAnalysisUsesReadableFrames();
 await timingRegression.testFocusedReviewAddsMissingKeyAction();
 await timingRegression.testVisualReanalysisRetainsSoundDirection();
 timingRegression.testExcludedAudioDoesNotAffectMix();
+await timingRegression.testSfxSelectionRejectsEmbeddedMusic();
 console.log('Timing mode, replacement safety and step layer checks passed');
