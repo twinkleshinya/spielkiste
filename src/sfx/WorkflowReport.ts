@@ -22,7 +22,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
   }
   const action=run.events.filter(e=>!e.muted&&!["music","ambience"].includes(e.category)),covered=new Set(enabled.map(p=>p.eventId));
   const gaps=action.filter(e=>!covered.has(e.id));
-  const vocal=enabled.filter(p=>isCharacterVocal(events.get(p.eventId),p,assets.get(p.assetId))&&!p.locked&&!events.get(p.eventId)?.locked);
+  const vocal=enabled.filter(p=>{const e=events.get(p.eventId);return (isCharacterVocal(e,p,assets.get(p.assetId))||Boolean(e?.category==='impact'&&e.phase==='contact'))&&!p.locked&&!e?.locked;});
   const vocalPending=vocal.filter(p=>p.sourceEdit?.basis!=="gemini-audio");
   const mix=run.mixReport;
   const spatial=mix?.perspective;
@@ -52,7 +52,7 @@ export function buildWorkflowReport(run:SfxRun,usage?:{elapsedMs?:number;totals?
     {id:"coverage",status:gaps.length||!action.length?"review":"pass",count:gaps.length,detail:`${action.length-gaps.length}/${action.length} 个已列动作有贴片；覆盖不等于全部动作识别正确`},
     {id:"music-ambience",status:run.events.some(e=>!e.muted&&(e.category==="music"&&!covered.has(e.id)&&run.musicEnabled!==false||e.category==="ambience"&&!covered.has(e.id)))?"review":"pass",detail:`已列音乐 ${run.events.filter(e=>e.category==="music").length} 段、环境 ${run.events.filter(e=>e.category==="ambience").length} 段；所列段落缺素材时保留复核，不强加没有画面依据的声音`},
     {id:"selection",status:selectionOk?"pass":"review",count:run.selectionReport?.fallbackLayers,detail:selectionOk?`Gemini 已完成${run.selectionReport?.scope==="selective"?"关键与疑难":"报告所列"}候选判断；其他动作保留本地规则选材`:`候选判断未完整完成${fallbackEvents.length?`：${fallbackEvents.slice(0,5).map(e=>`${e.start.toFixed(2)}秒 ${e.description}`).join("；")}`:"，请查看回退/缺失依据"}`},
-    {id:"source-review",status:vocalPending.length?"review":"pass",count:vocalPending.length,detail:vocal.length?`${vocal.length-vocalPending.length}/${vocal.length} 个未锁定发声片段有 Gemini 源音频剪辑依据`:"无需要复核的未锁定角色发声片段"},
+    {id:"source-review",status:vocalPending.length?"review":"pass",count:vocalPending.length,detail:vocal.length?`${vocal.length-vocalPending.length}/${vocal.length} 个未锁定发声或接触片段有 Gemini 源音频剪辑依据`:"无需要复核的未锁定发声或接触片段"},
     {id:"loudness",status:mix?.measuredLufs!=null&&mix.measuredTruePeakDb!=null?Math.abs(mix.measuredLufs-mix.targetLufs)<=1&&mix.measuredTruePeakDb<=mix.truePeakDb+.2?"pass":"review":"review",detail:mix?.measuredLufs!=null?`实测 ${mix.measuredLufs} LUFS / ${mix.measuredTruePeakDb} dBTP；有效目标 ${mix.targetLufs} LUFS${spatial?.energyReserveDb?`，含距离余量 ${spatial.energyReserveDb} dB`:""}`:"尚无实际混音响度测量"},
     {id:"mix-distance",status:spatial&&spatial.knownClips+spatial.exemptClips>0&&!spatial.unknownClips?"pass":"review",count:spatial?.unknownClips,
       detail:spatial?`按可靠画面距离处理 ${spatial.knownClips} 条，其中远近减益 ${spatial.attenuatedClips} 条；${spatial.unknownClips} 条距离缺失或不确定，保留中性电平；UI/音乐/环境底床豁免 ${spatial.exemptClips} 条，锁定人工设置 ${spatial.lockedClips} 条。距离为近/中/远判断，非米数测量。`:"缺少距离混音依据；历史点位保持原样，需要新分析时再判断远近"},
