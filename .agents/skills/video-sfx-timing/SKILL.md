@@ -11,7 +11,7 @@ description: Use when game-video sound points miss actions, misjudge source dist
 
 1. 读取运行中的 `/api/sfx/workflow`；执行路径为 `TemporalAnalysis.ts` 与 `CcSwitchVisionProvider.ts`。标准模式只用工具专用 Gemini，读取本机配置，不修改其他会话模型。
 2. 全片概览确定角色、场景、动作链和音乐情绪；使用运行配置中的清晰全景，必要时按 Gemini 返回的角色区域放大复查头口及手部动作，局部图不能改变全景距离判断。重叠窗口识别每次准备、预警、蓄力、挥动/释放、接触、反应、收势。重叠结果合并同一事件，连续重复攻击保留各自接触点。“全音频”和“仅音效”共用动作识别流程，后者只排除音乐；两次模型调用仍可能有判断差异。
-3. 查漏窗口先检查头口发声、预警、蓄力及攻击，再检查普通脚步等细节；不能用脚步数量代替关键动作覆盖。静态露齿不能证明吼叫。短窗纠错只有提供同角色、时间重叠、发声类型一致的替代事件时才可删除原事件，局部新增动作不能成为整窗删点依据。接触局部加密复核。采样频率见运行配置；采样间隔不能声称为模型准确率。
+3. 查漏窗口先检查头口发声、预警、蓄力及攻击，再检查普通脚步等细节；不能用脚步数量代替关键动作覆盖。静态露齿不能证明吼叫。短窗纠错只有提供同角色、同动作类型、时间重叠、发声类型一致的替代事件时才可删除原事件；step/footstep视为同类，其他新增动作不能成为整窗删点依据。接触局部加密复核。采样频率见运行配置；采样间隔不能声称为模型准确率。
 4. 点位字段包含 start/end、actor、type、phase、category、description、query、confidence、evidence、timingPrecision，另有 `distance:{range,confidence,evidence}` 与 `importance:key/support/detail`。query写实际想听到的声音与材质，description写画面行为。低置信度和不可见声源留待复核，不凭文件名倒推画面。
 5. 单独列音乐进入/增强/高潮/收束/退出（musicStage、intensity）与环境段。没有变化的音乐连续使用同曲，不能每个动作换曲。无配乐意图可不硬造音乐点位；已列点位无素材必须暴露缺口。
 
