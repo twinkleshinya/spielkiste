@@ -8,6 +8,10 @@ import {analyzeTemporal,mergeWindowEvents} from '../src/sfx/TemporalAnalysis.js'
 import {eventsForOutputMode} from '../src/sfx/SfxRenderer.js';
 import {CcSwitchAudioProvider} from '../src/sfx/CcSwitchAudioProvider.js';
 import {planEventCandidates} from '../src/sfx/CandidatePlanner.js';
+import {SfxService} from '../src/sfx/SfxService.js';
+import {editorHarness} from './sfx-edit-preview-ui.test.js';
+import {planAutoMix} from '../src/sfx/AutoMix.js';
+import {createPlacements} from '../src/sfx/PlacementEngine.js';
 const cue=(extra:Record<string,unknown>={})=>EventSchema.parse({id:'step',start:1,end:1.3,type:'boss_step',actor:'boss',phase:'contact',category:'impact',description:'巨兽正常迈步，踩在泥土地面',query:'monster footstep dirt ground',confidence:.9,source:'vision',candidates:[],requiresHumanReview:true,...extra});
 
 export function testOrdinaryStepsDoNotAddDebris(){
@@ -58,4 +62,31 @@ export async function testAudioSelectionDoesNotInventPurityScope(){
   const prompt=JSON.stringify(payload);
   assert.ok(prompt.includes('exclusive=true'),'purity examples must be explicitly conditional on actual exclusive scope');
   assert.ok(prompt.includes('不能把普通描述升级'),'ordinary short-roar requirements cannot become an unrequested purity ban');
+}
+
+export async function testVisualReanalysisRetainsSoundDirection(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-reanalysis-'));
+  try{
+    const service=new SfxService(root),run=await service.store.createRun({videoPath:'v.mp4',libraryPath:root});
+    Object.assign(run,{status:'ready',soundRequirements:'短促凶猛的吼叫',style:'暗黑奇幻'});await service.store.save(run);
+    let captured:any;(service as any).create=async(input:any)=>{captured=input;return {runId:'new'};};
+    await service.reanalyze(run.id,{mode:'visual'});
+    assert.equal(captured.soundRequirements,run.soundRequirements,'visual reanalysis must retain explicit sound requirements');
+    assert.equal(captured.style,run.style);
+    const ui=await editorHarness();ui.$('reanalyze-sound-requirements').value='短促凶猛的吼叫';ui.$('reanalyze-sound-style').value='暗黑奇幻';
+    await ui.$('reanalyze-visual').onclick({preventDefault(){}});
+    const body=ui.calls.find(c=>c.url.endsWith('/reanalyze'))!.body;
+    assert.equal(body.soundRequirements,'短促凶猛的吼叫','browser must not silently clear the requested sound direction');
+    assert.equal(body.style,'暗黑奇幻');
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
+export function testExcludedAudioDoesNotAffectMix(){
+  const sfx=cue({id:'sfx',type:'boss_roar',phase:'motion',category:'other',importance:'key'}),music=cue({id:'music',type:'music_cue',category:'music',start:0,end:3});
+  const assets=[{id:'sfx',fileName:'roar.wav',path:'roar.wav',relativePath:'roar.wav',size:1,mtimeMs:1,tags:[],usable:true,duration:3,rmsDb:-23,peakDb:-6},{id:'music',fileName:'music.wav',path:'music.wav',relativePath:'music.wav',size:1,mtimeMs:1,tags:[],usable:true,duration:3,rmsDb:-20,peakDb:-2}];
+  sfx.candidates=[{assetId:'sfx',score:1,reason:'声音'}];music.candidates=[{assetId:'music',score:1,reason:'音乐'}];
+  const placements=createPlacements([sfx,music],assets,3);
+  const expected=planAutoMix({duration:3,events:[sfx,music],assets,placements:placements.filter(p=>p.category==='music')});
+  const actual=planAutoMix({duration:3,events:[sfx,music],assets,placements,audioOutputMode:'music'} as any);
+  assert.equal(actual.ducks.length,expected.ducks.length,'excluded effects cannot duck a music-only output');
 }
