@@ -368,3 +368,8 @@ await versionTests.testNamedVersionExplainsPendingEdits();
 await versionTests.testNamedVersionReloadRetryDoesNotSaveTwice();
 await versionTests.testNamedVersionHttpPersistence();
 console.log('Named version dialog, retries and persisted history checks passed');
+const timingRegression=await import('./sfx-timing-regression.test.js');
+timingRegression.testOrdinaryStepsDoNotAddDebris();
+await timingRegression.testOutputModeTimingAndReviewSafety();
+await timingRegression.testAudioSelectionDoesNotInventPurityScope();
+console.log('Timing mode, replacement safety and step layer checks passed');
