@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {EventSchema} from '../src/sfx/models.js';
 import {LayerPlanner} from '../src/sfx/LayerPlanner.js';
-import {analyzeTemporal,mergeWindowEvents} from '../src/sfx/TemporalAnalysis.js';
+import {analyzeTemporal,mergeWindowEvents,canReplaceReviewedEvent} from '../src/sfx/TemporalAnalysis.js';
 import {eventsForOutputMode} from '../src/sfx/SfxRenderer.js';
 import {CcSwitchAudioProvider} from '../src/sfx/CcSwitchAudioProvider.js';
 import {planEventCandidates} from '../src/sfx/CandidatePlanner.js';
@@ -16,6 +16,8 @@ import {GeminiAudioSelector} from '../src/sfx/GeminiAudioSelector.js';
 const cue=(extra:Record<string,unknown>={})=>EventSchema.parse({id:'step',start:1,end:1.3,type:'boss_step',actor:'boss',phase:'contact',category:'impact',description:'巨兽正常迈步，踩在泥土地面',query:'monster footstep dirt ground',confidence:.9,source:'vision',candidates:[],requiresHumanReview:true,...extra});
 
 export function testOrdinaryStepsDoNotAddDebris(){
+  assert.equal(canReplaceReviewedEvent(cue({type:'boss_charge',phase:'preparation'}),cue({type:'boss_step'})),false,'overlapping footsteps cannot erase the same actor charge');
+  assert.equal(canReplaceReviewedEvent(cue({type:'boss_step'}),cue({type:'footstep'})),true,'same foot contact can still be corrected');
   for(const type of ['boss_step','monster_walk_step','boss_footstep'])assert.equal(new LayerPlanner().planLayers(cue({type})).length,1,'ordinary steps cannot add a debris impact just because the ground is mentioned');
   assert.equal(mergeWindowEvents([[cue({type:'boss_step'})],[cue({id:'other',type:'footstep',start:1.03})]]).length,1,'same foot contact cannot be doubled by step/footstep synonyms across passes');
   assert.equal(mergeWindowEvents([[cue(),cue({id:'next',start:1.15,end:1.45})]]).length,2,'rapid distinct footsteps from one pass must survive');

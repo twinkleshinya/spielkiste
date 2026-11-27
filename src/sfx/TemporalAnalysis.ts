@@ -32,6 +32,14 @@ export function actionReviewWindows(duration: number) {
   return windows;
 }
 
+function canonicalAction(type:string) {
+  return type.toLowerCase().replace(/^(?:player|boss)_/, "").replace(/_sustain$/, "").replace(/^(?:foot_?step|step)$/, "footstep");
+}
+
+export function canReplaceReviewedEvent(original:Pick<SoundEvent,'type'|'actor'>,replacement:Pick<SoundEvent,'type'|'actor'>) {
+  return original.actor===replacement.actor && canonicalAction(original.type)===canonicalAction(replacement.type);
+}
+
 export function mergeWindowEvents(windows: SoundEvent[][]): SoundEvent[] {
   const result: SoundEvent[] = [];
   for (const window of windows) {
@@ -39,8 +47,7 @@ export function mergeWindowEvents(windows: SoundEvent[][]): SoundEvent[] {
     for (const event of [...window].sort((a, b) => a.start - b.start)) {
     const duplicate = result.filter(e => {
       if (matched.has(e)) return false;
-      const canonical = (type: string) => type.replace(/^(?:player|boss)_/, "").replace(/_sustain$/, "").replace(/^(?:foot_?step|step)$/, "footstep");
-      if ((e.actor || "") !== (event.actor || "") || canonical(e.type) !== canonical(event.type) || e.phase !== event.phase || e.category !== event.category && e.phase !== "contact") return false;
+      if ((e.actor || "") !== (event.actor || "") || canonicalAction(e.type) !== canonicalAction(event.type) || e.phase !== event.phase || e.category !== event.category && e.phase !== "contact") return false;
       const overlap = Math.max(0, Math.min(e.end, event.end) - Math.max(e.start, event.start));
       const contact = e.category === "impact" || e.phase === "contact";
       return Math.abs(e.start - event.start) <= (contact ? .2 : .32) && overlap > 0
@@ -171,7 +178,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
       // A replacement must concern the same actor and overlapping visible action.
       // Unrelated additions are not permission to delete every event in the window.
       const vocal=(e:Pick<SoundEvent,'type'|'description'>)=>/roar|grunt|growl|vocal|吼叫|咆哮|叫声/i.test(`${e.type} ${e.description}`);
-      const replacements = parsed.replaceEventIds.filter(id => existing.some(e => e.id === id && e.start >= window.start && e.end <= window.end && events.some(next => next.actor === e.actor && next.start < e.end && next.end > e.start && vocal(next)===vocal(e))));
+      const replacements = parsed.replaceEventIds.filter(id => existing.some(e => e.id === id && e.start >= window.start && e.end <= window.end && events.some(next => canReplaceReviewedEvent(e,next) && next.start < e.end && next.end > e.start && vocal(next)===vocal(e))));
       await writeJson(path.join(outputDir, `analysis-action-review-${i + j + 1}.json`), { ...window, result, appliedReplacements: replacements });
       return { events, replacements };
     }));
