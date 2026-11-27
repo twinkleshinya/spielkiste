@@ -256,6 +256,7 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     for(const r of descriptionReview.requirements)if(r.status!=='located')warnings.push(`描述要求未覆盖：${r.text}（${r.reason}）`);
     await writeJson(path.join(outputDir,'description-review.json'),descriptionReview);
   }
+  events = pruneUnsupportedBossAftermath(events);
   if (!descriptionConstraints && options.musicEnabled !== false && !events.some(e => e.category === "music")) warnings.push("模型未给出可靠的音乐结构，音乐点位留空，可在时间线添加。");
   const report = { descriptionReview, workflow: "overview-window-focus-audit-dense-contact-v4", model: director.model || process.env.SFX_CCSWITCH_MODEL || SFX_WORKFLOW.model, windows: windows.length, refinedContacts, timingNote: `动作按5 FPS、全景宽${SFX_WORKFLOW.timing.frameWidth}px分析，完成${focusedWindows}个角色局部复查、${reviewWindows.length}个12 FPS短窗查漏纠错，接触点用30 FPS模型复核；画面采样精度不等于判断准确率，仍需试听复核。` };
   await writeJson(path.join(outputDir, "analysis-review.json"), { ...report, context, warnings, events });
