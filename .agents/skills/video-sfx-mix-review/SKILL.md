@@ -25,6 +25,8 @@ description: Use when game-video sounds ignore source distance, minor details ma
 
 ## 客观检查和听感检查
 
+参考专业实践与脚步过响复盘时，阅读[专业混音层级参考](../video-sfx-workflow/references/professional-mix-hierarchy.md)。把文档阅读、自动测量、实片渲染与人工试听分开记录。
+
 `workflow-report.json` 必须涵盖实际模型/配置版本、阶段完成或复用、源路径、音频/视频范围、fade、差异备选、已列动作覆盖、音乐/环境缺口、发声复核、持续蓄力声体冲突、实测响度与预览revision。人工保存或仅重混音的当次用量不继承旧token；失效的旧实测响度不能用于新编辑的清单。
 
 | 结果 | 处理 |
