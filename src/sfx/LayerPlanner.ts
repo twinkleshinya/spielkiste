@@ -8,7 +8,7 @@ export class LayerPlanner {
     const query = event.query || event.description;
     const text = `${event.type} ${event.description} ${query}`;
     const boss = event.actor === "boss" || /ape|gorilla|猩猩|巨猿|boss/i.test(text);
-    const modestContact = /land|foot|chest.?pound|chest.?beat/.test(event.type) || event.intensity !== undefined && event.intensity < .5;
+    const modestContact = /land|foot|(?:^|_)step(?:_|$)|chest.?pound|chest.?beat/.test(event.type) || event.intensity !== undefined && event.intensity < .5;
     if (event.category === "impact" && modestContact) return [{ id: randomUUID(), role: "impact", query, offset: 0, candidates: [] }];
     if (event.category === "music") return [{ id: randomUUID(), role: "music", query: `music ${query}`, offset: 0, candidates: [] }];
     if (event.category === "impact") {
