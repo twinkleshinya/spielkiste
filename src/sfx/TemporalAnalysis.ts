@@ -102,7 +102,7 @@ export async function analyzeTemporal(video: string, duration: number, outputDir
   const descriptionConstraints=await extractDescriptionConstraints(originalDirector,overviewFrames,options,signal);
   if(descriptionConstraints){brief=creativeContext({...options,descriptionConstraints});progress("已解析描述要求，画面分析后将逐项核对");}
   const overviewPrompt = `你是游戏视频声音导演，先理解完整视频 ${duration} 秒。${guardrails}
-返回JSON {"context":"中文简述角色、场景、武器材质与战斗节奏，角色只确认外形不猜游戏专名","events":[${eventShape}]}。
+返回JSON {"context":"中文简述角色、场景、武器材质与战斗节奏，角色只确认外形不猜游戏专名","focusRegions":[{"actor":"boss","x":0.1,"y":0.2,"width":0.5,"height":0.5,"reason":"需要放大复查的头口或武器动作"}],"events":[${eventShape}]}。focusRegions最多2个，坐标是原图归一化0..1，覆盖该角色在全片中的移动范围，排除字幕HUD；清晰近景可空数组。
 本轮events只给环境氛围${options.musicEnabled !== false ? "和背景音乐结构" : "，不要音乐"}，不要具体动作。
 ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到原声：给出进入enter、增强build、高潮climax、收束release、退出exit的实际区间，额外字段musicStage及intensity(0..1)，category=music、type=music_cue、query='music boss battle tension orchestral'等本地音乐文件名词；按画面节奏选择合理阶段，无需硬凑5种，区间连续、顺序明确、最多8段、不重叠。结束前安排淡出；不将每次攻击都切成一首新曲。` : ""}`;
   const overview = await director.analyzeFrames(overviewFrames, overviewPrompt, signal);
@@ -117,6 +117,8 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     musicEnd = e.end; return true;
   });
   const context = typeof (overview as any)?.context === "string" ? (overview as any).context.slice(0, 2000) : "";
+  const regionSchema=z.object({actor:z.string().max(100),x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().min(.05).max(1),height:z.number().min(.05).max(1),reason:z.string().max(1000).optional()});
+  const regions=(Array.isArray((overview as any)?.focusRegions)?(overview as any).focusRegions:[]).slice(0,2).flatMap((value:unknown)=>{const r=regionSchema.safeParse(value);return r.success&&r.data.x+r.data.width<=1.001&&r.data.y+r.data.height<=1.001?[r.data]:[];});
   const windows = temporalWindows(duration), proposed: SoundEvent[][] = [];
   // Bounded concurrency keeps the local gateway responsive and covers the entire clip.
   for (let i = 0; i < windows.length; i += 2) {
@@ -130,6 +132,18 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
     for (const result of results) { if (result.status === "rejected") throw result.reason; proposed.push(result.value); }
   }
   let actions = mergeWindowEvents(proposed);
+  // Re-read distant faces and weapon gestures at their native detail instead of
+  // relying on one compressed whole-frame view for all subsequent passes.
+  if(media.sampleRegionFrames)for(const [regionIndex,region]of regions.entries())for(const [i,window]of windows.entries()){
+    signal?.throwIfAborted();progress(`Gemini 角色局部动作查漏：${region.actor} · ${i+1}/${windows.length}`);
+    try{
+      const selected=await media.sampleRegionFrames(video,window.start,window.end,SFX_WORKFLOW.timing.fps,path.join(outputDir,'frames',`focus-${regionIndex+1}-${i+1}`),region,signal);
+      const existing=actions.filter(e=>e.start<window.end&&e.end>window.start).map(({start,end,type,actor,description})=>({start,end,type,actor,description}));
+      const result=await director.analyzeFrames(selected,`角色局部动作查漏。这是原画面区域 ${JSON.stringify(region)} 的放大图，角色标识${region.actor}，场景${context}，时间${window.start}–${window.end}。现有清单${JSON.stringify(existing)}。${guardrails} 重点复核头口张合、胸颈用力、预警、蓄力、手臂武器轨迹和真实接触，逐张对照，只补遗漏动作；静态张嘴或露齿不是连续吼叫证据。局部图不能推断画外命中，距离沿用原全景判断，不因放大改成近景。JSON {"events":[${eventShape}]}，不含环境音乐，最多25条。`,signal);
+      await writeJson(path.join(outputDir,`analysis-focus-${regionIndex+1}-${i+1}.json`),{region,...window,result});
+      actions=mergeWindowEvents([actions,parseEvents(result,duration,.2).filter(e=>!["music","ambience"].includes(e.category)&&e.start>=window.start&&e.start<window.end)]);
+    }catch(error){signal?.throwIfAborted();warnings.push(`角色局部复查失败，保留全景点位待复核：${String(error instanceof Error?error.message:error).slice(0,180)}`);}
+  }
   // Revisit each section with the current list visible to find omitted secondary actions.
   for (let i = 0; i < windows.length; i += 2) {
     const results = await Promise.allSettled(windows.slice(i, i + 2).map(async (window, j) => {

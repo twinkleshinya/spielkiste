@@ -373,6 +373,7 @@ timingRegression.testOrdinaryStepsDoNotAddDebris();
 await timingRegression.testOutputModeTimingAndReviewSafety();
 await timingRegression.testAudioSelectionDoesNotInventPurityScope();
 await timingRegression.testAnalysisUsesReadableFrames();
+await timingRegression.testFocusedReviewAddsMissingKeyAction();
 await timingRegression.testVisualReanalysisRetainsSoundDirection();
 timingRegression.testExcludedAudioDoesNotAffectMix();
 console.log('Timing mode, replacement safety and step layer checks passed');

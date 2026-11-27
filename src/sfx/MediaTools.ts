@@ -6,16 +6,24 @@ import { execa } from "execa";
 import { Scene, round } from "./models.js";
 
 export interface MediaInspection { duration: number; hasAudio: boolean }
+export type FrameRegion = { x:number;y:number;width:number;height:number };
 export interface MediaSource {
   inspect(file: string): Promise<MediaInspection>;
   scenes(file: string): Promise<number[]>;
   thumbnail(file: string, time: number, output: string): Promise<string | undefined>;
   sampleFrames?(file: string, start: number, end: number, fps: number, outputDir: string, signal?: AbortSignal, width?: number): Promise<Scene[]>;
+  sampleRegionFrames?(file:string,start:number,end:number,fps:number,outputDir:string,region:FrameRegion,signal?:AbortSignal):Promise<Scene[]>;
 }
 export class MediaTools implements MediaSource {
-  async sampleFrames(file: string, start: number, end: number, fps: number, outputDir: string, signal?: AbortSignal, width = 512): Promise<Scene[]> {
+  async sampleRegionFrames(file:string,start:number,end:number,fps:number,outputDir:string,region:FrameRegion,signal?:AbortSignal) {
+    return this.sampleFrames(file,start,end,fps,outputDir,signal,768,region);
+  }
+  async sampleFrames(file: string, start: number, end: number, fps: number, outputDir: string, signal?: AbortSignal, width = 512,region?:FrameRegion): Promise<Scene[]> {
     signal?.throwIfAborted(); await fs.mkdir(outputDir, { recursive: true });
-    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(start), "-i", file, "-t", String(end - start), "-vf", `fps=${fps},scale=${width}:-2`, path.join(outputDir, "raw-%05d.jpg")], { cancelSignal: signal });
+    for(const file of await fs.readdir(outputDir))if(/^(?:raw-\d+|stamp-\d+)\.jpg$/.test(file))await fs.unlink(path.join(outputDir,file));
+    if(region&&(![region.x,region.y,region.width,region.height].every(Number.isFinite)||region.x<0||region.y<0||region.width<=0||region.height<=0||region.x+region.width>1.001||region.y+region.height>1.001))throw new Error('无效局部画面区域');
+    const crop=region?`crop=iw*${region.width}:ih*${region.height}:iw*${region.x}:ih*${region.y},`:'';
+    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(start), "-i", file, "-t", String(end - start), "-vf", `fps=${fps},${crop}scale=${width}:-2`, path.join(outputDir, "raw-%05d.jpg")], { cancelSignal: signal });
     const files = (await fs.readdir(outputDir)).filter(f => /^raw-\d+\.jpg$/.test(f)).sort();
     const frames = files.map((file, i) => ({ start: round(start + i / fps), end: round(Math.min(end, start + (i + 1) / fps)), thumbnail: path.join(outputDir, `stamp-${String(i).padStart(5, "0")}.jpg`) }));
     const manifest = path.join(outputDir, "labels.json");
