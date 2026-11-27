@@ -13,11 +13,15 @@ import {editorHarness} from './sfx-edit-preview-ui.test.js';
 import {planAutoMix} from '../src/sfx/AutoMix.js';
 import {createPlacements} from '../src/sfx/PlacementEngine.js';
 import {GeminiAudioSelector} from '../src/sfx/GeminiAudioSelector.js';
+import {selectReviewEvents} from '../src/sfx/SelectionPolicy.js';
 const cue=(extra:Record<string,unknown>={})=>EventSchema.parse({id:'step',start:1,end:1.3,type:'boss_step',actor:'boss',phase:'contact',category:'impact',description:'巨兽正常迈步，踩在泥土地面',query:'monster footstep dirt ground',confidence:.9,source:'vision',candidates:[],requiresHumanReview:true,...extra});
 
 export function testOrdinaryStepsDoNotAddDebris(){
   assert.equal(canReplaceReviewedEvent(cue({type:'boss_charge',phase:'preparation'}),cue({type:'boss_step'})),false,'overlapping footsteps cannot erase the same actor charge');
   assert.equal(canReplaceReviewedEvent(cue({type:'boss_step'}),cue({type:'footstep'})),true,'same foot contact can still be corrected');
+  assert.equal(new LayerPlanner().planLayers(cue({type:'ground_slam',importance:'support',description:'巨猿右拳缓慢下沉撑地',query:'heavy hand ground touch'})).length,1,'ground contact alone is not evidence of flying rock debris');
+  const key=cue({type:'arm_lower',phase:'motion',category:'foley',importance:'key',candidates:[{assetId:'first',score:100,reason:'name'},{assetId:'second',score:10,reason:'name'}]});
+  assert.equal(selectReviewEvents([key],'selective').length,1,'Gemini key importance must trigger actual audio review regardless of generic action name');
   for(const type of ['boss_step','monster_walk_step','boss_footstep'])assert.equal(new LayerPlanner().planLayers(cue({type})).length,1,'ordinary steps cannot add a debris impact just because the ground is mentioned');
   assert.equal(mergeWindowEvents([[cue({type:'boss_step'})],[cue({id:'other',type:'footstep',start:1.03})]]).length,1,'same foot contact cannot be doubled by step/footstep synonyms across passes');
   assert.equal(mergeWindowEvents([[cue(),cue({id:'next',start:1.15,end:1.45})]]).length,2,'rapid distinct footsteps from one pass must survive');

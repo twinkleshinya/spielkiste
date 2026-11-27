@@ -16,7 +16,7 @@ export class LayerPlanner {
       // Boss contacts must read as one clear hit. Add only one secondary layer,
       // and reserve it for a material cue that is visible in the action.
       if (boss) {
-        if (/rock|stone|ground|earth|石|地|砸/i.test(text)) {
+        if (/debris|rubble|fragment|shatter|碎石|碎屑|飞石|飞溅|崩裂|崩碎/i.test(`${event.description} ${query} ${event.evidence || ''}`)) {
           const tail: SoundLayer = { id: randomUUID(), role: "tail", query: "rock debris tail", offset: .12, candidates: [] };
           return [main, tail].slice(0, 1 + SFX_WORKFLOW.mix.density.bossSecondaryLayers);
         }
