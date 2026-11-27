@@ -54,6 +54,15 @@ export async function testOutputModeTimingAndReviewSafety(){
   }finally{await fs.rm(root,{recursive:true,force:true});}
 }
 
+export async function testAnalysisUsesReadableFrames(){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'sfx-readable-'));let denseWidth:number|undefined;
+  try{
+    const media:any={sampleFrames:async(_v:string,start:number,end:number,fps:number,_out:string,_signal:unknown,width:number)=>{if(fps===5)denseWidth=width;return [{start,end,thumbnail:'f.jpg'}];}};
+    await analyzeTemporal('fixture',1,root,media,{analyzeFrames:async()=>({context:'空场景',events:[]})},{musicEnabled:false});
+    assert.ok(denseWidth!>=960,'full-frame visual analysis needs readable distant actors instead of 512px frames');
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+}
+
 export async function testAudioSelectionDoesNotInventPurityScope(){
   const provider=new CcSwitchAudioProvider();
   let payload:any;
