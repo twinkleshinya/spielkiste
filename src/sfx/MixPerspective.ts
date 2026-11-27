@@ -28,8 +28,8 @@ export function mixImportance(event: SoundEvent | undefined, p: SoundPlacement, 
   // attack, vocal cue, warning, or contact.  A true landing/impact remains
   // eligible for a separate key event and is not covered by this rule.
   if (isOrdinaryFootstep(event,asset)) return "detail";
-  if (/debris|rubble|pebble|dust|recover_stance|weapon_handling|碎屑/i.test(event?.type || "")) return "detail";
   if (event?.importance) return event.importance;
+  if (/debris|rubble|pebble|dust|recover_stance|weapon_handling|碎屑/i.test(event?.type || "")) return "detail";
   return "support";
 }
 export function planPerspective(event: SoundEvent, p: SoundPlacement, asset?: Pick<AudioAsset,"fileName">): NonNullable<SoundPlacement["perspective"]> {
