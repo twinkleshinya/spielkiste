@@ -94,7 +94,7 @@ export async function analyzeTemporal(video: string, duration: number, outputDir
   const warnings: string[] = [];
   signal?.throwIfAborted();
   progress("Gemini 1/4：抽取带绝对时间的密集动作帧（5 FPS）");
-  const frames = await media.sampleFrames(video, 0, duration, SFX_WORKFLOW.timing.fps, path.join(outputDir, "frames", "dense"), signal);
+  const frames = await media.sampleFrames(video, 0, duration, SFX_WORKFLOW.timing.fps, path.join(outputDir, "frames", "dense"), signal, SFX_WORKFLOW.timing.frameWidth);
   if (!frames.length) throw new Error("未能抽取有效画面");
   const overviewFrames = frames.filter((_, i) => i % Math.max(1, Math.ceil(frames.length / 36)) === 0);
   if (overviewFrames.at(-1) !== frames.at(-1)) overviewFrames.push(frames.at(-1)!);
@@ -154,7 +154,8 @@ ${options.musicEnabled !== false ? `音乐是创作配乐建议，不是听到�
       const events = parseEvents(result, duration, 1 / 12).filter(e => !["music", "ambience"].includes(e.category) && e.start >= window.start - .083 && e.start < window.end);
       // A replacement must concern the same actor and overlapping visible action.
       // Unrelated additions are not permission to delete every event in the window.
-      const replacements = parsed.replaceEventIds.filter(id => existing.some(e => e.id === id && e.start >= window.start && e.end <= window.end && events.some(next => next.actor === e.actor && next.start < e.end + .2 && next.end > e.start - .2 && (next.type === e.type || next.phase === e.phase && next.category === e.category))));
+      const vocal=(e:Pick<SoundEvent,'type'|'description'>)=>/roar|grunt|growl|vocal|吼叫|咆哮|叫声/i.test(`${e.type} ${e.description}`);
+      const replacements = parsed.replaceEventIds.filter(id => existing.some(e => e.id === id && e.start >= window.start && e.end <= window.end && events.some(next => next.actor === e.actor && next.start < e.end && next.end > e.start && vocal(next)===vocal(e))));
       await writeJson(path.join(outputDir, `analysis-action-review-${i + j + 1}.json`), { ...window, result, appliedReplacements: replacements });
       return { events, replacements };
     }));

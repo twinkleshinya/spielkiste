@@ -1,8 +1,8 @@
 /** Maintained reference-v6 method. These values are executed, snapshotted and shown in the workbench. */
 export const SFX_WORKFLOW = {
-  id: "reference-v6", version: "1.0.7", name: "⑥版标准音效流程", model: "gemini-4-argon",
+  id: "reference-v6", version: "1.0.8", name: "⑥版标准音效流程", model: "gemini-4-argon",
   referenceRunId: "0bb00d13-d84e-4812-9eca-9ed78b79bef9",
-  timing: {fps:5,windowSeconds:6,hopSeconds:5.6,reviewFps:12,reviewSeconds:3,reviewHopSeconds:2.8,contactFps:30,maxVideoSeconds:300},
+  timing: {fps:5,frameWidth:1024,windowSeconds:6,hopSeconds:5.6,reviewFps:12,reviewSeconds:3,reviewHopSeconds:2.8,contactFps:30,maxVideoSeconds:300},
   candidates: {searchLimit:40,measuredFamilies:8,alternatives:5,durationSimilarity:.8,bandSimilarity:.985,envelopeSimilarity:.965,centroidDifference:220},
   libraryPreference:{baseWeight:1,defaultWeight:3,minWeight:1,maxWeight:10,maxPaths:12,bonusPerStep:.04,maxBonus:4,overlap:"max",relevanceFirst:true},
   keywordPreference:{defaultWeight:3,minWeight:1,maxWeight:10,maxKeywords:12,match:"literal-name-tokens",overlap:"max",sharedPreferenceBudget:true,relevanceFirst:true},
