@@ -5,7 +5,7 @@
 ## 参考来源
 
 - Audiokinetic / Harvey Scott、Damian O'Sullivan：《Mixing Helldivers 2: An Overview | Wwise Tour Shanghai 2024》。官方发布页列出 00:07:31 声音优先级、00:27:05 HDR基础、01:03:39 对白混音。用于参考先建立声音优先级，再动态让位的设计方向。https://www.youtube.com/watch?v=xpKLY69b2ZE
-- Audiokinetic：《Wwise HDR User's Guide》。文档指出，HDR可能让仍高于阈值的远距离主声保持相近输出、转而压低其他声音。用于提醒总线处理不能抵消距离层次，并非要求本工具引入HDR。https://www.audiokinetic.com/download/documents/Wwise_HDR_UserGuide_en.pdf
+- Audiokinetic：《Wwise HDR User's Guide》。公开检索参考；本次直接访问返回403，未完成全文核对，不以此声称已复现HDR系统或验证其完整行为。https://www.audiokinetic.com/download/documents/Wwise_HDR_UserGuide_en.pdf
 - Epic Games：《Sound Attenuation》。按听者与实际声源位置处理距离；焦点增益与距离衰减分开处理。https://dev.epicgames.com/documentation/en-us/unreal-engine/sound-attenuation?application_version=4.27
 
 ## 落地到工作台
@@ -17,3 +17,11 @@
 5. 不添加无画面依据的后续重击、撤步或装饰声。保留原速原调、自然尾音和边缘淡入淡出。
 6. 已认可成片只做用户要求的局部混音修正，另存可比较版本。重新选材或重新分析需有对应请求。
 7. 自动回归覆盖误标key、前缀命名、近脚步/中景重击、缺测量和真实落地例外；实片交付仍需试听。数值是本工具初始值，不称为行业规定或物理声压测量。
+
+## 本次验证
+
+- 实片父版本 `64b85a18-53e1-47a6-8b80-5ce7d40e13d3`，新版本 `892073e8-1fa7-4644-8134-4516350cee78`。只将5个普通脚步的增益从−14.6dB降到−22.6dB；视频仍为4.714秒，主捶地2.570秒。
+- 脚步自身具有RMS与峰值记录，原版脚步源峰加增益约−17.5dBFS，主捶地约−16.1dBFS（均为总线前、未计包络的估算）。层级接近才是这次脚步过响的直接依据；不能误写为脚步缺测量。部分石臂替换素材缺电平记录是另一个已观察状态。
+- 新版保留所有事件、素材ID、源区间、fade和其余贴片增益；父版本run.json、WAV、MP4的SHA-256一致。主总线仍按既有规则测量处理，因此不能宣称最终其他声音的绝对采样值完全不变。
+- 新版实测−23.31 LUFS / −6.21 dBTP；WAV为48kHz/24bit双声道。零模型请求，未重新选材或重新分析。
+- 本次完整 `npm test` 在正常权限下通过，受限执行曾因FFmpeg spawn EPERM中断；类型检查、技能校验通过。以上不等于人工试听验收。
