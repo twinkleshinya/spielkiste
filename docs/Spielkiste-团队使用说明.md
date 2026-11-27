@@ -6,7 +6,7 @@
 
 ## 1. 安装与打开
 
-1. 在 Windows 10/11 上双击 `Spielkiste-0.1.1-Portable.exe` 可直接运行；也可使用 `Spielkiste-0.1.1-Setup.exe`，按提示选择安装位置并完成安装。
+1. 在 Windows 10/11 上双击 `Spielkiste-0.1.2-Portable.exe` 可直接运行；也可使用 `Spielkiste-0.1.2-Setup.exe`，按提示选择安装位置并完成安装。
 2. 从桌面快捷方式打开 **Spielkiste**。程序自动启动本机服务，无需另开启动脚本，也无需安装 Node、FFmpeg、FFprobe 或 Git。
 3. 每次打开默认进入 **新建项目**。页面最上方可切换已有项目、创建项目或打开新窗口。
 4. 准备一个视频、可访问的音效素材文件夹，以及可用的 Gemini 网关授权。只有需要转换 REAPER 工程中的音频格式时，才需要另外安装 REAPER。

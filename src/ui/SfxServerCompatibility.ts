@@ -1,4 +1,4 @@
-export const SFX_API_VERSION = "2026-11-26";
+export const SFX_API_VERSION = "2026-11-27";
 
 export const SFX_REQUIRED_CAPABILITIES = [
   "project-name-from-video",
