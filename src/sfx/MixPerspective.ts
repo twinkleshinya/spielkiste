@@ -14,8 +14,13 @@ export function mixImportance(event: SoundEvent | undefined, p: SoundPlacement, 
   if (p.role === "texture" || p.role === "tail") return "detail";
   // A mislabeled minor layer must not bury an actual vocal warning or held charge.
   if (isCharacterVocal(event,p,asset) || /warning|telegraph|charge|charging|预警|蓄力|充能/i.test(event?.type || "")) return "key";
+  // Ordinary movement is supporting texture even when the vision model marks
+  // the event as key.  This keeps footsteps from competing with a visible
+  // attack, vocal cue, warning, or contact.  A true landing/impact remains
+  // eligible for a separate key event and is not covered by this rule.
+  if (/^(?:footstep|footfall|step|walk|run)(?:_|$)|脚步|行走|走路/i.test(event?.type || "")) return "detail";
+  if (/debris|rubble|pebble|dust|recover_stance|weapon_handling|碎屑/i.test(event?.type || "")) return "detail";
   if (event?.importance) return event.importance;
-  if (/footstep|footfall|debris|rubble|pebble|dust|recover_stance|weapon_handling|脚步|碎屑/i.test(event?.type || "")) return "detail";
   return "support";
 }
 export function planPerspective(event: SoundEvent, p: SoundPlacement, asset?: Pick<AudioAsset,"fileName">): NonNullable<SoundPlacement["perspective"]> {
