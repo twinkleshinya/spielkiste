@@ -7,6 +7,11 @@ import { Scene, round } from "./models.js";
 
 export interface MediaInspection { duration: number; hasAudio: boolean }
 export type FrameRegion = { x:number;y:number;width:number;height:number };
+export function frameTimesFromLog(log:string,start:number,count:number):number[]{
+  const times=[...log.matchAll(/\bn:\s*\d+\s+pts:\s*[-\d]+\s+pts_time:([-\d.e+]+)/g)].map(m=>Number(m[1])+start);
+  if(times.length!==count||times.some(t=>!Number.isFinite(t)))throw new Error('抽帧时间记录不完整，无法为画面标注真实时间');
+  return times.map(round);
+}
 export interface MediaSource {
   inspect(file: string): Promise<MediaInspection>;
   scenes(file: string): Promise<number[]>;
@@ -23,9 +28,10 @@ export class MediaTools implements MediaSource {
     for(const file of await fs.readdir(outputDir))if(/^(?:raw-\d+|stamp-\d+)\.jpg$/.test(file))await fs.unlink(path.join(outputDir,file));
     if(region&&(![region.x,region.y,region.width,region.height].every(Number.isFinite)||region.x<0||region.y<0||region.width<=0||region.height<=0||region.x+region.width>1.001||region.y+region.height>1.001))throw new Error('无效局部画面区域');
     const crop=region?`crop=iw*${region.width}:ih*${region.height}:iw*${region.x}:ih*${region.y},`:'';
-    await runFfmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", String(start), "-i", file, "-t", String(end - start), "-vf", `fps=${fps},${crop}scale=${width}:-2`, path.join(outputDir, "raw-%05d.jpg")], { cancelSignal: signal });
+    const decoded=await runFfmpeg(["-hide_banner", "-loglevel", "info", "-y", "-ss", String(start), "-i", file, "-an", "-vf", `trim=duration=${end-start},select='isnan(prev_selected_t)+gt(floor((t+0.000001)*${fps}),floor((prev_selected_t+0.000001)*${fps}))',${crop}scale=${width}:-2,showinfo`,"-fps_mode","vfr", path.join(outputDir, "raw-%05d.jpg")], { cancelSignal: signal,maxBuffer:32*1024*1024 });
     const files = (await fs.readdir(outputDir)).filter(f => /^raw-\d+\.jpg$/.test(f)).sort();
-    const frames = files.map((file, i) => ({ start: round(start + i / fps), end: round(Math.min(end, start + (i + 1) / fps)), thumbnail: path.join(outputDir, `stamp-${String(i).padStart(5, "0")}.jpg`) }));
+    const times=frameTimesFromLog(decoded.stderr,start,files.length);
+    const frames = files.map((file, i) => ({ start: times[i], end: round(Math.min(end,times[i+1]??times[i]+1/fps)), thumbnail: path.join(outputDir, `stamp-${String(i).padStart(5, "0")}.jpg`) }));
     const manifest = path.join(outputDir, "labels.json");
     await fs.writeFile(manifest, JSON.stringify(frames.map((f, i) => ({ input: path.join(outputDir, files[i]), output: f.thumbnail, label: `ABSOLUTE TIME ${f.start.toFixed(3)}s` }))));
     await execa("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", appResource("scripts/stamp-sfx-frames.ps1"), "-Manifest", manifest], { windowsHide: true, cancelSignal: signal });

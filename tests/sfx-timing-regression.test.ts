@@ -14,6 +14,7 @@ import {planAutoMix} from '../src/sfx/AutoMix.js';
 import {createPlacements} from '../src/sfx/PlacementEngine.js';
 import {GeminiAudioSelector} from '../src/sfx/GeminiAudioSelector.js';
 import {selectReviewEvents} from '../src/sfx/SelectionPolicy.js';
+import {frameTimesFromLog} from '../src/sfx/MediaTools.js';
 const cue=(extra:Record<string,unknown>={})=>EventSchema.parse({id:'step',start:1,end:1.3,type:'boss_step',actor:'boss',phase:'contact',category:'impact',description:'巨兽正常迈步，踩在泥土地面',query:'monster footstep dirt ground',confidence:.9,source:'vision',candidates:[],requiresHumanReview:true,...extra});
 
 export function testOrdinaryStepsDoNotAddDebris(){
@@ -102,6 +103,12 @@ export async function testContactReviewUsesActorDetailAndContactBoundary(){
 export function testBossMotionRequiresAudioReview(){
  const motion=cue({type:'boss_move',phase:'motion',category:'foley',actor:'boss',importance:'support',candidates:[{assetId:'boat',score:10,reason:'heavy movement'},{assetId:'arm',score:4,reason:'arm'}]});
  assert.ok(selectReviewEvents([motion],'selective').includes(motion),'a high filename score cannot bypass listening to boss motion');
+}
+
+export function testFrameLabelsUseDecodedTimestamps(){
+ const times=frameTimesFromLog('[Parsed_showinfo_1] n: 0 pts: 500 pts_time:0.0166667\n[Parsed_showinfo_1] n: 1 pts: 1500 pts_time:0.05',2.65,2);
+ assert.deepEqual(times,[2.667,2.7],'non-frame-aligned seeks must label the actual decoded frame, not start + index/fps');
+ assert.throws(()=>frameTimesFromLog('',2.65,2),/时间/,'missing timestamps must not be invented');
 }
 
 export async function testAudioSelectionDoesNotInventPurityScope(){
